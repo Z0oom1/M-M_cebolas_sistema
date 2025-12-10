@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema M&M Cebolas</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="../css/estilo_geral.css">
+    <link rel="icon" type="image/png" href="../Imgs/logo_M&M.jpg">
+
+    <style>
+        /* Ajustes Específicos para Layout com Barra Fixa */
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #f4f4f9; }
+
+        /* BARRA FIXA */
+        #titlebar {
+            display: flex; align-items: center; background-color: #202020;
+            height: 38px; padding: 0 15px; -webkit-app-region: drag;
+            border-bottom: 1px solid #000; position: fixed; top: 0; left: 0; width: 100%;
+            z-index: 99999; box-sizing: border-box;
+        }
+
+        /* Espaçamento para o conteúdo não ficar embaixo da barra */
+        .sidebar { top: 38px !important; height: calc(100vh - 38px) !important; }
+        .main-content { margin-top: 38px !important; height: calc(100vh - 38px); overflow-y: auto; }
+        #loading-screen { top: 38px !important; height: calc(100vh - 38px) !important; }
+
+        /* Estilo dos Botões da Janela */
+        .window-controls { display: flex; gap: 8px; -webkit-app-region: no-drag; }
+        .control-btn { width: 12px; height: 12px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.1s; }
+        .close-btn { background-color: #FF5F56; border: 1px solid #E0443E; }
+        .min-btn   { background-color: #FFBD2E; border: 1px solid #DEA123; }
+        .max-btn   { background-color: #27C93F; border: 1px solid #1AAB29; }
+        .control-btn svg { width: 6px; height: 6px; opacity: 0; stroke: #4a0002; stroke-width: 2; stroke-linecap: round; transition: opacity 0.2s ease; }
+        .window-controls:hover .control-btn svg { opacity: 0.6; }
+        .window-controls:hover .control-btn:hover svg { opacity: 1; }
+        
+        .app-title { flex-grow: 1; text-align: center; font-family: 'Inter', sans-serif; font-size: 12px; color: #888; margin-right: 60px; letter-spacing: 1px; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <header id="titlebar">
+        <div class="window-controls">
+          <div class="control-btn close-btn" id="closeBtn" title="Fechar"><svg viewBox="0 0 10 10"><path d="M1,1 L9,9 M9,1 L1,9" /></svg></div>
+          <div class="control-btn min-btn" id="minBtn" title="Minimizar"><svg viewBox="0 0 10 2"><path d="M0,1 L10,1" /></svg></div>
+          <div class="control-btn max-btn" id="maxBtn" title="Maximizar"><svg viewBox="0 0 10 10"><path d="M0,10 L10,0 M1,1 L9,9" /></svg></div>
+        </div>
+        <div class="app-title">M&M CEBOLAS</div>
+    </header>
+
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader-wrapper" style="color:white; font-weight:bold; font-size:1.2rem;">
+             <i class="fas fa-circle-notch fa-spin"></i> Carregando Sistema...
+        </div>
+    </div>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="logo-area">
+            <h4>M&M <span>CEBOLAS</span></h4>
+        </div>
+        
+        <div class="user-profile">
+            <div class="avatar">U</div>
+            <div class="user-info">
+                <span id="user-name-display">Usuário</span>
+                <small id="user-role-display">Administrador</small>
+            </div>
+        </div>
+
+        <ul class="nav-links">
+            <li class="section-title">GERAL</li>
+            <li><button class="active" onclick="showSection('dashboard', this)"><i class="fas fa-chart-pie"></i> Visão Geral</button></li>
+            
+            <li class="section-title">OPERACIONAL</li>
+            <li><button onclick="showSection('entrada', this)"><i class="fas fa-arrow-down"></i> Nova Entrada</button></li>
+            <li><button onclick="showSection('saida', this)"><i class="fas fa-arrow-up"></i> Nova Saída</button></li>
+            <li><button onclick="showSection('estoque', this)"><i class="fas fa-boxes"></i> Estoque Detalhado</button></li>
+            
+            <li class="section-title">CADASTROS</li>
+            <li><button onclick="showSection('cadastro', this)"><i class="fas fa-address-book"></i> Clientes/Fornecedores</button></li>
+            
+            <li class="section-title">ADMINISTRATIVO</li>
+            <li><button onclick="showSection('financeiro', this)"><i class="fas fa-wallet"></i> Financeiro</button></li>
+            <li><button onclick="showSection('config', this)"><i class="fas fa-cog"></i> Configurações</button></li>
+            
+            <li style="margin-top: auto;">
+                <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <div class="header-mobile">
+            <div style="font-weight: 800;">M&M <span style="color: var(--accent);">CEBOLAS</span></div>
+            <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor: pointer; font-size: 1.5rem;"></i>
+        </div>
+        
+        <section id="dashboard" class="active">
+            <header class="top-bar">
+                <h2 class="page-title">Dashboard</h2>
+                <div class="date-display">
+                    <i class="far fa-calendar-alt"></i> <span id="current-date">--/--/----</span>
+                </div>
+            </header>
+            
+            <div class="kpi-grid">
+                <div class="kpi-card main-stock">
+                    <div class="kpi-icon stock"><i class="fas fa-layer-group"></i></div>
+                    <div style="flex: 1;">
+                        <small>Estoque Total</small>
+                        <h3 id="dash-stock">0 Cx</h3>
+                        <div id="stock-breakdown" class="mini-stock-bar"></div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon money"><i class="fas fa-dollar-sign"></i></div>
+                    <div><small>Receita (Mês)</small><h3 id="dash-revenue" class="text-success">R$ 0,00</h3></div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon expense"><i class="fas fa-file-invoice"></i></div>
+                    <div><small>Despesas</small><h3 id="dash-expenses" class="text-danger">R$ 0,00</h3></div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon profit"><i class="fas fa-coins"></i></div>
+                    <div><small>Lucro Líquido</small><h3 id="dash-profit">R$ 0,00</h3></div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <div class="panel chart-panel">
+                    <div class="panel-header"><h4>Balanço Financeiro</h4></div>
+                    <div style="height: 250px; padding: 10px;"><canvas id="financeChart"></canvas></div>
+                </div>
+                <div class="panel chart-panel">
+                    <div class="panel-header"><h4>Distribuição de Estoque</h4></div>
+                    <div style="height: 250px; display:flex; justify-content:center; padding: 10px;"><canvas id="stockChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <h4>Últimas Movimentações</h4>
+                    <button class="btn-sm" onclick="showSection('estoque')">Ver tudo</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table-compact">
+                        <thead><tr><th>Tipo</th><th>Produto</th><th>Origem/Destino</th><th>Qtd</th><th>Valor</th><th>Data</th></tr></thead>
+                        <tbody id="recent-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="entrada">
+            <header class="top-bar"><h2 class="page-title">Registrar Entrada</h2></header>
+            <div class="panel form-panel">
+                <form onsubmit="handleEntry(event)" class="form-grid">
+                    <div class="form-group span-2">
+                        <label>Fornecedor / Origem</label>
+                        <div class="input-group">
+                            <input type="text" id="entry-source" placeholder="Ex: Fazenda Santa Inês" required>
+                            <button type="button" class="btn-search" onclick="openSelectionModal('fornecedor')" title="Buscar Fornecedor"><i class="fas fa-search"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tipo de Cebola</label>
+                        <select id="entry-type">
+                            <option value="Amarela">Amarela (Padrão)</option>
+                            <option value="Roxa">Roxa</option>
+                            <option value="Branca">Branca</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Qtd (Caixas)</label>
+                        <input type="number" id="entry-qty" required min="1" placeholder="0">
+                    </div>
+
+                    <div class="form-group span-2 calc-options">
+                        <label style="margin-bottom:8px; display:block; font-weight:600;">Modo de Lançamento:</label>
+                        <div style="display: flex; gap: 20px;">
+                            <label class="radio-label"><input type="radio" name="entry-calc-mode" value="total" checked> Valor Total (Lote)</label>
+                            <label class="radio-label"><input type="radio" name="entry-calc-mode" value="unit"> Valor Unitário (por caixa)</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group span-2">
+                        <label>Valor (R$)</label>
+                        <input type="number" id="entry-cost" step="0.01" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="entry-date" required>
+                    </div>
+                    <div class="form-group span-2" style="margin-top: 10px;">
+                        <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Registrar Entrada</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section id="saida">
+            <header class="top-bar"><h2 class="page-title">Registrar Saída</h2></header>
+            <div class="panel form-panel">
+                <form onsubmit="handleExit(event)" class="form-grid">
+                    <div class="form-group span-2">
+                        <label>Cliente / Comprador</label>
+                        <div class="input-group">
+                            <input type="text" id="exit-client" placeholder="Ex: Mercado Central" required>
+                            <button type="button" class="btn-search" onclick="openSelectionModal('cliente')" title="Buscar Cliente"><i class="fas fa-search"></i></button>
+                        </div>
+                    </div>
+
+                     <div class="form-group">
+                        <label>Tipo Vendido</label>
+                        <select id="exit-type">
+                            <option value="Amarela">Amarela</option>
+                            <option value="Roxa">Roxa</option>
+                            <option value="Branca">Branca</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Qtd (Caixas)</label>
+                        <input type="number" id="exit-qty" required min="1" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Venda Total (R$)</label>
+                        <input type="number" id="exit-value" step="0.01" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="exit-date" required>
+                    </div>
+                    <div class="form-group span-2" style="margin-top: 10px;">
+                        <button type="submit" class="btn-primary btn-orange"><i class="fas fa-dollar-sign"></i> Finalizar Venda</button>
+                    </div>
+                </form>
+
+                <div style="margin-top: 25px; border-top: 1px solid var(--border); padding-top: 15px;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 10px; display: block;">
+                        <i class="fas fa-boxes"></i> Disponibilidade Atual (Clique para selecionar)
+                    </label>
+                    <div id="saida-stock-display" class="mini-stock-grid">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="estoque">
+            <header class="top-bar"><h2 class="page-title">Estoque Detalhado</h2></header>
+            <p class="helper-text">
+                <i class="fas fa-info-circle"></i> Clique em um item para ver o <b>Histórico de Entradas</b> (Fornecedores).
+            </p>
+            <div id="stock-grid" class="grid-stock"></div>
+        </section>
+
+        <section id="cadastro">
+            <header class="top-bar"><h2 class="page-title">Gestão de Cadastros</h2></header>
+            
+            <div class="content-grid">
+                <div class="panel" style="padding: 20px;">
+                    <div class="panel-header" style="margin-bottom: 15px;">
+                        <h5><i class="fas fa-truck"></i> Fornecedores</h5>
+                    </div>
+                    
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <input type="text" id="new-fornecedor" placeholder="Nome do Fornecedor">
+                        <button class="btn-primary" onclick="addCadastro('fornecedor')" style="width: auto;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+        
+                    <div class="list-header" style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.8rem; color:#888;">
+                        <span>NOME</span>
+                        <span>AÇÕES</span>
+                    </div>
+                    <div class="list-container" id="list-fornecedores">
+                        </div>
+                </div>
+        
+                <div class="panel" style="padding: 20px;">
+                    <div class="panel-header" style="margin-bottom: 15px;">
+                        <h5><i class="fas fa-users"></i> Clientes</h5>
+                    </div>
+                    
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <input type="text" id="new-cliente" placeholder="Nome do Cliente">
+                        <button class="btn-primary" onclick="addCadastro('cliente')" style="width: auto;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+        
+                    <div class="list-header" style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.8rem; color:#888;">
+                        <span>NOME</span>
+                        <span>AÇÕES</span>
+                    </div>
+                    <div class="list-container" id="list-clientes">
+                        </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="financeiro">
+            <header class="top-bar"><h2 class="page-title">Financeiro</h2></header>
+            <div class="content-grid">
+                <div class="panel">
+                    <div class="panel-header"><h5><i class="fas fa-home"></i> Imposto Fixo (Mensal)</h5></div>
+                    <form onsubmit="updateTax(event)" style="padding:20px; display:flex; gap:10px;">
+                        <input type="number" id="tax-value" placeholder="R$ 0,00" class="input-sm">
+                        <button class="btn-primary" style="width: auto;">Salvar</button>
+                    </form>
+                </div>
+                <div class="panel">
+                    <div class="panel-header"><h5><i class="fas fa-receipt"></i> Lançar Despesa Extra</h5></div>
+                    <form onsubmit="handleExpense(event)" style="padding:20px; display:flex; gap:10px; flex-wrap:wrap;">
+                        <input type="text" id="exp-desc" placeholder="Motivo" class="input-sm" style="flex:2;">
+                        <input type="number" id="exp-val" placeholder="Valor" class="input-sm" style="flex:1;">
+                        <button class="btn-danger" style="width: auto;">Lançar</button>
+                    </form>
+                </div>
+            </div>
+            <div class="panel" style="margin-top:20px;">
+                <div class="panel-header"><h4>Histórico Financeiro</h4></div>
+                <div class="table-responsive">
+                    <table class="table-compact" id="financial-table">
+                         <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Entrada</th><th>Saída</th></tr></thead>
+                         <tbody id="financial-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="config">
+            <header class="top-bar"><h2 class="page-title">Configurações</h2></header>
+            <div class="panel" style="padding: 30px;">
+                <h4 style="margin-bottom: 15px; color: var(--danger);">Zona de Perigo</h4>
+                <p style="margin-bottom: 20px; color: var(--text-muted);">Apagar todo o banco de dados. Irreversível.</p>
+                <button onclick="clearAllData()" class="btn-danger"><i class="fas fa-trash"></i> Resetar Fábrica</button>
+            </div>
+        </section>
+    </main>
+
+    <div id="context-menu">
+        <div class="ctx-item" onclick="openEditModal()"><i class="fas fa-edit"></i> Editar</div>
+        <div class="ctx-item delete" onclick="deleteItem()"><i class="fas fa-trash-alt"></i> Excluir</div>
+    </div>
+    
+    <div id="modal-edit" class="modal-overlay">
+        <div class="edit-modal">
+            <h3 style="margin-bottom: 20px; color: var(--primary);"><i class="fas fa-pen-square"></i> Editar Registro</h3>
+            <form onsubmit="saveEdit(event)" class="form-grid" style="grid-template-columns: 1fr;">
+                <input type="hidden" id="edit-id">
+                <div class="form-group"><label>Descrição / Cliente</label><input type="text" id="edit-desc" required></div>
+                <div class="form-group"><label>Tipo de Produto</label><select id="edit-type"><option value="Amarela">Amarela</option><option value="Roxa">Roxa</option><option value="Branca">Branca</option></select></div>
+                <div class="form-group"><label>Quantidade</label><input type="number" id="edit-qty" required></div>
+                <div class="form-group" style="background: #f9fafb; padding: 10px; border-radius: 6px; border:1px solid #eee;">
+                    <label style="font-size:0.85rem; font-weight:600; margin-bottom:5px; display:block;">Recalcular Valor:</label>
+                     <div style="display: flex; gap: 15px; font-size: 0.9rem;">
+                        <label class="radio-label"><input type="radio" name="edit-calc-mode" value="total" checked> Manter Total</label>
+                        <label class="radio-label"><input type="radio" name="edit-calc-mode" value="unit"> Usar Unitário</label>
+                    </div>
+                </div>
+                <div class="form-group"><label>Valor (R$)</label><input type="number" id="edit-val" step="0.01" required></div>
+                <div class="form-group" style="display:flex; gap:15px; margin-top:15px;">
+                    <button type="button" class="btn-sm" onclick="closeEditModal()" style="flex:1; padding: 12px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex:1;">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-stock-details" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 600px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 id="detail-title" style="color: var(--primary); font-size: 1.3rem;">Detalhes</h3>
+                <button onclick="closeStockDetails()" class="btn-sm" style="border:none; font-size:1.5rem; color:#666;">&times;</button>
+            </div>
+            <div class="detail-summary-card" id="detail-summary"></div>
+            <h5 style="margin: 20px 0 10px 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Histórico de Entradas</h5>
+            <div class="table-responsive" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+                <table class="table-compact">
+                    <thead><tr><th>Data</th><th>Fornecedor</th><th>Qtd Original</th><th>Custo Unit.</th><th>Total</th></tr></thead>
+                    <tbody id="detail-table-body"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 20px; text-align: right;"><button onclick="closeStockDetails()" class="btn-primary" style="width: auto;">Fechar</button></div>
+        </div>
+    </div>
+
+    <div id="modal-selection" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 400px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 id="selection-title" style="color: var(--primary);">Selecionar</h3>
+                <button onclick="closeSelectionModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
+            </div>
+            <input type="text" id="search-selection" placeholder="Filtrar..." onkeyup="filterSelectionList()" style="margin-bottom: 15px;">
+            <div id="selection-list" class="selection-list-container">
+                </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="../js/script.js"></script>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        document.getElementById('minBtn').addEventListener('click', () => ipcRenderer.send('minimize-app'));
+        document.getElementById('maxBtn').addEventListener('click', () => ipcRenderer.send('maximize-app'));
+        document.getElementById('closeBtn').addEventListener('click', () => ipcRenderer.send('close-app'));
+    </script>
+</body>
+</html>

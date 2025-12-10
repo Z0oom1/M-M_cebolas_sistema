@@ -1,0 +1,14 @@
+{
+    "name": "sistema-cebolas",
+    "version": "0.1.2",
+    "description": "Sistema de Controle de Estoque",
+    "main": "frontend/main.js",
+    "scripts": {
+      "start": "electron ."
+    },
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+      "electron": "latest"
+    }
+  }

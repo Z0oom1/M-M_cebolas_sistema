@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - M&M Cebolas</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="login.css">
+    <link rel="stylesheet" href="../css/login.css">
+    <link rel="stylesheet" href="../css/loading.css">
+    <link rel="stylesheet" href="../css/estilo_geral.css">
+    <link rel="icon" type="image/png" href="/Imgs/logo_M&M.jpg">
+
+    <style>
+        /* Garante que o body ocupe a tela toda mas não quebre a barra */
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            /* Mantém o background e fontes que você já tem */
+        }
+
+        /* --- CORREÇÃO AQUI --- */
+        #custom-titlebar {
+            display: flex;
+            align-items: center;
+            background-color: #202020;
+            height: 32px;
+            padding: 0 15px;
+            -webkit-app-region: drag;
+            border-bottom: 1px solid #000;
+            
+            /* ESSAS LINHAS CONSERTAM O BUG: */
+            position: absolute; /* Tira a barra do fluxo flex do login */
+            top: 0;             /* Cola no teto */
+            left: 0;            /* Cola na esquerda */
+            width: 100%;        /* Força ocupar a largura total */
+            z-index: 9999;      /* Garante que fique acima de tudo */
+            box-sizing: border-box; /* Garante que o padding não estoure a largura */
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .control-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        /* Cores Apple */
+        .close-btn { background-color: #FF5F56; border: 1px solid #E0443E; }
+        .min-btn   { background-color: #FFBD2E; border: 1px solid #DEA123; }
+        .max-btn   { background-color: #27C93F; border: 1px solid #1AAB29; }
+
+        .control-btn svg {
+            width: 6px;
+            height: 6px;
+            opacity: 0;
+            stroke: #4a0002;
+            stroke-width: 2;
+            stroke-linecap: round;
+            transition: opacity 0.2s ease;
+        }
+
+        .window-controls:hover .control-btn svg { opacity: 0.6; }
+        .window-controls:hover .control-btn:hover svg { opacity: 1; }
+        .control-btn:active { transform: scale(0.9); }
+
+        .app-title-bar {
+            flex-grow: 1;
+            text-align: center;
+            font-family: 'Poppins', sans-serif;
+            font-size: 12px;
+            color: #888;
+            margin-right: 60px;
+            letter-spacing: 1px;
+            pointer-events: none; /* Deixa arrastar clicando no texto */
+        }
+    </style>
+</head>
+<body>
+    
+    <header id="custom-titlebar">
+        <div class="window-controls">
+            <div class="control-btn close-btn" id="closeBtn" title="Fechar">
+                <svg viewBox="0 0 10 10"><path d="M1,1 L9,9 M9,1 L1,9" /></svg>
+            </div>
+            <div class="control-btn min-btn" id="minBtn" title="Minimizar">
+                <svg viewBox="0 0 10 2"><path d="M0,1 L10,1" /></svg>
+            </div>
+            <div class="control-btn max-btn" id="maxBtn" title="Maximizar">
+                <svg viewBox="0 0 10 10"><path d="M0,10 L10,0 M1,1 L9,9" /></svg>
+            </div>
+        </div>
+        <div class="app-title-bar">M&M CEBOLAS</div>
+        
+    </header>
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader-wrapper" style="color:white; font-weight:bold; font-size:1.2rem;">
+             <i class="fas fa-circle-notch fa-spin"></i> Carregando Sistema...
+        </div>
+    </div>
+
+    <div class="modal">
+        <div class="logo-area">
+            <img src="../Imgs/Logo_M&M_Cebolas.png" alt="logo" style="width: 100px; height: 100px;">
+            <h1>M&M <span style="color: #E89C31;">CEBOLAS</span></h1>
+            
+        </div>
+        <p>Sistema de Gestão Integrado</p>
+        
+        <form onsubmit="fazerLogin(event)">
+            <input type="text" id="loginUser" placeholder="Usuário" value="admin">
+            <input type="password" id="loginPass" placeholder="Senha" value="123">
+            <button type="submit">ACESSAR SISTEMA</button>
+        </form>
+        
+        <div class="links">
+            <a onclick="alert('Contate o administrador do sistema.')">Esqueceu a senha?</a>
+        </div>
+    </div>
+
+    <div class="fab-login" onclick="abrirSwitcher()" title="Contas Rápidas">
+        <i class="fas fa-users"></i>
+    </div>
+
+    <div id="modalSwitcher" class="overlay">
+        <div class="modal-content">
+            <h3 style="margin-bottom:15px; color:#1A5632;">Selecionar Conta</h3>
+            <div id="listaContas"></div>
+            <button onclick="document.getElementById('modalSwitcher').style.display='none'" style="margin-top:15px; background:#ccc; color:#333;">Fechar</button>
+        </div>
+    </div>
+
+    <script src="../js/login.js"></script>
+    <script src="/js/script.js"></script>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        document.getElementById('minBtn').addEventListener('click', () => {
+            ipcRenderer.send('minimize-app');
+        });
+
+        document.getElementById('maxBtn').addEventListener('click', () => {
+            ipcRenderer.send('maximize-app');
+        });
+
+        document.getElementById('closeBtn').addEventListener('click', () => {
+            ipcRenderer.send('close-app');
+        });
+    </script>
+    
+</body>
+</html>
