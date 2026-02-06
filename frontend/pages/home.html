@@ -83,6 +83,7 @@
             
             <li class="section-title">CADASTROS</li>
             <li><button onclick="showSection('cadastro', this)"><i class="fas fa-address-book"></i> Clientes/Fornecedores</button></li>
+            <li><button onclick="showSection('nfe', this)"><i class="fas fa-file-invoice-dollar"></i> Notas Fiscais (NF-e)</button></li>
             
             <li class="section-title">ADMINISTRATIVO</li>
             <li><button onclick="showSection('financeiro', this)"><i class="fas fa-wallet"></i> Financeiro</button></li>
@@ -263,15 +264,32 @@
             <header class="top-bar"><h2 class="page-title">Gestão de Cadastros</h2></header>
             
             <div class="content-grid">
+                <div class="panel" style="padding: 20px; grid-column: span 2;">
+                    <div class="panel-header" style="margin-bottom: 15px;">
+                        <h5><i class="fas fa-box"></i> Produtos (Catálogo)</h5>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn-primary" onclick="openProdutoModal()" style="width: 100%;">
+                            <i class="fas fa-plus"></i> Novo Produto
+                        </button>
+                    </div>
+                    <div class="list-header" style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; margin-bottom:10px; font-size:0.8rem; color:#888; padding: 0 10px;">
+                        <span>NOME</span>
+                        <span>NCM</span>
+                        <span>PREÇO</span>
+                        <span style="text-align:right;">AÇÕES</span>
+                    </div>
+                    <div class="list-container" id="list-produtos"></div>
+                </div>
+
                 <div class="panel" style="padding: 20px;">
                     <div class="panel-header" style="margin-bottom: 15px;">
                         <h5><i class="fas fa-truck"></i> Fornecedores</h5>
                     </div>
                     
-                    <div class="input-group" style="margin-bottom: 15px;">
-                        <input type="text" id="new-fornecedor" placeholder="Nome do Fornecedor">
-                        <button class="btn-primary" onclick="addCadastro('fornecedor')" style="width: auto;">
-                            <i class="fas fa-plus"></i>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn-primary" onclick="openCadastroModal('fornecedor')" style="width: 100%;">
+                            <i class="fas fa-plus"></i> Novo Fornecedor
                         </button>
                     </div>
         
@@ -288,10 +306,9 @@
                         <h5><i class="fas fa-users"></i> Clientes</h5>
                     </div>
                     
-                    <div class="input-group" style="margin-bottom: 15px;">
-                        <input type="text" id="new-cliente" placeholder="Nome do Cliente">
-                        <button class="btn-primary" onclick="addCadastro('cliente')" style="width: auto;">
-                            <i class="fas fa-plus"></i>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn-primary" onclick="openCadastroModal('cliente')" style="width: 100%;">
+                            <i class="fas fa-plus"></i> Novo Cliente
                         </button>
                     </div>
         
@@ -301,6 +318,22 @@
                     </div>
                     <div class="list-container" id="list-clientes">
                         </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="nfe">
+            <header class="top-bar"><h2 class="page-title">Notas Fiscais (NF-e)</h2></header>
+            <div class="panel">
+                <div class="panel-header">
+                    <h4>Histórico de Emissões</h4>
+                    <button class="btn-sm" onclick="loadNFe()"><i class="fas fa-sync"></i> Atualizar</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table-compact">
+                        <thead><tr><th>Data</th><th>Chave de Acesso</th><th>Status</th><th>Ações</th></tr></thead>
+                        <tbody id="nfe-table-body"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -325,7 +358,10 @@
                 </div>
             </div>
             <div class="panel" style="margin-top:20px;">
-                <div class="panel-header"><h4>Histórico Financeiro</h4></div>
+                <div class="panel-header">
+                    <h4>Histórico Financeiro</h4>
+                    <button class="btn-sm" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Exportar CSV</button>
+                </div>
                 <div class="table-responsive">
                     <table class="table-compact" id="financial-table">
                          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Entrada</th><th>Saída</th></tr></thead>
@@ -401,6 +437,54 @@
             <input type="text" id="search-selection" placeholder="Filtrar..." onkeyup="filterSelectionList()" style="margin-bottom: 15px;">
             <div id="selection-list" class="selection-list-container">
                 </div>
+        </div>
+    </div>
+
+    <div id="modal-cadastro" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 id="cadastro-modal-title" style="color: var(--primary);">Novo Cadastro</h3>
+                <button onclick="closeCadastroModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
+            </div>
+            <form onsubmit="saveCadastro(event)" class="form-grid" style="grid-template-columns: 1fr;">
+                <input type="hidden" id="cadastro-id">
+                <input type="hidden" id="cadastro-type">
+                <div class="form-group"><label>Nome / Razão Social</label><input type="text" id="cad-nome" required></div>
+                <div class="form-group">
+                    <label>CNPJ / CPF</label>
+                    <div class="input-group">
+                        <input type="text" id="cad-documento" placeholder="Apenas números">
+                        <button type="button" class="btn-search" onclick="lookupDocumento()" title="Buscar Dados"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+                <div class="form-group"><label>Inscrição Estadual</label><input type="text" id="cad-ie"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="cad-email"></div>
+                <div class="form-group"><label>Telefone</label><input type="text" id="cad-telefone"></div>
+                <div class="form-group" style="display:flex; gap:15px; margin-top:15px;">
+                    <button type="button" class="btn-sm" onclick="closeCadastroModal()" style="flex:1; padding: 12px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex:1;">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-produto" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 id="produto-modal-title" style="color: var(--primary);">Novo Produto</h3>
+                <button onclick="closeProdutoModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
+            </div>
+            <form onsubmit="saveProduto(event)" class="form-grid" style="grid-template-columns: 1fr;">
+                <input type="hidden" id="prod-id">
+                <div class="form-group"><label>Nome do Produto</label><input type="text" id="prod-nome" required placeholder="Ex: Cebola Amarela Especial"></div>
+                <div class="form-group"><label>NCM</label><input type="text" id="prod-ncm" placeholder="Ex: 0703.10.11"></div>
+                <div class="form-group"><label>Preço de Venda (R$)</label><input type="number" id="prod-preco" step="0.01" required placeholder="0.00"></div>
+                <div class="form-group"><label>Estoque Mínimo (Alerta)</label><input type="number" id="prod-min" value="100"></div>
+                <div class="form-group" style="display:flex; gap:15px; margin-top:15px;">
+                    <button type="button" class="btn-sm" onclick="closeProdutoModal()" style="flex:1; padding: 12px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex:1;">Salvar</button>
+                </div>
+            </form>
         </div>
     </div>
 

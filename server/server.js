@@ -38,8 +38,41 @@ function initDb() {
         )`);
 
         // Tabelas de Cadastro
-        db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT)`);
-        db.run(`CREATE TABLE IF NOT EXISTS fornecedores (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT)`);
+        db.run(`CREATE TABLE IF NOT EXISTS clientes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            nome TEXT, 
+            documento TEXT, 
+            ie TEXT, 
+            email TEXT, 
+            telefone TEXT
+        )`);
+        db.run(`CREATE TABLE IF NOT EXISTS fornecedores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            nome TEXT, 
+            documento TEXT, 
+            ie TEXT, 
+            email TEXT, 
+            telefone TEXT
+        )`);
+
+        // Tabela de Produtos
+        db.run(`CREATE TABLE IF NOT EXISTS produtos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT,
+            ncm TEXT,
+            preco_venda REAL,
+            estoque_minimo INTEGER DEFAULT 0
+        )`);
+
+        // Tabela de NF-e
+        db.run(`CREATE TABLE IF NOT EXISTS nfe (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            venda_id INTEGER,
+            chave_acesso TEXT,
+            xml_content TEXT,
+            status TEXT, -- 'pendente', 'autorizada', 'cancelada'
+            data_emissao TEXT
+        )`);
     });
 }
 
@@ -95,7 +128,14 @@ app.get('/api/clientes', (req, res) => {
 });
 
 app.post('/api/clientes', (req, res) => {
-    db.run(`INSERT INTO clientes (nome) VALUES (?)`, [req.body.nome], function(err) { res.json({ id: this.lastID }); });
+    const { nome, documento, ie, email, telefone } = req.body;
+    db.run(`INSERT INTO clientes (nome, documento, ie, email, telefone) VALUES (?, ?, ?, ?, ?)`, 
+        [nome, documento, ie, email, telefone], 
+        function(err) { 
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID }); 
+        }
+    );
 });
 
 app.delete('/api/clientes/:id', (req, res) => {
@@ -104,9 +144,46 @@ app.delete('/api/clientes/:id', (req, res) => {
 
 // Rota de Edição (Adicionada)
 app.put('/api/clientes/:id', (req, res) => {
-    db.run(`UPDATE clientes SET nome = ? WHERE id = ?`, [req.body.nome, req.params.id], function(err) {
-        res.json({ updated: this.changes });
-    });
+    const { nome, documento, ie, email, telefone } = req.body;
+    db.run(`UPDATE clientes SET nome = ?, documento = ?, ie = ?, email = ?, telefone = ? WHERE id = ?`, 
+        [nome, documento, ie, email, telefone, req.params.id], 
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ updated: this.changes });
+        }
+    );
+});
+
+// --- ROTAS DE PRODUTOS ---
+
+app.get('/api/produtos', (req, res) => {
+    db.all(`SELECT * FROM produtos ORDER BY nome ASC`, [], (err, rows) => res.json(rows));
+});
+
+app.post('/api/produtos', (req, res) => {
+    const { nome, ncm, preco_venda, estoque_minimo } = req.body;
+    db.run(`INSERT INTO produtos (nome, ncm, preco_venda, estoque_minimo) VALUES (?, ?, ?, ?)`,
+        [nome, ncm, preco_venda, estoque_minimo],
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID });
+        }
+    );
+});
+
+app.put('/api/produtos/:id', (req, res) => {
+    const { nome, ncm, preco_venda, estoque_minimo } = req.body;
+    db.run(`UPDATE produtos SET nome = ?, ncm = ?, preco_venda = ?, estoque_minimo = ? WHERE id = ?`,
+        [nome, ncm, preco_venda, estoque_minimo, req.params.id],
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ updated: this.changes });
+        }
+    );
+});
+
+app.delete('/api/produtos/:id', (req, res) => {
+    db.run(`DELETE FROM produtos WHERE id = ?`, req.params.id, (err) => res.json({ deleted: true }));
 });
 
 // --- ROTAS DE FORNECEDORES ---
@@ -116,7 +193,14 @@ app.get('/api/fornecedores', (req, res) => {
 });
 
 app.post('/api/fornecedores', (req, res) => {
-    db.run(`INSERT INTO fornecedores (nome) VALUES (?)`, [req.body.nome], function(err) { res.json({ id: this.lastID }); });
+    const { nome, documento, ie, email, telefone } = req.body;
+    db.run(`INSERT INTO fornecedores (nome, documento, ie, email, telefone) VALUES (?, ?, ?, ?, ?)`, 
+        [nome, documento, ie, email, telefone], 
+        function(err) { 
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID }); 
+        }
+    );
 });
 
 app.delete('/api/fornecedores/:id', (req, res) => {
@@ -125,9 +209,36 @@ app.delete('/api/fornecedores/:id', (req, res) => {
 
 // Rota de Edição (Adicionada)
 app.put('/api/fornecedores/:id', (req, res) => {
-    db.run(`UPDATE fornecedores SET nome = ? WHERE id = ?`, [req.body.nome, req.params.id], function(err) {
-        res.json({ updated: this.changes });
-    });
+    const { nome, documento, ie, email, telefone } = req.body;
+    db.run(`UPDATE fornecedores SET nome = ?, documento = ?, ie = ?, email = ?, telefone = ? WHERE id = ?`, 
+        [nome, documento, ie, email, telefone, req.params.id], 
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ updated: this.changes });
+        }
+    );
+});
+
+// --- ROTAS DE NF-e ---
+
+app.get('/api/nfe', (req, res) => {
+    db.all(`SELECT * FROM nfe ORDER BY id DESC`, [], (err, rows) => res.json(rows));
+});
+
+app.post('/api/nfe/gerar', (req, res) => {
+    const { venda_id, cliente_id, itens } = req.body;
+    
+    // Simulação de geração de XML e Chave de Acesso
+    const chave = "35" + Math.floor(Math.random() * 100000000000000000000000000000000000000000).toString().padStart(42, '0');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><nfeProc><NFe><infNFe Id="NFe${chave}"><ide><cUF>35</cUF></ide></infNFe></NFe></nfeProc>`;
+    
+    db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
+        [venda_id, chave, xml, 'autorizada', new Date().toISOString()],
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID, chave, status: 'autorizada' });
+        }
+    );
 });
 
 // --- RESET GERAL ---

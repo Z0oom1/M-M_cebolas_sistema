@@ -131,6 +131,8 @@ window.showSection = function(id, btn) {
     originalShowSection(id, btn);
     if(id === 'cadastro') {
         loadCadastros();
+    } else if(id === 'nfe') {
+        loadNFe();
     }
 }
 
@@ -147,20 +149,166 @@ function initDateInputs() {
 
 async function loadCadastros() {
     try {
-        const [cliRes, fornRes] = await Promise.all([
+        const [cliRes, fornRes, prodRes] = await Promise.all([
             fetch(`${API_URL}/api/clientes`),
-            fetch(`${API_URL}/api/fornecedores`)
+            fetch(`${API_URL}/api/fornecedores`),
+            fetch(`${API_URL}/api/produtos`)
         ]);
         
         const clientes = await cliRes.json();
         const fornecedores = await fornRes.json();
+        const produtos = await prodRes.json();
 
         renderCadastroList('list-clientes', clientes, 'cliente');
         renderCadastroList('list-fornecedores', fornecedores, 'fornecedor');
+        renderProdutoList(produtos);
     } catch (e) { 
         console.error(e);
         alert("Erro ao carregar listas de cadastro.");
     }
+}
+
+function renderProdutoList(list) {
+    const el = document.getElementById('list-produtos');
+    if(!el) return;
+    el.innerHTML = '';
+    
+    if(list.length === 0) {
+        el.innerHTML = '<div style="padding:15px; color:#999; text-align:center;">Nenhum produto cadastrado.</div>';
+        return;
+    }
+
+    list.forEach(item => {
+        el.innerHTML += `
+            <div class="list-item" style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding:10px; border-bottom:1px solid #eee; align-items:center;">
+                <span style="font-weight:500;">${item.nome}</span>
+                <span style="color:#666; font-size:0.85rem;">${item.ncm || '-'}</span>
+                <span style="font-weight:600; color:var(--success);">R$ ${Number(item.preco_venda).toFixed(2)}</span>
+                <div class="list-actions" style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button onclick="openProdutoModal(${item.id})" style="background:none; border:none; cursor:pointer; color:#E89C31;" title="Editar"><i class="fas fa-pen"></i></button>
+                    <button onclick="deleteProduto(${item.id})" style="background:none; border:none; cursor:pointer; color:#EF4444;" title="Excluir"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// --- GESTÃO DE PRODUTOS ---
+
+function openProdutoModal(id = null) {
+    const modal = document.getElementById('modal-produto');
+    const title = document.getElementById('produto-modal-title');
+    const form = modal.querySelector('form');
+    
+    document.getElementById('prod-id').value = id || '';
+    title.innerText = id ? 'Editar Produto' : 'Novo Produto';
+    
+    if (id) {
+        fetch(`${API_URL}/api/produtos`)
+            .then(res => res.json())
+            .then(list => {
+                const item = list.find(i => i.id == id);
+                if (item) {
+                    document.getElementById('prod-nome').value = item.nome || '';
+                    document.getElementById('prod-ncm').value = item.ncm || '';
+                    document.getElementById('prod-preco').value = item.preco_venda || '';
+                    document.getElementById('prod-min').value = item.estoque_minimo || '100';
+                }
+            });
+    } else {
+        form.reset();
+        document.getElementById('prod-min').value = '100';
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeProdutoModal() {
+    document.getElementById('modal-produto').classList.remove('active');
+}
+
+async function saveProduto(e) {
+    e.preventDefault();
+    const id = document.getElementById('prod-id').value;
+    
+    const data = {
+        nome: document.getElementById('prod-nome').value,
+        ncm: document.getElementById('prod-ncm').value,
+        preco_venda: parseFloat(document.getElementById('prod-preco').value),
+        estoque_minimo: parseInt(document.getElementById('prod-min').value)
+    };
+
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/api/produtos/${id}` : `${API_URL}/api/produtos`;
+        
+        const res = await fetch(url, {
+            method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            closeProdutoModal();
+            loadCadastros();
+            alert("Produto salvo com sucesso!");
+        } else {
+            alert("Erro ao salvar produto.");
+        }
+    } catch(e) {
+        alert("Erro na conexão.");
+    }
+}
+
+async function deleteProduto(id) {
+    if(!confirm('Tem certeza que deseja excluir este produto?')) return;
+    try {
+        await fetch(`${API_URL}/api/produtos/${id}`, { method: 'DELETE' });
+        loadCadastros();
+    } catch(e) {
+        alert("Erro ao excluir.");
+    }
+}
+
+// --- GESTÃO DE NF-e ---
+
+async function loadNFe() {
+    try {
+        const res = await fetch(`${API_URL}/api/nfe`);
+        const list = await res.json();
+        renderNFeList(list);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function renderNFeList(list) {
+    const el = document.getElementById('nfe-table-body');
+    if(!el) return;
+    el.innerHTML = '';
+    
+    if(list.length === 0) {
+        el.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#999;">Nenhuma nota emitida.</td></tr>';
+        return;
+    }
+
+    list.forEach(item => {
+        const date = new Date(item.data_emissao).toLocaleDateString('pt-BR');
+        el.innerHTML += `
+            <tr>
+                <td>${date}</td>
+                <td style="font-family:monospace; font-size:0.8rem;">${item.chave_acesso}</td>
+                <td><span class="badge badge-in">${item.status}</span></td>
+                <td>
+                    <button onclick="downloadXML('${item.id}')" class="btn-sm" title="Baixar XML"><i class="fas fa-download"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function downloadXML(id) {
+    alert("Download do XML iniciado (Simulação). ID: " + id);
 }
 
 function renderCadastroList(elementId, list, type) {
@@ -186,33 +334,108 @@ function renderCadastroList(elementId, list, type) {
     });
 }
 
-// Adicionar (Chamado pelo botão +)
-async function addCadastro(type) {
-    // Impede o form de dar refresh se estiver dentro de um form
-    if(event) event.preventDefault();
+// --- MODAL DE CADASTRO (CLIENTES E FORNECEDORES) ---
 
-    const inputId = type === 'cliente' ? 'new-cliente' : 'new-fornecedor';
-    const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
-    const input = document.getElementById(inputId);
-    const nome = input.value;
+function openCadastroModal(type, id = null) {
+    const modal = document.getElementById('modal-cadastro');
+    const title = document.getElementById('cadastro-modal-title');
+    const form = modal.querySelector('form');
+    
+    document.getElementById('cadastro-id').value = id || '';
+    document.getElementById('cadastro-type').value = type;
+    
+    title.innerText = (id ? 'Editar ' : 'Novo ') + (type === 'cliente' ? 'Cliente' : 'Fornecedor');
+    
+    if (id) {
+        // Carregar dados para edição
+        fetch(`${API_URL}/api/${type === 'cliente' ? 'clientes' : 'fornecedores'}`)
+            .then(res => res.json())
+            .then(list => {
+                const item = list.find(i => i.id == id);
+                if (item) {
+                    document.getElementById('cad-nome').value = item.nome || '';
+                    document.getElementById('cad-documento').value = item.documento || '';
+                    document.getElementById('cad-ie').value = item.ie || '';
+                    document.getElementById('cad-email').value = item.email || '';
+                    document.getElementById('cad-telefone').value = item.telefone || '';
+                }
+            });
+    } else {
+        form.reset();
+    }
+    
+    modal.classList.add('active');
+}
 
-    if(!nome) {
-        alert("Por favor, digite um nome.");
+function closeCadastroModal() {
+    document.getElementById('modal-cadastro').classList.remove('active');
+}
+
+async function lookupDocumento() {
+    const doc = document.getElementById('cad-documento').value.replace(/\D/g, '');
+    if (doc.length !== 14) {
+        alert("A busca automática está disponível apenas para CNPJ (14 dígitos).");
         return;
     }
 
+    const btn = event.currentTarget;
+    const originalIcon = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+
     try {
-        await fetch(`${API_URL}/api/${endpoint}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ nome })
-        });
+        // Usando a API pública BrasilAPI para consulta de CNPJ
+        const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${doc}`);
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('cad-nome').value = data.razao_social || data.nome_fantasia || '';
+            document.getElementById('cad-email').value = data.email || '';
+            document.getElementById('cad-telefone').value = data.ddd_telefone_1 || '';
+            alert("Dados encontrados e preenchidos!");
+        } else {
+            alert("CNPJ não encontrado ou erro na busca.");
+        }
+    } catch (e) {
+        alert("Erro ao conectar com o serviço de busca.");
+    } finally {
+        btn.innerHTML = originalIcon;
+        btn.disabled = false;
+    }
+}
+
+async function saveCadastro(e) {
+    e.preventDefault();
+    const id = document.getElementById('cadastro-id').value;
+    const type = document.getElementById('cadastro-type').value;
+    const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
+    
+    const data = {
+        nome: document.getElementById('cad-nome').value,
+        documento: document.getElementById('cad-documento').value,
+        ie: document.getElementById('cad-ie').value,
+        email: document.getElementById('cad-email').value,
+        telefone: document.getElementById('cad-telefone').value
+    };
+
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/api/${endpoint}/${id}` : `${API_URL}/api/${endpoint}`;
         
-        input.value = ''; // Limpa o campo
-        loadCadastros();  // Recarrega a lista
-        alert("Cadastrado com sucesso!");
+        const res = await fetch(url, {
+            method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            closeCadastroModal();
+            loadCadastros();
+            alert("Salvo com sucesso!");
+        } else {
+            alert("Erro ao salvar.");
+        }
     } catch(e) {
-        alert("Erro ao cadastrar.");
+        alert("Erro na conexão.");
     }
 }
 
@@ -229,23 +452,9 @@ async function deleteCadastro(id, type) {
     }
 }
 
-// Editar
-async function editCadastro(id, type) {
-    const newName = prompt("Digite o novo nome:");
-    if(!newName) return;
-
-    const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
-    try {
-        // Assume que o backend tem rota PUT /api/clientes/:id
-        await fetch(`${API_URL}/api/${endpoint}/${id}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ nome: newName })
-        });
-        loadCadastros();
-    } catch(e) {
-        alert("Erro ao editar (verifique se o servidor suporta edição).");
-    }
+// Substituir a chamada de edição antiga pela nova
+function editCadastro(id, type) {
+    openCadastroModal(type, id);
 }
 
 // --- MODAL DE SELEÇÃO (LUPA) ---
@@ -376,8 +585,32 @@ async function handleExit(e) {
         date: document.getElementById('exit-date').value
     };
 
-    await sendTransactionToAPI('/api/saida', exitData);
+    const res = await sendTransactionToAPI('/api/saida', exitData);
+    if (res && res.id) {
+        if (confirm("Venda registrada! Deseja emitir a NF-e agora?")) {
+            gerarNFe(res.id, exitData.desc);
+        }
+    }
     e.target.reset();
+}
+
+async function gerarNFe(vendaId, clienteNome) {
+    try {
+        const res = await fetch(`${API_URL}/api/nfe/gerar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ venda_id: vendaId, cliente: clienteNome })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            alert(`NF-e Autorizada com sucesso!\nChave: ${data.chave}`);
+            if (window.location.hash === '#nfe' || document.getElementById('nfe').classList.contains('active')) {
+                loadNFe();
+            }
+        }
+    } catch (e) {
+        alert("Erro ao emitir NF-e.");
+    }
 }
 
 async function handleExpense(e) {
@@ -401,13 +634,17 @@ async function sendTransactionToAPI(endpoint, data) {
         });
 
         if (response.ok) {
+            const result = await response.json();
             alert('Salvo com sucesso!');
             loadDataFromAPI(); // Recarrega a tela
+            return result;
         } else {
             alert('Erro ao salvar no servidor.');
+            return null;
         }
     } catch (error) {
         alert('Erro de conexão com o servidor.');
+        return null;
     }
 }
 
@@ -687,3 +924,34 @@ function updateTax(e) { e.preventDefault(); appData.fixedTax = parseFloat(docume
 function clearAllData() { if(confirm('Resetar sistema?')) fetch(`${API_URL}/api/reset`, {method:'DELETE'}).then(()=>{alert('Resetado'); loadDataFromAPI();}); }
 function safeText(id, txt) { const el = document.getElementById(id); if(el) el.innerText = txt; }
 function formatDate(d) { return d ? d.split('-').reverse().join('/') : '-'; }
+
+function exportToExcel() {
+    const rows = [
+        ["Data", "Descrição", "Categoria", "Entrada (R$)", "Saída (R$)"]
+    ];
+
+    const sorted = [...appData.transactions].sort((a,b) => new Date(b.date) - new Date(a.date));
+    sorted.forEach(t => {
+        let isBuy = (t.type === 'buy' || t.type === 'entrada');
+        let isSell = (t.type === 'sell' || t.type === 'saida');
+        let label = isBuy ? 'Compra' : (isSell ? 'Venda' : 'Despesa');
+        rows.push([
+            formatDate(t.date),
+            t.desc,
+            label,
+            isSell ? t.value.toFixed(2) : "0.00",
+            !isSell ? t.value.toFixed(2) : "0.00"
+        ]);
+    });
+
+    let csvContent = "data:text/csv;charset=utf-8," 
+        + rows.map(e => e.join(";")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `relatorio_financeiro_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
