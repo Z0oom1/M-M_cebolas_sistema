@@ -79,6 +79,23 @@ function initUserInfo() {
     }
 }
 
+function animateKPIs() {
+    const kpis = document.querySelectorAll('.kpi-card h3');
+    kpis.forEach(kpi => {
+        const finalValue = kpi.innerText;
+        if (finalValue.includes('R$')) {
+            // Animação simples para valores monetários
+            kpi.style.opacity = '0';
+            kpi.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                kpi.style.transition = 'all 0.5s ease';
+                kpi.style.opacity = '1';
+                kpi.style.transform = 'translateY(0)';
+            }, 100);
+        }
+    });
+}
+
 // --- CARREGAMENTO DE DADOS ---
 async function loadDataFromAPI() {
     try {
@@ -104,7 +121,10 @@ async function loadDataFromAPI() {
             const loading = document.getElementById('loading-screen');
             if(loading) {
                 loading.style.opacity = '0';
-                setTimeout(() => loading.style.display = 'none', 500);
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                    animateKPIs();
+                }, 500);
             }
         }
     } catch (error) {

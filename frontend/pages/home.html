@@ -13,6 +13,11 @@
     <link rel="icon" type="image/png" href="../Imgs/logo_M&M.jpg">
 
     <style>
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
         /* Ajustes Específicos para Layout com Barra Fixa */
         body { margin: 0; padding: 0; overflow: hidden; background-color: #f4f4f9; }
 
@@ -61,6 +66,7 @@
 
     <nav class="sidebar" id="sidebar">
         <div class="logo-area">
+            <img src="../Imgs/Logo_M&M_Cebolas.png" alt="M&M Cebolas Logo">
             <h4>M&M <span>CEBOLAS</span></h4>
         </div>
         
@@ -97,15 +103,27 @@
 
     <main class="main-content">
         <div class="header-mobile">
-            <div style="font-weight: 800;">M&M <span style="color: var(--accent);">CEBOLAS</span></div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="../Imgs/Logo_M&M_Cebolas.png" alt="Logo" style="height: 30px;">
+                <div style="font-weight: 800;">M&M <span style="color: var(--accent);">CEBOLAS</span></div>
+            </div>
             <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor: pointer; font-size: 1.5rem;"></i>
         </div>
         
         <section id="dashboard" class="active">
             <header class="top-bar">
-                <h2 class="page-title">Dashboard</h2>
-                <div class="date-display">
-                    <i class="far fa-calendar-alt"></i> <span id="current-date">--/--/----</span>
+                <div>
+                    <h2 class="page-title">Dashboard</h2>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Bem-vindo ao painel de controle da M&M Cebolas.</p>
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <div class="status-indicator" style="display: flex; align-items: center; gap: 8px; background: #f0fdf4; padding: 8px 16px; border-radius: 100px; border: 1px solid #dcfce7; color: #166534; font-size: 0.75rem; font-weight: 700;">
+                        <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; animation: pulse 2s infinite;"></span>
+                        SISTEMA ONLINE
+                    </div>
+                    <div class="date-display">
+                        <i class="far fa-calendar-alt"></i> <span id="current-date">--/--/----</span>
+                    </div>
                 </div>
             </header>
             
