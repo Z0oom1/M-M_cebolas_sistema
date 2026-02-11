@@ -3,13 +3,19 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const fs = require('fs');
 const NFeService = require('./nfe-service');
 
 const app = express();
+// Tenta encontrar o certificado em caminhos comuns
+const certPath = fs.existsSync(path.join(__dirname, '../certificado/certificado.pfx')) 
+    ? path.join(__dirname, '../certificado/certificado.pfx')
+    : 'C:\\Projetos\\M-M_cebolas_sistema\\certificado\\certificado.pfx';
+
 const nfeService = new NFeService(
-    'C:\\Projetos\\M-M_cebolas_sistema\\certificado\\certificado.pfx',
+    certPath,
     '12345678',
-    false // Ambiente de Homologação
+    false // Inicializa como homologação, será atualizado pelo initDb
 );
 const PORT = 3000;
 
@@ -79,6 +85,32 @@ function initDb() {
             status TEXT, -- 'pendente', 'autorizada', 'cancelada'
             data_emissao TEXT
         )`);
+
+        // Tabela de Usuários
+        db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT,
+            role TEXT,
+            label TEXT
+        )`, () => {
+            // Criar admin padrão se não existir
+            db.run(`INSERT OR IGNORE INTO usuarios (username, password, role, label) VALUES (?, ?, ?, ?)`,
+                ['admin', '123', 'admin', 'Administrador']);
+        });
+
+        // Tabela de Configurações
+        db.run(`CREATE TABLE IF NOT EXISTS configs (
+            chave TEXT PRIMARY KEY,
+            valor TEXT
+        )`, () => {
+            db.run(`INSERT OR IGNORE INTO configs (chave, valor) VALUES (?, ?)`, ['nfe_modo', 'homologacao'], () => {
+                // Após garantir que a config existe, carrega para o serviço
+                db.get(`SELECT valor FROM configs WHERE chave = ?`, ['nfe_modo'], (err, row) => {
+                    if (row) nfeService.isProduction = (row.valor === 'producao');
+                });
+            });
+        });
     });
 }
 
@@ -346,12 +378,67 @@ app.get('/api/nfe/download/:id', (req, res) => {
     });
 });
 
+// --- ROTAS DE AUTENTICAÇÃO E USUÁRIOS ---
+
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    db.get(`SELECT * FROM usuarios WHERE username = ? AND password = ?`, [username, password], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(401).json({ error: "Usuário ou senha incorretos" });
+        res.json(row);
+    });
+});
+
+app.get('/api/usuarios', (req, res) => {
+    db.all(`SELECT id, username, role, label FROM usuarios`, [], (err, rows) => res.json(rows));
+});
+
+app.post('/api/usuarios', (req, res) => {
+    const { username, password, role, label } = req.body;
+    db.run(`INSERT INTO usuarios (username, password, role, label) VALUES (?, ?, ?, ?)`,
+        [username, password, role, label],
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID });
+        }
+    );
+});
+
+app.delete('/api/usuarios/:id', (req, res) => {
+    db.run(`DELETE FROM usuarios WHERE id = ?`, req.params.id, (err) => res.json({ deleted: true }));
+});
+
+// --- ROTAS DE CONFIGURAÇÕES ---
+
+app.get('/api/configs', (req, res) => {
+    db.all(`SELECT * FROM configs`, [], (err, rows) => {
+        const configObj = {};
+        rows.forEach(row => configObj[row.chave] = row.valor);
+        res.json(configObj);
+    });
+});
+
+app.post('/api/configs', (req, res) => {
+    const { chave, valor } = req.body;
+    db.run(`INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)`, [chave, valor], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Se for a config de NF-e, atualiza o serviço
+        if (chave === 'nfe_modo') {
+            nfeService.isProduction = (valor === 'producao');
+        }
+        
+        res.json({ success: true });
+    });
+});
+
 // --- RESET GERAL ---
 app.delete('/api/reset', (req, res) => {
     db.serialize(() => {
         db.run("DELETE FROM movimentacoes");
         db.run("DELETE FROM clientes");
         db.run("DELETE FROM fornecedores");
+        db.run("DELETE FROM nfe");
     });
     res.json({ message: "Resetado" });
 });

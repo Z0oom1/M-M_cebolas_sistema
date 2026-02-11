@@ -148,11 +148,20 @@ const originalShowSection = function(id, btn) {
 
 // Sobrescrevemos para carregar cadastros se a aba for 'cadastro'
 window.showSection = function(id, btn) {
+    // Bloqueia acesso a configurações se não for admin
+    if (id === 'config' && currentUser && currentUser.role !== 'admin') {
+        alert("Acesso restrito ao Administrador.");
+        return;
+    }
+
     originalShowSection(id, btn);
     if(id === 'cadastro') {
         loadCadastros();
     } else if(id === 'nfe') {
         loadNFe();
+    } else if(id === 'config') {
+        loadConfigs();
+        loadUsers();
     }
 }
 
@@ -288,6 +297,109 @@ async function deleteProduto(id) {
     } catch(e) {
         alert("Erro ao excluir.");
     }
+}
+
+// --- GESTÃO DE CONFIGURAÇÕES E USUÁRIOS ---
+
+async function loadConfigs() {
+    try {
+        const res = await fetch(`${API_URL}/api/configs`);
+        const configs = await res.json();
+        
+        if (configs.nfe_modo) {
+            const radio = document.querySelector(`input[name="nfe_mode"][value="${configs.nfe_modo}"]`);
+            if (radio) radio.checked = true;
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function updateNFeMode(mode) {
+    try {
+        await fetch(`${API_URL}/api/configs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chave: 'nfe_modo', valor: mode })
+        });
+        alert(`Modo de NF-e alterado para: ${mode === 'producao' ? 'SÉRIO (PRODUÇÃO)' : 'TESTE (HOMOLOGAÇÃO)'}`);
+    } catch (e) { alert("Erro ao salvar configuração."); }
+}
+
+async function loadUsers() {
+    try {
+        const res = await fetch(`${API_URL}/api/usuarios`);
+        const users = await res.json();
+        const tbody = document.getElementById('user-table-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        users.forEach(u => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="width:30px; height:30px; background:var(--primary); color:white; border-radius:50%; display:grid; place-items:center; font-size:0.8rem;">${u.username[0].toUpperCase()}</div>
+                            <div>
+                                <strong>${u.label}</strong><br>
+                                <small style="color:var(--text-muted)">@${u.username}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge ${u.role === 'admin' ? 'badge-ama' : 'badge-bra'}">${u.role}</span></td>
+                    <td>
+                        <button onclick="deleteUser(${u.id}, '${u.username}')" class="btn-sm" style="color:var(--danger); border:none; background:none; cursor:pointer;" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) { console.error(e); }
+}
+
+function openUserModal() {
+    document.getElementById('modal-usuario').classList.add('active');
+}
+
+function closeUserModal() {
+    document.getElementById('modal-usuario').classList.remove('active');
+}
+
+async function saveUser(e) {
+    e.preventDefault();
+    const data = {
+        username: document.getElementById('user-username').value,
+        label: document.getElementById('user-label').value,
+        password: document.getElementById('user-password').value,
+        role: document.getElementById('user-role').value
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/api/usuarios`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            closeUserModal();
+            loadUsers();
+            e.target.reset();
+            alert("Usuário criado com sucesso!");
+        } else {
+            const err = await res.json();
+            alert(err.error || "Erro ao criar usuário.");
+        }
+    } catch (e) { alert("Erro de conexão."); }
+}
+
+async function deleteUser(id, username) {
+    if (username === 'admin') return alert("O administrador principal não pode ser excluído.");
+    if (!confirm(`Deseja realmente excluir o usuário @${username}?`)) return;
+
+    try {
+        await fetch(`${API_URL}/api/usuarios/${id}`, { method: 'DELETE' });
+        loadUsers();
+    } catch (e) { alert("Erro ao excluir."); }
 }
 
 // --- GESTÃO DE NF-e ---
