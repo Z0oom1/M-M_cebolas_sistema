@@ -23,7 +23,7 @@
             /* Mantém o background e fontes que você já tem */
         }
 
-        /* --- CORREÇÃO AQUI --- */
+        /* ✅ CORREÇÃO: Ocultar titlebar no navegador web */
         #custom-titlebar {
             display: flex;
             align-items: center;
@@ -122,8 +122,8 @@
         <p>Sistema de Gestão Integrado</p>
         
         <form onsubmit="fazerLogin(event)">
-            <input type="text" id="loginUser" placeholder="Usuário" value="admin">
-            <input type="password" id="loginPass" placeholder="Senha" value="123">
+            <input type="text" id="loginUser" placeholder="Usuário">
+            <input type="password" id="loginPass" placeholder="Senha">
             <button type="submit">ACESSAR SISTEMA</button>
         </form>
         
@@ -148,19 +148,29 @@
     <script src="/js/script.js"></script>
 
     <script>
-        const { ipcRenderer } = require('electron');
+        // ✅ CORREÇÃO CRÍTICO-004: Ocultar titlebar no navegador web
+        const isElectron = typeof window.require !== 'undefined';
+        
+        if (!isElectron) {
+            // Estamos no navegador, ocultar a barra de título
+            const titlebar = document.getElementById('custom-titlebar');
+            if (titlebar) titlebar.style.display = 'none';
+        } else {
+            // Estamos no Electron, configurar controles da janela
+            const { ipcRenderer } = require('electron');
 
-        document.getElementById('minBtn').addEventListener('click', () => {
-            ipcRenderer.send('minimize-app');
-        });
+            document.getElementById('minBtn').addEventListener('click', () => {
+                ipcRenderer.send('minimize-app');
+            });
 
-        document.getElementById('maxBtn').addEventListener('click', () => {
-            ipcRenderer.send('maximize-app');
-        });
+            document.getElementById('maxBtn').addEventListener('click', () => {
+                ipcRenderer.send('maximize-app');
+            });
 
-        document.getElementById('closeBtn').addEventListener('click', () => {
-            ipcRenderer.send('close-app');
-        });
+            document.getElementById('closeBtn').addEventListener('click', () => {
+                ipcRenderer.send('close-app');
+            });
+        }
     </script>
     
 </body>
