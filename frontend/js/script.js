@@ -16,6 +16,14 @@ let stockChart = null;
 
 // --- INICIALIZAÇÃO ---
 window.onload = function() {
+    // Detectar Electron para mostrar/esconder barra Apple
+    const isElectronEnv = typeof window.process !== 'undefined' && window.process.type === 'renderer' || 
+                         navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+    
+    if (isElectronEnv) {
+        document.body.classList.add('is-electron');
+    }
+
     checkLogin();
     loadDataFromAPI(); 
     
@@ -679,7 +687,20 @@ function updateFinanceKPIs() {
     if (elOut) elOut.innerText = `R$ ${totalOut.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
     if (elBalance) {
         elBalance.innerText = `R$ ${balance.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-        elBalance.className = balance >= 0 ? 'text-success' : 'text-danger';
+        // elBalance.className = balance >= 0 ? 'text-success' : 'text-danger';
+    }
+
+    const tbody = document.getElementById('finance-table-body');
+    if (tbody) {
+        tbody.innerHTML = '';
+        appData.transactions.slice(0, 10).forEach(t => {
+            tbody.innerHTML += `<tr>
+                <td>${new Date(t.date).toLocaleDateString('pt-BR')}</td>
+                <td><span class="badge ${t.type === 'saida' ? 'badge-in' : 'badge-out'}">${t.type.toUpperCase()}</span></td>
+                <td>${t.desc}</td>
+                <td style="font-weight: 700; color: ${t.type === 'saida' ? '#15803d' : '#b91c1c'}">R$ ${t.value.toFixed(2)}</td>
+            </tr>`;
+        });
     }
 }
 
@@ -804,9 +825,73 @@ async function resetSystem() {
     }
 }
 
+function openProdutoModal(data = null) {
+    const modal = document.getElementById('modal-produto');
+    if (!modal) return;
+    
+    document.getElementById('prod-id').value = data ? data.id : '';
+    document.getElementById('produto-modal-title').innerText = data ? 'Editar Produto' : 'Novo Produto';
+    
+    document.getElementById('prod-nome').value = data ? data.nome : '';
+    document.getElementById('prod-ncm').value = data ? data.ncm : '07031019';
+    document.getElementById('prod-preco').value = data ? data.preco_venda : '';
+    document.getElementById('prod-min').value = data ? data.estoque_minimo : '100';
+    
+    modal.classList.add('active');
+}
+
+function closeProdutoModal() {
+    document.getElementById('modal-produto')?.classList.remove('active');
+}
+
+async function saveProduto(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
+    const id = document.getElementById('prod-id').value;
+    const data = {
+        nome: document.getElementById('prod-nome').value,
+        ncm: document.getElementById('prod-ncm').value,
+        preco_venda: parseFloat(document.getElementById('prod-preco').value),
+        estoque_minimo: parseInt(document.getElementById('prod-min').value)
+    };
+
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/produtos/${id}` : '/api/produtos';
+        const response = await fetchWithAuth(url, {
+            method,
+            body: JSON.stringify(data)
+        });
+
+        if (response && response.ok) {
+            showSuccess('Produto salvo com sucesso!');
+            closeProdutoModal();
+            loadCadastros();
+        }
+    } catch (error) {
+        showError('Erro ao salvar produto.');
+    } finally {
+        hideLoading(btn);
+    }
+}
+
+async function deleteProduto(id) {
+    if (!confirm('Excluir este produto?')) return;
+    try {
+        const response = await fetchWithAuth(`/api/produtos/${id}`, { method: 'DELETE' });
+        if (response && response.ok) {
+            showSuccess('Produto excluído!');
+            loadCadastros();
+        }
+    } catch (error) {
+        showError('Erro ao excluir produto.');
+    }
+}
+
 function editProduto(item) {
-    // Stub para edição de produto
-    alert('Edição de produto em desenvolvimento.');
+    openProdutoModal(item);
 }
 
 function editCadastro(id, type) {

@@ -128,6 +128,39 @@
         </div>
     </div>
 
+    <!-- Modal de Produto -->
+    <div id="modal-produto" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 500px;">
+            <div class="panel-header">
+                <h3 id="produto-modal-title">Novo Produto</h3>
+                <button onclick="closeProdutoModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <form onsubmit="saveProduto(event)" class="form-grid">
+                <input type="hidden" id="prod-id">
+                <div class="form-group span-2">
+                    <label>Nome da Variedade</label>
+                    <input type="text" id="prod-nome" required placeholder="Ex: Cebola Amarela Extra">
+                </div>
+                <div class="form-group">
+                    <label>NCM</label>
+                    <input type="text" id="prod-ncm" placeholder="07031019">
+                </div>
+                <div class="form-group">
+                    <label>Preço Base (R$)</label>
+                    <input type="number" step="0.01" id="prod-preco" required placeholder="0.00">
+                </div>
+                <div class="form-group span-2">
+                    <label>Estoque Mínimo (Aviso)</label>
+                    <input type="number" id="prod-min" value="100">
+                </div>
+                <div class="form-group span-2" style="display: flex; gap: 12px; margin-top: 8px;">
+                    <button type="button" class="btn-danger" onclick="closeProdutoModal()" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Produto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="../js/script.js"></script>
     <script>
         // Detecção de ambiente para Electron
