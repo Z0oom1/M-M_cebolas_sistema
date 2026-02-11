@@ -76,20 +76,20 @@
 
         <ul class="nav-links">
             <li class="section-title">GERAL</li>
-            <li><button class="active" onclick="showSection('dashboard', this)"><i class="fas fa-chart-pie"></i> Visão Geral</button></li>
+            <li><button class="active" onclick="showSection('dashboard', this)"><i class="fas fa-th-large"></i> Visão Geral</button></li>
             
             <li class="section-title">OPERACIONAL</li>
-            <li><button onclick="showSection('entrada', this)"><i class="fas fa-arrow-down"></i> Nova Entrada</button></li>
-            <li><button onclick="showSection('saida', this)"><i class="fas fa-arrow-up"></i> Nova Saída</button></li>
-            <li><button onclick="showSection('estoque', this)"><i class="fas fa-boxes"></i> Estoque Detalhado</button></li>
+            <li><button onclick="showSection('entrada', this)"><i class="fas fa-plus-circle"></i> Nova Entrada</button></li>
+            <li><button onclick="showSection('saida', this)"><i class="fas fa-minus-circle"></i> Nova Saída</button></li>
+            <li><button onclick="showSection('estoque', this)"><i class="fas fa-box-open"></i> Estoque Detalhado</button></li>
             
             <li class="section-title">CADASTROS</li>
-            <li><button onclick="showSection('cadastro', this)"><i class="fas fa-address-book"></i> Clientes/Fornecedores</button></li>
-            <li><button onclick="showSection('nfe', this)"><i class="fas fa-file-invoice-dollar"></i> Notas Fiscais (NF-e)</button></li>
+            <li><button onclick="showSection('cadastro', this)"><i class="fas fa-users"></i> Clientes / Fornecedores</button></li>
+            <li><button onclick="showSection('nfe', this)"><i class="fas fa-file-invoice"></i> Notas Fiscais (NF-e)</button></li>
             
             <li class="section-title">ADMINISTRATIVO</li>
-            <li><button onclick="showSection('financeiro', this)"><i class="fas fa-wallet"></i> Financeiro</button></li>
-            <li><button onclick="showSection('config', this)"><i class="fas fa-cog"></i> Configurações</button></li>
+            <li><button onclick="showSection('financeiro', this)"><i class="fas fa-chart-line"></i> Financeiro</button></li>
+            <li><button onclick="showSection('config', this)"><i class="fas fa-sliders-h"></i> Configurações</button></li>
             
             <li style="margin-top: auto;">
                 <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
@@ -138,6 +138,10 @@
                 <div class="form-group">
                     <label>Telefone</label>
                     <input type="text" id="edit-tel">
+                </div>
+                <div class="form-group span-2">
+                    <label>Endereço (JSON ou Texto)</label>
+                    <input type="text" id="edit-endereco" placeholder='{"xLgr":"Rua...","nro":"123",...}'>
                 </div>
                 <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
@@ -210,6 +214,13 @@
                     <h5 style="margin-bottom: 10px; color: var(--primary);">Resumo da Operação</h5>
                     <div id="nfe-preview-content" style="font-size: 0.85rem; line-height: 1.6;"></div>
                 </div>
+
+                <!-- Campos ocultos para dados do emitente (podem ser configuráveis no futuro) -->
+                <input type="hidden" id="nfe-emit-cnpj" value="12345678000100">
+                <input type="hidden" id="nfe-emit-nome" value="M&M CEBOLAS LTDA">
+                <input type="hidden" id="nfe-emit-fantasia" value="M&M CEBOLAS">
+                <input type="hidden" id="nfe-emit-ie" value="123456789">
+                <input type="hidden" id="nfe-emit-endereco" value='{"xLgr":"Rua das Cebolas","nro":"100","xBairro":"Centro","cMun":"3541406","xMun":"Presidente Prudente","UF":"SP","CEP":"19000000"}'>
 
                 <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="button" class="btn-danger" onclick="closeNFeModal()" style="flex: 1;">Cancelar</button>

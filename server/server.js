@@ -56,7 +56,8 @@ function initDb() {
             documento TEXT, 
             ie TEXT, 
             email TEXT, 
-            telefone TEXT
+            telefone TEXT,
+            endereco TEXT
         )`);
         db.run(`CREATE TABLE IF NOT EXISTS fornecedores (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -64,7 +65,8 @@ function initDb() {
             documento TEXT, 
             ie TEXT, 
             email TEXT, 
-            telefone TEXT
+            telefone TEXT,
+            endereco TEXT
         )`);
 
         // Tabela de Produtos
@@ -166,9 +168,9 @@ app.get('/api/clientes', (req, res) => {
 });
 
 app.post('/api/clientes', (req, res) => {
-    const { nome, documento, ie, email, telefone } = req.body;
-    db.run(`INSERT INTO clientes (nome, documento, ie, email, telefone) VALUES (?, ?, ?, ?, ?)`, 
-        [nome, documento, ie, email, telefone], 
+    const { nome, documento, ie, email, telefone, endereco } = req.body;
+    db.run(`INSERT INTO clientes (nome, documento, ie, email, telefone, endereco) VALUES (?, ?, ?, ?, ?, ?)`, 
+        [nome, documento, ie, email, telefone, endereco], 
         function(err) { 
             if (err) return res.status(500).json({ error: err.message });
             res.json({ id: this.lastID }); 
@@ -182,9 +184,9 @@ app.delete('/api/clientes/:id', (req, res) => {
 
 // Rota de Edição (Adicionada)
 app.put('/api/clientes/:id', (req, res) => {
-    const { nome, documento, ie, email, telefone } = req.body;
-    db.run(`UPDATE clientes SET nome = ?, documento = ?, ie = ?, email = ?, telefone = ? WHERE id = ?`, 
-        [nome, documento, ie, email, telefone, req.params.id], 
+    const { nome, documento, ie, email, telefone, endereco } = req.body;
+    db.run(`UPDATE clientes SET nome = ?, documento = ?, ie = ?, email = ?, telefone = ?, endereco = ? WHERE id = ?`, 
+        [nome, documento, ie, email, telefone, endereco, req.params.id], 
         function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ updated: this.changes });
@@ -231,9 +233,9 @@ app.get('/api/fornecedores', (req, res) => {
 });
 
 app.post('/api/fornecedores', (req, res) => {
-    const { nome, documento, ie, email, telefone } = req.body;
-    db.run(`INSERT INTO fornecedores (nome, documento, ie, email, telefone) VALUES (?, ?, ?, ?, ?)`, 
-        [nome, documento, ie, email, telefone], 
+    const { nome, documento, ie, email, telefone, endereco } = req.body;
+    db.run(`INSERT INTO fornecedores (nome, documento, ie, email, telefone, endereco) VALUES (?, ?, ?, ?, ?, ?)`, 
+        [nome, documento, ie, email, telefone, endereco], 
         function(err) { 
             if (err) return res.status(500).json({ error: err.message });
             res.json({ id: this.lastID }); 
@@ -247,9 +249,9 @@ app.delete('/api/fornecedores/:id', (req, res) => {
 
 // Rota de Edição (Adicionada)
 app.put('/api/fornecedores/:id', (req, res) => {
-    const { nome, documento, ie, email, telefone } = req.body;
-    db.run(`UPDATE fornecedores SET nome = ?, documento = ?, ie = ?, email = ?, telefone = ? WHERE id = ?`, 
-        [nome, documento, ie, email, telefone, req.params.id], 
+    const { nome, documento, ie, email, telefone, endereco } = req.body;
+    db.run(`UPDATE fornecedores SET nome = ?, documento = ?, ie = ?, email = ?, telefone = ?, endereco = ? WHERE id = ?`, 
+        [nome, documento, ie, email, telefone, endereco, req.params.id], 
         function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ updated: this.changes });
@@ -285,7 +287,14 @@ app.get('/api/nfe/:id/pdf', (req, res) => {
 app.post('/api/nfe/gerar', async (req, res) => {
     const { venda_id, cliente_id, itens, emitente, destinatario } = req.body;
     
+    if (!venda_id || !emitente || !destinatario || !itens) {
+        return res.status(400).json({ error: "Dados incompletos para geração da NF-e" });
+    }
+
     try {
+        if (!nfeService.certInfo) {
+            throw new Error("Certificado digital não configurado ou inválido.");
+        }
         const agora = new Date();
         const year = agora.getFullYear().toString().slice(-2);
         const month = (agora.getMonth() + 1).toString().padStart(2, '0');

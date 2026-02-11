@@ -386,46 +386,49 @@ function openEditModal(type, id = null) {
     const title = document.getElementById('modal-title');
     document.getElementById('edit-type').value = type;
     document.getElementById('edit-id').value = id || '';
+    
     title.innerText = (id ? 'Editar ' : 'Novo ') + (type === 'cliente' ? 'Cliente' : 'Fornecedor');
     
     if (id) {
         const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
         fetch(`${API_URL}/api/${endpoint}`)
             .then(res => res.json())
-            .then(list => {
-                const item = list.find(i => i.id == id);
+            .then(data => {
+                const item = data.find(i => i.id == id);
                 if (item) {
                     document.getElementById('edit-nome').value = item.nome;
                     document.getElementById('edit-doc').value = item.documento || '';
                     document.getElementById('edit-ie').value = item.ie || '';
                     document.getElementById('edit-email').value = item.email || '';
                     document.getElementById('edit-tel').value = item.telefone || '';
+                    document.getElementById('edit-endereco').value = item.endereco || '';
                 }
             });
     } else {
-        document.getElementById('modal-edit').querySelector('form').reset();
+        document.getElementById('edit-nome').value = '';
+        document.getElementById('edit-doc').value = '';
+        document.getElementById('edit-ie').value = '';
+        document.getElementById('edit-email').value = '';
+        document.getElementById('edit-tel').value = '';
+        document.getElementById('edit-endereco').value = '';
     }
     modal.classList.add('active');
 }
 
-function closeEditModal() {
-    document.getElementById('modal-edit').classList.remove('active');
-}
-
 async function saveCadastro(e) {
     e.preventDefault();
-    const id = document.getElementById('edit-id').value;
     const type = document.getElementById('edit-type').value;
-    const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
-    
+    const id = document.getElementById('edit-id').value;
     const data = {
         nome: document.getElementById('edit-nome').value,
         documento: document.getElementById('edit-doc').value,
         ie: document.getElementById('edit-ie').value,
         email: document.getElementById('edit-email').value,
-        telefone: document.getElementById('edit-tel').value
+        telefone: document.getElementById('edit-tel').value,
+        endereco: document.getElementById('edit-endereco').value
     };
 
+    const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
     const method = id ? 'PUT' : 'POST';
     const url = id ? `${API_URL}/api/${endpoint}/${id}` : `${API_URL}/api/${endpoint}`;
     
@@ -648,18 +651,42 @@ async function handleGerarNFe(e) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transmitindo...';
 
     try {
-        // Busca dados da venda e do cliente
         const movs = await (await fetch(`${API_URL}/api/movimentacoes`)).json();
         const venda = movs.find(m => m.id == vendaId);
+        if (!venda) throw new Error("Venda não encontrada.");
         
         const clientes = await (await fetch(`${API_URL}/api/clientes`)).json();
-        const cliente = clientes.find(c => c.nome === venda.desc) || { nome: venda.desc, documento: '00000000000', ie: '', email: '' };
+        const cliente = clientes.find(c => c.nome === venda.desc) || { 
+            nome: venda.desc, 
+            documento: '00000000000', 
+            ie: '', 
+            email: '',
+            endereco: '{"xLgr":"Endereço não cadastrado","nro":"SN","xBairro":"Bairro","cMun":"3541406","xMun":"Presidente Prudente","UF":"SP","CEP":"19000000"}'
+        };
 
         const nfeData = {
             venda_id: venda.id,
-            emitente: { cnpj: '12345678000100', xNome: 'M&M CEBOLAS LTDA', xFant: 'M&M CEBOLAS', ie: '123456789', crt: '1' },
-            destinatario: { cnpj: cliente.documento.replace(/\D/g, ''), xNome: cliente.nome, ie: cliente.ie, email: cliente.email },
-            itens: [{ prod: { cProd: '001', xProd: `CEBOLA ${venda.productType.toUpperCase()}`, NCM: '07031019', CFOP: '5102', uCom: 'CX', qCom: venda.qty, vUnCom: (venda.valor / venda.qty).toFixed(2), vProd: venda.valor.toFixed(2) } }]
+            emitente: { 
+                cnpj: document.getElementById('nfe-emit-cnpj').value, 
+                nome: document.getElementById('nfe-emit-nome').value, 
+                fantasia: document.getElementById('nfe-emit-fantasia').value, 
+                ie: document.getElementById('nfe-emit-ie').value,
+                endereco: JSON.parse(document.getElementById('nfe-emit-endereco').value)
+            },
+            destinatario: { 
+                nome: cliente.nome,
+                documento: cliente.documento.replace(/\D/g, ''), 
+                ie: cliente.ie ? cliente.ie.replace(/\D/g, '') : '', 
+                email: cliente.email,
+                endereco: typeof cliente.endereco === 'string' ? JSON.parse(cliente.endereco) : cliente.endereco
+            },
+            itens: [{ 
+                id: '001',
+                nome: `CEBOLA ${venda.productType.toUpperCase()}`, 
+                ncm: '07031019', 
+                quantidade: venda.qty, 
+                valor: (venda.valor / venda.qty)
+            }]
         };
 
         const res = await fetch(`${API_URL}/api/nfe/gerar`, {
@@ -673,10 +700,10 @@ async function handleGerarNFe(e) {
             alert("NF-e Autorizada com Sucesso!");
             closeNFeModal();
             loadNFe();
-            // Animação de sucesso (opcional)
             showNFeAnimation();
         } else {
-            alert("Erro ao transmitir NF-e.");
+            const errorData = await res.json();
+            alert("Erro ao transmitir NF-e: " + (errorData.error || "Erro desconhecido"));
         }
     } catch (e) { console.error(e); } finally {
         btn.disabled = false;

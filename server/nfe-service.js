@@ -17,10 +17,18 @@ class NFeService {
         // console.log('[NFeService] Cert path:', this.pfxPath);
         // console.log('[NFeService] Exists?', fs.existsSync(this.pfxPath));
 
-        this.certInfo = this._loadCert();
+        try {
+            this.certInfo = this._loadCert();
+        } catch (e) {
+            console.error("[NFeService] Erro ao carregar certificado:", e.message);
+            this.certInfo = null;
+        }
     }
 
     _loadCert() {
+        if (!fs.existsSync(this.pfxPath)) {
+            throw new Error(`Arquivo de certificado não encontrado: ${this.pfxPath}`);
+        }
         const pfxFile = fs.readFileSync(this.pfxPath);
         const pfxDer = pfxFile.toString('binary');
         const pfxAsn1 = forge.asn1.fromDer(pfxDer);
