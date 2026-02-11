@@ -341,7 +341,10 @@
         </section>
 
         <section id="nfe">
-            <header class="top-bar"><h2 class="page-title">Notas Fiscais (NF-e)</h2></header>
+            <header class="top-bar">
+                <h2 class="page-title">Notas Fiscais (NF-e)</h2>
+                <button class="btn-primary" onclick="openEmissaoModal()"><i class="fas fa-plus"></i> Nova NF-e</button>
+            </header>
             <div class="panel">
                 <div class="panel-header">
                     <h4>Histórico de Emissões</h4>
@@ -455,6 +458,45 @@
             <input type="text" id="search-selection" placeholder="Filtrar..." onkeyup="filterSelectionList()" style="margin-bottom: 15px;">
             <div id="selection-list" class="selection-list-container">
                 </div>
+        </div>
+    </div>
+
+    <div id="modal-emissao-nfe" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 600px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: var(--primary);">Emitir Nova NF-e</h3>
+                <button onclick="closeEmissaoModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
+            </div>
+            <form onsubmit="emitirNFe(event)" class="form-grid">
+                <div class="form-group span-2">
+                    <label>Cliente</label>
+                    <div class="input-group">
+                        <input type="text" id="nfe-cliente-nome" placeholder="Selecione um cliente" readonly required>
+                        <input type="hidden" id="nfe-cliente-id">
+                        <button type="button" class="btn-search" onclick="openSelectionModal('cliente', 'nfe')"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+                <div class="form-group span-2">
+                    <label>Produto</label>
+                    <div class="input-group">
+                        <input type="text" id="nfe-produto-nome" placeholder="Selecione um produto" readonly required>
+                        <input type="hidden" id="nfe-produto-id">
+                        <button type="button" class="btn-search" onclick="openSelectionModal('produto', 'nfe')"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Quantidade (KG)</label>
+                    <input type="number" id="nfe-qtd" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Valor Unitário (R$)</label>
+                    <input type="number" id="nfe-valor" step="0.01" required>
+                </div>
+                <div class="form-group span-2" style="display:flex; gap:15px; margin-top:15px;">
+                    <button type="button" class="btn-sm" onclick="closeEmissaoModal()" style="flex:1; padding: 12px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="btn-emitir-nfe" style="flex:1;">Gerar e Assinar XML</button>
+                </div>
+            </form>
         </div>
     </div>
 

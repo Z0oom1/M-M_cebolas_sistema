@@ -314,22 +314,21 @@ function renderNFeList(list) {
 
     list.forEach(item => {
         const date = new Date(item.data_emissao).toLocaleDateString('pt-BR');
+        const statusClass = item.status === 'gerado_e_assinado' ? 'badge-in' : 'badge-out';
         el.innerHTML += `
             <tr>
                 <td>${date}</td>
                 <td style="font-family:monospace; font-size:0.8rem;">${item.chave_acesso}</td>
-                <td><span class="badge badge-in">${item.status}</span></td>
+                <td><span class="badge ${statusClass}">${item.status.replace(/_/g, ' ')}</span></td>
                 <td>
-                    <button onclick="downloadXML('${item.id}')" class="btn-sm" title="Baixar XML"><i class="fas fa-download"></i></button>
+                    <button onclick="downloadXML('${item.id}')" class="btn-sm" style="color: var(--primary);" title="Baixar XML"><i class="fas fa-download"></i> Baixar XML</button>
                 </td>
             </tr>
         `;
     });
 }
 
-function downloadXML(id) {
-    alert("Download do XML iniciado (Simulação). ID: " + id);
-}
+
 
 function renderCadastroList(elementId, list, type) {
     const el = document.getElementById(elementId);
@@ -975,3 +974,152 @@ function exportToExcel() {
     link.click();
     document.body.removeChild(link);
 }
+// --- LÓGICA DE EMISSÃO DE NF-e ---
+
+function openEmissaoModal() {
+    document.getElementById('modal-emissao-nfe').classList.add('active');
+}
+
+function closeEmissaoModal() {
+    document.getElementById('modal-emissao-nfe').classList.remove('active');
+}
+
+async function emitirNFe(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-emitir-nfe');
+    const originalText = btn.innerText;
+    btn.innerText = 'Processando...';
+    btn.disabled = true;
+
+    try {
+        const clienteId = document.getElementById('nfe-cliente-id').value;
+        const produtoId = document.getElementById('nfe-produto-id').value;
+        const qtd = parseFloat(document.getElementById('nfe-qtd').value);
+        const valor = parseFloat(document.getElementById('nfe-valor').value);
+
+        // Buscar dados completos do cliente e produto
+        const [clientes, produtos] = await Promise.all([
+            fetch(`${API_URL}/api/clientes`).then(res => res.json()),
+            fetch(`${API_URL}/api/produtos`).then(res => res.json())
+        ]);
+
+        const cliente = clientes.find(c => c.id == clienteId);
+        const produto = produtos.find(p => p.id == produtoId);
+
+        const dadosEmissao = {
+            venda_id: Math.floor(Math.random() * 1000000), // Simulação de ID de venda
+            emitente: {
+                cnpj: '56.421.395/0001-50',
+                nome: 'M E M HF COMERCIO DE CEBOLAS LTDA',
+                fantasia: 'M&M CEBOLAS',
+                ie: '562345678110',
+                endereco: {
+                    xLgr: 'RUA TESTE',
+                    nro: '123',
+                    xBairro: 'CENTRO',
+                    cMun: '3541406',
+                    xMun: 'PRESIDENTE PRUDENTE',
+                    UF: 'SP',
+                    CEP: '19010000',
+                    cPais: '1058',
+                    xPais: 'BRASIL'
+                }
+            },
+            destinatario: {
+                nome: cliente.nome,
+                documento: cliente.documento,
+                ie: cliente.ie,
+                email: cliente.email,
+                endereco: {
+                    xLgr: 'RUA DESTINO',
+                    nro: '456',
+                    xBairro: 'BAIRRO DESTINO',
+                    cMun: '3541406',
+                    xMun: 'PRESIDENTE PRUDENTE',
+                    UF: 'SP',
+                    CEP: '19010000',
+                    cPais: '1058',
+                    xPais: 'BRASIL'
+                }
+            },
+            itens: [{
+                id: produto.id,
+                nome: produto.nome,
+                ncm: produto.ncm,
+                quantidade: qtd,
+                valor: valor
+            }]
+        };
+
+        const response = await fetch(`${API_URL}/api/nfe/gerar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosEmissao)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            alert(`NF-e Gerada com Sucesso!\nChave: ${result.chave}`);
+            closeEmissaoModal();
+            loadNFe();
+        } else {
+            const error = await response.json();
+            alert(`Erro ao emitir NF-e: ${error.error}`);
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Erro de conexão ao emitir NF-e.');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+function downloadXML(id) {
+    window.open(`${API_URL}/api/nfe/download/${id}`, '_blank');
+}
+
+// Atualizar a função de seleção para suportar NF-e
+const originalOpenSelectionModal = window.openSelectionModal;
+window.openSelectionModal = function(type, context = 'entry') {
+    currentSelectionTarget = context;
+    // Chamada original se existir ou lógica customizada
+    const modal = document.getElementById('modal-selection');
+    const title = document.getElementById('selection-title');
+    title.innerText = 'Selecionar ' + (type === 'cliente' ? 'Cliente' : (type === 'fornecedor' ? 'Fornecedor' : 'Produto'));
+    
+    const listContainer = document.getElementById('selection-list');
+    listContainer.innerHTML = '<div style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+    
+    fetch(`${API_URL}/api/${type === 'produto' ? 'produtos' : (type === 'cliente' ? 'clientes' : 'fornecedores')}`)
+        .then(res => res.json())
+        .then(data => {
+            listContainer.innerHTML = '';
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'selection-item';
+                div.style.padding = '10px';
+                div.style.borderBottom = '1px solid #eee';
+                div.style.cursor = 'pointer';
+                div.innerHTML = `<strong>${item.nome}</strong>`;
+                div.onclick = () => {
+                    if (context === 'nfe') {
+                        document.getElementById(`nfe-${type}-nome`).value = item.nome;
+                        document.getElementById(`nfe-${type}-id`).value = item.id;
+                        if (type === 'produto') {
+                            document.getElementById('nfe-valor').value = item.preco_venda || '';
+                        }
+                    } else {
+                        // Lógica original para entradas/saídas
+                        const input = type === 'fornecedor' ? 'entry-source' : 'exit-dest';
+                        const el = document.getElementById(input);
+                        if(el) el.value = item.nome;
+                    }
+                    closeSelectionModal();
+                };
+                listContainer.appendChild(div);
+            });
+        });
+
+    modal.classList.add('active');
+};
