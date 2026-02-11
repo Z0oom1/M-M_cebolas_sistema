@@ -154,7 +154,21 @@ window.showSection = function(id, btn) {
         return;
     }
 
-    originalShowSection(id, btn);
+    // Função original de navegação
+    document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(id);
+    if(target) target.classList.add('active');
+    
+    if(btn) {
+        document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    if(window.innerWidth <= 768) {
+        const sidebar = document.getElementById('sidebar');
+        if(sidebar) sidebar.classList.remove('active');
+    }
+
+    // Carregamento de dados específicos por aba
     if(id === 'cadastro') {
         loadCadastros();
     } else if(id === 'nfe') {

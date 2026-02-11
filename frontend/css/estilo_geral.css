@@ -112,9 +112,14 @@ body {
 }
 .logo-area img {
     width: 80px;
-    height: auto;
+    height: 80px;
+    object-fit: contain;
     margin-bottom: 12px;
     filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    background: white;
+    padding: 5px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.2);
 }
 .logo-area h4 { 
     font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px; 
