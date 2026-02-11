@@ -6,9 +6,17 @@ const { create } = require('xmlbuilder2');
 
 class NFeService {
     constructor(pfxPath, password, isProduction = false) {
-        this.pfxPath = pfxPath;
+        // ✅ Caminho padrão (Windows) caso não seja passado no constructor
+        const defaultPfxPath = 'C:\\Projetos\\M-M_cebolas_sistema\\certificado\\certificado.pfx';
+
+        this.pfxPath = pfxPath || defaultPfxPath;
         this.password = password;
         this.isProduction = isProduction;
+
+        // ✅ Debug opcional (pode remover depois)
+        // console.log('[NFeService] Cert path:', this.pfxPath);
+        // console.log('[NFeService] Exists?', fs.existsSync(this.pfxPath));
+
         this.certInfo = this._loadCert();
     }
 
@@ -53,7 +61,7 @@ class NFeService {
 
     createNFeXML(dados) {
         const { ide, emit, dest, det, total, transp, infAdic } = dados;
-        
+
         const obj = {
             NFe: {
                 '@xmlns': 'http://www.portalfiscal.inf.br/nfe',
@@ -92,7 +100,9 @@ class NFeService {
                     dest: {
                         CNPJ: dest.cnpj || undefined,
                         CPF: dest.cpf || undefined,
-                        xNome: this.isProduction ? dest.xNome : 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
+                        xNome: this.isProduction
+                            ? dest.xNome
+                            : 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
                         enderDest: dest.enderDest,
                         indIEDest: dest.indIEDest,
                         IE: dest.ie || undefined,
@@ -136,15 +146,18 @@ class NFeService {
             ],
             digestAlgorithm: 'http://www.w3.org/2000/09/xmldsig#sha1'
         });
-        
+
         sig.keyInfoProvider = {
-            getKeyInfo: () => `<X509Data><X509Certificate>${this.certInfo.cert.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\n|\r/g, '')}</X509Certificate></X509Data>`
+            getKeyInfo: () =>
+                `<X509Data><X509Certificate>${
+                    this.certInfo.cert.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\n|\r/g, '')
+                }</X509Certificate></X509Data>`
         };
-        
+
         sig.computeSignature(xml, {
             location: { xpath: "//*[local-name(.)='NFe']", action: 'append' }
         });
-        
+
         return sig.getSignedXml();
     }
 }

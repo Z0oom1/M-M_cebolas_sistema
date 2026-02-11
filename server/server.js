@@ -7,7 +7,7 @@ const NFeService = require('./nfe-service');
 
 const app = express();
 const nfeService = new NFeService(
-    '/home/ubuntu/upload/pasted_file_FR46kr_M___M_HF_COMERCIO_DE_CEBOLAS_LTDA_pj-1770813129310.pfx',
+    'C:\\Projetos\\M-M_cebolas_sistema\\certificado\\certificado.pfx',
     '12345678',
     false // Ambiente de Homologação
 );
