@@ -135,6 +135,11 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
     background: rgba(15, 23, 42, 0.6); display: none; justify-content: center; align-items: center;
     z-index: 10000; backdrop-filter: blur(8px); transition: var(--transition);
 }
+
+/* Garante que o modal de seleção (lupa) fique acima de outros modais */
+#modal-selection {
+    z-index: 11000;
+}
 .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
 .edit-modal { background: white; padding: 32px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 90%; max-width: 600px; animation: modalSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 @keyframes modalSlideUp { from { transform: translateY(50px) scale(0.9); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }

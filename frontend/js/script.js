@@ -713,8 +713,11 @@ function showNFeAnimation() {
     }, 2000);
 }
 
+let currentNFeId = null;
 let currentNFeChave = '';
+
 function openNFeOptions(id, chave) {
+    currentNFeId = id;
     currentNFeChave = chave;
     document.getElementById('nfe-options-info').innerText = `Nota Fiscal #${id} - Chave: ${chave.slice(0,20)}...`;
     document.getElementById('modal-nfe-options').classList.add('active');
@@ -725,17 +728,18 @@ function closeNFeOptionsModal() {
 }
 
 function downloadNFePDF() {
-    alert("Iniciando download do DANFE (PDF)...");
-    // Simulação de download
+    if (!currentNFeId) return;
+    window.location.href = `${API_URL}/api/nfe/${currentNFeId}/pdf`;
 }
 
 function downloadNFeXML() {
-    alert("Iniciando download do XML...");
+    if (!currentNFeId) return;
+    window.location.href = `${API_URL}/api/nfe/${currentNFeId}/xml`;
 }
 
 function openNFePDF() {
-    // Abre um PDF de exemplo em nova aba
-    window.open('https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=9S66999%20/8E=', '_blank');
+    // Em um sistema real, abriria o PDF gerado. Aqui simulamos abrindo o portal da NF-e com a chave
+    window.open(`https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g=&chaveAcesso=${currentNFeChave}`, '_blank');
 }
 
 // --- SELEÇÃO (LUPA) ---
