@@ -1,37 +1,55 @@
-<header class="top-bar"><h2 class="page-title">Gestão Financeira</h2></header>
+<header class="top-bar">
+    <h2 class="page-title">Gestão Financeira</h2>
+</header>
 
 <div class="kpi-grid">
     <div class="kpi-card">
-        <div class="kpi-icon money"><i class="fas fa-arrow-up"></i></div>
-        <div><small>Total Recebido</small><h3 id="fin-total-in" class="text-success">R$ 0,00</h3></div>
+        <div class="kpi-icon" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-arrow-up"></i></div>
+        <div>
+            <small style="color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem;">Total Recebido</small>
+            <h3 id="fin-total-in" class="text-success" style="font-size: 1.5rem; font-weight: 800; margin-top: 4px;">R$ 0,00</h3>
+        </div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-icon expense"><i class="fas fa-arrow-down"></i></div>
-        <div><small>Total Pago</small><h3 id="fin-total-out" class="text-danger">R$ 0,00</h3></div>
+        <div class="kpi-icon" style="background: #fff1f2; color: #ef4444;"><i class="fas fa-arrow-down"></i></div>
+        <div>
+            <small style="color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem;">Total Pago</small>
+            <h3 id="fin-total-out" class="text-danger" style="font-size: 1.5rem; font-weight: 800; margin-top: 4px;">R$ 0,00</h3>
+        </div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-icon profit"><i class="fas fa-balance-scale"></i></div>
-        <div><small>Saldo Atual</small><h3 id="fin-balance">R$ 0,00</h3></div>
+        <div class="kpi-icon" style="background: #f0f9ff; color: #0ea5e9;"><i class="fas fa-balance-scale"></i></div>
+        <div>
+            <small style="color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem;">Saldo em Caixa</small>
+            <h3 id="fin-balance" style="font-size: 1.5rem; font-weight: 800; margin-top: 4px;">R$ 0,00</h3>
+        </div>
     </div>
 </div>
 
-<div class="panel form-panel" style="margin-bottom: 24px;">
-    <div class="panel-header"><h4>Registrar Despesa / Pagamento</h4></div>
-    <form onsubmit="handleExpense(event)" class="form-grid" style="padding-top: 20px;">
+<div class="panel">
+    <div class="panel-header" style="background: #f8fafc;">
+        <h4 style="font-weight: 700;">Registrar Despesa / Pagamento Extra</h4>
+    </div>
+    <form onsubmit="saveDespesa(event)" class="form-grid">
         <div class="form-group span-2">
             <label>Descrição da Despesa</label>
-            <input type="text" id="exp-desc" placeholder="Ex: Energia Elétrica, Aluguel..." required>
+            <input type="text" id="exp-desc" placeholder="Ex: Energia Elétrica, Aluguel, Manutenção..." required>
         </div>
         <div class="form-group">
             <label>Valor (R$)</label>
-            <input type="number" step="0.01" id="exp-value" placeholder="0,00" required>
+            <div class="input-group">
+                <span style="padding: 10px; background: #f1f5f9; border: 1px solid var(--border); border-right: none; border-radius: 8px 0 0 8px; font-weight: 600;">R$</span>
+                <input type="number" step="0.01" id="exp-value" placeholder="0.00" required style="border-radius: 0 8px 8px 0;">
+            </div>
         </div>
         <div class="form-group">
             <label>Data do Pagamento</label>
             <input type="date" id="exp-date" required>
         </div>
-        <div class="form-group span-2">
-            <button type="submit" class="btn-primary" style="width: 100%;"><i class="fas fa-check"></i> Lançar Despesa</button>
+        <div class="form-group span-2" style="margin-top: 12px;">
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 14px; border-radius: 12px; background: var(--danger);">
+                <i class="fas fa-check-circle"></i> LANÇAR DESPESA NO CAIXA
+            </button>
         </div>
     </form>
 </div>

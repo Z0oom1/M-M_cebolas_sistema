@@ -1,34 +1,60 @@
 <header class="top-bar">
-    <h2 class="page-title">Estoque & Movimentações</h2>
-    <div style="display: flex; gap: 10px;">
-        <button class="btn-primary btn-sm" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Exportar</button>
+    <h2 class="page-title">Controle de Estoque</h2>
+    <div style="display: flex; gap: 12px;">
+        <button class="btn-primary" style="background: #059669;" onclick="showSection('entrada')">
+            <i class="fas fa-plus"></i> Entrada
+        </button>
+        <button class="btn-primary" style="background: #dc2626;" onclick="showSection('saida')">
+            <i class="fas fa-minus"></i> Saída
+        </button>
     </div>
 </header>
 
 <div class="panel">
     <div class="panel-header">
-        <div style="display: flex; gap: 20px; align-items: center;">
-            <h4>Histórico Geral</h4>
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="search-mov" placeholder="Filtrar por produto ou destino..." onkeyup="filterTable()">
-            </div>
+        <h4 style="font-weight: 700;">Histórico de Movimentações</h4>
+        <div class="search-box" style="width: 300px;">
+            <i class="fas fa-search"></i>
+            <input type="text" id="search-mov" placeholder="Filtrar movimentação..." onkeyup="filterTable()">
         </div>
     </div>
-    <div class="table-responsive">
+    <div class="table-container">
         <table class="table-compact" id="main-table">
             <thead>
                 <tr>
                     <th>Data</th>
                     <th>Tipo</th>
                     <th>Produto</th>
-                    <th>Origem/Destino</th>
+                    <th>Descrição / Contato</th>
                     <th>Qtd</th>
                     <th>Valor</th>
-                    <th>Ações</th>
+                    <th style="text-align: right;">Ações</th>
                 </tr>
             </thead>
-            <tbody id="full-table-body"></tbody>
+            <tbody id="full-table-body">
+                <!-- JS -->
+            </tbody>
         </table>
     </div>
 </div>
+
+<script>
+    function filterTable() {
+        const input = document.getElementById("search-mov");
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById("main-table");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            let found = false;
+            const tds = tr[i].getElementsByTagName("td");
+            for (let j = 0; j < tds.length; j++) {
+                if (tds[j].textContent.toUpperCase().indexOf(filter) > -1) {
+                    found = true;
+                    break;
+                }
+            }
+            tr[i].style.display = found ? "" : "none";
+        }
+    }
+</script>

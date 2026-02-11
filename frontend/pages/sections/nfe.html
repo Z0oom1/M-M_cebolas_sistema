@@ -1,24 +1,40 @@
 <header class="top-bar">
-    <h2 class="page-title">Notas Fiscais (NF-e)</h2>
-    <button class="btn-primary" onclick="openNFeModal()"><i class="fas fa-plus"></i> Emitir Nova NF-e</button>
+    <h2 class="page-title">Gestão de Notas Fiscais (NF-e)</h2>
+    <button class="btn-primary" onclick="openNFeModal()">
+        <i class="fas fa-file-export"></i> Emitir Nova NF-e
+    </button>
 </header>
 
 <div class="panel">
     <div class="panel-header">
-        <h4>Notas Emitidas</h4>
+        <h4 style="font-weight: 700;">Histórico de Emissões</h4>
     </div>
-    <div class="table-responsive">
+    <div class="table-container">
         <table class="table-compact">
             <thead>
                 <tr>
-                    <th>Data</th>
-                    <th>ID Venda</th>
+                    <th>Emissão</th>
+                    <th>Venda</th>
                     <th>Chave de Acesso</th>
                     <th>Status</th>
-                    <th>Ações</th>
+                    <th style="text-align: right;">Documentos</th>
                 </tr>
             </thead>
-            <tbody id="nfe-table-body"></tbody>
+            <tbody id="nfe-table-body">
+                <!-- JS -->
+            </tbody>
         </table>
+    </div>
+</div>
+
+<div class="panel" style="margin-top: 24px; background: #fffbeb; border-color: #fde68a;">
+    <div style="padding: 20px; display: flex; gap: 16px; align-items: flex-start;">
+        <i class="fas fa-info-circle" style="color: #d97706; font-size: 1.2rem; margin-top: 2px;"></i>
+        <div>
+            <h5 style="color: #92400e; font-weight: 700; margin-bottom: 4px;">Informação Importante</h5>
+            <p style="color: #b45309; font-size: 0.85rem; line-height: 1.5;">
+                As notas fiscais são geradas em ambiente de <strong>homologação</strong> por padrão. Para mudar para produção, acesse as configurações do sistema. Certifique-se de que o certificado digital está válido.
+            </p>
+        </div>
     </div>
 </div>

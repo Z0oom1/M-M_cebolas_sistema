@@ -11,6 +11,8 @@ let appData = {
 let currentUser = null;
 let currentSelectionTarget = null; 
 let currentSectionId = 'dashboard';
+let financeChart = null;
+let stockChart = null;
 
 // --- INICIALIZAÇÃO ---
 window.onload = function() {
@@ -30,11 +32,55 @@ window.onload = function() {
     });
 
     initUserInfo();
-    // Carrega a seção inicial
     showSection('dashboard');
 };
 
-// --- AUTENTICAÇÃO E LOGIN ---
+// --- AUTENTICAÇÃO E LOGIN (JWT) ---
+function getAuthToken() {
+    const session = sessionStorage.getItem('mm_user');
+    if (session) {
+        const user = JSON.parse(session);
+        return user.token;
+    }
+    return null;
+}
+
+async function fetchWithAuth(url, options = {}) {
+    const token = getAuthToken();
+    if (!token && !url.includes('/api/login')) {
+        window.location.replace('login.html');
+        return null;
+    }
+
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}${url}`, {
+            ...options,
+            headers
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            sessionStorage.removeItem('mm_user');
+            window.location.replace('login.html');
+            return null;
+        }
+
+        return response;
+    } catch (error) {
+        console.error('Erro na requisição:', error);
+        showError('Erro de conexão com o servidor.');
+        throw error;
+    }
+}
+
 function checkLogin() {
     const session = sessionStorage.getItem('mm_user');
     const isLoginPage = window.location.pathname.includes('login.html');
@@ -70,23 +116,24 @@ function initUserInfo() {
 // --- NAVEGAÇÃO DINÂMICA ---
 async function showSection(id, btn) {
     if (id === 'config' && currentUser && currentUser.role !== 'admin') {
-        alert("Acesso restrito ao Administrador.");
+        showError("Acesso restrito ao Administrador.");
         return;
     }
 
     currentSectionId = id;
     const contentArea = document.getElementById('content-section');
     
-    // Feedback visual no menu
     document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
     if (btn) {
         btn.classList.add('active');
     } else {
-        const targetBtn = Array.from(document.querySelectorAll('.nav-links button')).find(b => b.getAttribute('onclick').includes(`'${id}'`));
+        const targetBtn = Array.from(document.querySelectorAll('.nav-links button')).find(b => {
+            const onclick = b.getAttribute('onclick');
+            return onclick && onclick.includes(`'${id}'`);
+        });
         if (targetBtn) targetBtn.classList.add('active');
     }
 
-    // Fecha sidebar no mobile
     if(window.innerWidth <= 1024) {
         const sidebar = document.getElementById('sidebar');
         if(sidebar) sidebar.classList.remove('active');
@@ -97,11 +144,9 @@ async function showSection(id, btn) {
         if (response.ok) {
             const html = await response.text();
             contentArea.innerHTML = html;
-            
-            // Inicializa dados da seção
             initializeSectionData(id);
         } else {
-            contentArea.innerHTML = `<h2>Erro ao carregar seção ${id}</h2>`;
+            contentArea.innerHTML = `<div class="panel" style="padding: 40px; text-align: center;"><h2>Erro ao carregar seção ${id}</h2></div>`;
         }
     } catch (error) {
         console.error("Erro ao carregar seção:", error);
@@ -140,7 +185,9 @@ function initDateInputs() {
 // --- CARREGAMENTO DE DADOS ---
 async function loadDataFromAPI() {
     try {
-        const response = await fetch(`${API_URL}/api/movimentacoes`);
+        const response = await fetchWithAuth('/api/movimentacoes');
+        if (!response) return;
+        
         const data = await response.json();
 
         if(Array.isArray(data)) {
@@ -167,6 +214,44 @@ async function loadDataFromAPI() {
     } catch (error) {
         console.error("Erro ao carregar dados:", error);
     }
+}
+
+// --- FEEDBACK VISUAL (TOASTS) ---
+function showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-success';
+    toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 100);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function showError(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-error';
+    toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 100);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function showLoading(btn) {
+    if (!btn) return;
+    btn.disabled = true;
+    btn.dataset.oldHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+}
+
+function hideLoading(btn) {
+    if (!btn) return;
+    btn.disabled = false;
+    btn.innerHTML = btn.dataset.oldHtml || btn.innerHTML;
 }
 
 // --- DASHBOARD ---
@@ -244,9 +329,6 @@ function renderRecentTable() {
     });
 }
 
-let financeChart = null;
-let stockChart = null;
-
 function renderCharts(grouped) {
     const ctxFinance = document.getElementById('financeChart');
     if (ctxFinance) {
@@ -259,7 +341,9 @@ function renderCharts(grouped) {
                     label: 'Receita',
                     data: [1200, 1900, 3000, 5000, 2000, 3000],
                     borderColor: '#10b981',
-                    tension: 0.4
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
@@ -277,11 +361,76 @@ function renderCharts(grouped) {
                 labels: labels,
                 datasets: [{
                     data: data,
-                    backgroundColor: ['#E89C31', '#7c3aed', '#94a3b8']
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
+    }
+}
+
+// --- CADASTROS (API INTEGRATION) ---
+async function saveEntry(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
+    const formData = {
+        desc: document.getElementById('entry-desc').value,
+        productType: document.getElementById('entry-product').value,
+        qty: parseInt(document.getElementById('entry-qty').value),
+        value: parseFloat(document.getElementById('entry-value').value),
+        date: document.getElementById('entry-date').value
+    };
+
+    try {
+        const response = await fetchWithAuth('/api/entrada', {
+            method: 'POST',
+            body: JSON.stringify(formData)
+        });
+
+        if (response && response.ok) {
+            showSuccess('Entrada registrada com sucesso!');
+            event.target.reset();
+            initDateInputs();
+            loadDataFromAPI();
+        }
+    } catch (error) {
+        showError('Erro ao registrar entrada.');
+    } finally {
+        hideLoading(btn);
+    }
+}
+
+async function saveExit(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
+    const formData = {
+        desc: document.getElementById('exit-desc').value,
+        productType: document.getElementById('exit-product').value,
+        qty: parseInt(document.getElementById('exit-qty').value),
+        value: parseFloat(document.getElementById('exit-value').value),
+        date: document.getElementById('exit-date').value
+    };
+
+    try {
+        const response = await fetchWithAuth('/api/saida', {
+            method: 'POST',
+            body: JSON.stringify(formData)
+        });
+
+        if (response && response.ok) {
+            showSuccess('Saída registrada com sucesso!');
+            event.target.reset();
+            initDateInputs();
+            loadDataFromAPI();
+        }
+    } catch (error) {
+        showError('Erro ao registrar saída.');
+    } finally {
+        hideLoading(btn);
     }
 }
 
@@ -294,13 +443,13 @@ function renderFullTable() {
     appData.transactions.forEach(t => {
         const row = `<tr>
             <td>${new Date(t.date).toLocaleDateString('pt-BR')}</td>
-            <td><span class="badge ${t.type === 'entrada' ? 'badge-in' : (t.type === 'saida' ? 'badge-out' : 'badge-bra')}">${t.type.toUpperCase()}</span></td>
+            <td><span class="badge ${t.type === 'entrada' ? 'badge-in' : (t.type === 'saida' ? 'badge-out' : 'badge-despesa')}">${t.type.toUpperCase()}</span></td>
             <td>${t.productType}</td>
             <td>${t.desc}</td>
             <td>${t.qty}</td>
             <td>R$ ${t.value.toFixed(2)}</td>
             <td>
-                <button class="btn-sm" onclick="deleteTransaction(${t.id})" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
+                <button onclick="deleteTransaction(${t.id})" class="btn-icon text-danger"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
         tbody.innerHTML += row;
@@ -308,117 +457,92 @@ function renderFullTable() {
 }
 
 async function deleteTransaction(id) {
-    if (!confirm("Excluir esta movimentação?")) return;
+    if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+
     try {
-        const res = await fetch(`${API_URL}/api/movimentacoes/${id}`, { method: 'DELETE' });
-        if (res.ok) {
+        const response = await fetchWithAuth(`/api/movimentacoes/${id}`, { method: 'DELETE' });
+        if (response && response.ok) {
+            showSuccess('Registro excluído!');
             loadDataFromAPI();
-            if (currentSectionId === 'estoque') setTimeout(renderFullTable, 500);
+            if (currentSectionId === 'estoque') renderFullTable();
         }
-    } catch (e) { console.error(e); }
+    } catch (error) {
+        showError('Erro ao excluir registro.');
+    }
 }
 
-// --- CADASTROS ---
+// Funções de Modal (Stub para manter compatibilidade)
+function closeEditModal() { document.getElementById('modal-edit')?.classList.remove('active'); }
+function closeSelectionModal() { document.getElementById('modal-selection')?.classList.remove('active'); }
+function closeProdutoModal() { document.getElementById('modal-produto')?.classList.remove('active'); }
+function closeNFeModal() { document.getElementById('modal-nfe')?.classList.remove('active'); }
+function closeNFeOptionsModal() { document.getElementById('modal-nfe-options')?.classList.remove('active'); }
+function closeUserModal() { document.getElementById('modal-user')?.classList.remove('active'); }
+
+// --- GESTÃO DE CADASTROS (API) ---
 async function loadCadastros() {
     try {
-        const [cliRes, fornRes, prodRes] = await Promise.all([
-            fetch(`${API_URL}/api/clientes`),
-            fetch(`${API_URL}/api/fornecedores`),
-            fetch(`${API_URL}/api/produtos`)
-        ]);
-        
-        const clientes = await cliRes.json();
-        const fornecedores = await fornRes.json();
-        const produtos = await prodRes.json();
+        const resCli = await fetchWithAuth('/api/clientes');
+        const resForn = await fetchWithAuth('/api/fornecedores');
+        const resProd = await fetchWithAuth('/api/produtos');
 
-        renderEntityList('list-clientes', clientes, 'cliente');
-        renderEntityList('list-fornecedores', fornecedores, 'fornecedor');
-        renderProdutoList(produtos);
-    } catch (e) { console.error(e); }
-}
-
-function renderEntityList(containerId, list, type) {
-    const el = document.getElementById(containerId);
-    if (!el) return;
-    el.innerHTML = list.length ? '' : '<div style="padding:20px; color:#999; text-align:center;">Nenhum registro.</div>';
-    
-    list.forEach(item => {
-        el.innerHTML += `
-            <div class="list-item" style="display:flex; justify-content:space-between; padding:12px 20px; border-bottom:1px solid #eee; align-items:center;">
-                <div>
-                    <div style="font-weight:600;">${item.nome}</div>
-                    <div style="font-size:0.75rem; color:#666;">${item.documento || 'Sem Doc'} | ${item.telefone || 'Sem Tel'}</div>
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <button onclick="openEditModal('${type}', ${item.id})" style="color:var(--accent); background:none; border:none; cursor:pointer;"><i class="fas fa-pen"></i></button>
-                    <button onclick="deleteEntity(${item.id}, '${type}')" style="color:var(--danger); background:none; border:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>
-        `;
-    });
-}
-
-function renderProdutoList(list) {
-    const el = document.getElementById('list-produtos');
-    if (!el) return;
-    el.innerHTML = list.length ? '' : '<div style="padding:20px; color:#999; text-align:center;">Nenhum produto.</div>';
-    
-    list.forEach(item => {
-        el.innerHTML += `
-            <div class="list-item" style="display:flex; justify-content:space-between; padding:12px 20px; border-bottom:1px solid #eee; align-items:center;">
-                <div>
-                    <div style="font-weight:600;">${item.nome}</div>
-                    <div style="font-size:0.75rem; color:#666;">NCM: ${item.ncm || '-'} | Mín: ${item.estoque_minimo}</div>
-                </div>
-                <div style="display:flex; gap:15px; align-items:center;">
-                    <div style="font-weight:700; color:var(--success);">R$ ${item.preco_venda.toFixed(2)}</div>
-                    <button onclick="openProdutoModal(${item.id})" style="color:var(--accent); background:none; border:none; cursor:pointer;"><i class="fas fa-pen"></i></button>
-                    <button onclick="deleteProduto(${item.id})" style="color:var(--danger); background:none; border:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>
-        `;
-    });
-}
-
-// --- MODAIS DE CADASTRO ---
-function openEditModal(type, id = null) {
-    const modal = document.getElementById('modal-edit');
-    const title = document.getElementById('modal-title');
-    document.getElementById('edit-type').value = type;
-    document.getElementById('edit-id').value = id || '';
-    
-    title.innerText = (id ? 'Editar ' : 'Novo ') + (type === 'cliente' ? 'Cliente' : 'Fornecedor');
-    
-    if (id) {
-        const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
-        fetch(`${API_URL}/api/${endpoint}`)
-            .then(res => res.json())
-            .then(data => {
-                const item = data.find(i => i.id == id);
-                if (item) {
-                    document.getElementById('edit-nome').value = item.nome;
-                    document.getElementById('edit-doc').value = item.documento || '';
-                    document.getElementById('edit-ie').value = item.ie || '';
-                    document.getElementById('edit-email').value = item.email || '';
-                    document.getElementById('edit-tel').value = item.telefone || '';
-                    document.getElementById('edit-endereco').value = item.endereco || '';
-                }
-            });
-    } else {
-        document.getElementById('edit-nome').value = '';
-        document.getElementById('edit-doc').value = '';
-        document.getElementById('edit-ie').value = '';
-        document.getElementById('edit-email').value = '';
-        document.getElementById('edit-tel').value = '';
-        document.getElementById('edit-endereco').value = '';
+        if (resCli) renderCadastroList('list-clientes', await resCli.json(), 'cliente');
+        if (resForn) renderCadastroList('list-fornecedores', await resForn.json(), 'fornecedor');
+        if (resProd) renderProdutoList('list-produtos', await resProd.json());
+    } catch (error) {
+        console.error("Erro ao carregar cadastros:", error);
     }
-    modal.classList.add('active');
 }
 
-async function saveCadastro(e) {
-    e.preventDefault();
-    const type = document.getElementById('edit-type').value;
+function renderCadastroList(elementId, data, type) {
+    const tbody = document.getElementById(elementId);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    data.forEach(item => {
+        const row = `<tr>
+            <td><strong>${item.nome}</strong></td>
+            <td>${item.documento || '-'}</td>
+            <td>${item.telefone || '-'}</td>
+            <td>${item.email || '-'}</td>
+            <td style="text-align: right;">
+                <button onclick="editCadastro(${item.id}, '${type}')" class="btn-icon text-info"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteCadastro(${item.id}, '${type}')" class="btn-icon text-danger"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+}
+
+function renderProdutoList(elementId, data) {
+    const tbody = document.getElementById(elementId);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    data.forEach(item => {
+        const row = `<tr>
+            <td><strong>${item.nome}</strong></td>
+            <td>${item.ncm || '-'}</td>
+            <td>R$ ${item.preco_venda.toFixed(2)}</td>
+            <td>${item.estoque_minimo}</td>
+            <td style="text-align: right;">
+                <button onclick="editProduto(${JSON.stringify(item).replace(/"/g, '&quot;')})" class="btn-icon text-info"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteProduto(${item.id})" class="btn-icon text-danger"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+}
+
+async function saveCadastro(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
     const id = document.getElementById('edit-id').value;
+    const type = document.getElementById('edit-type').value;
+    const endpoint = type === 'cliente' ? '/api/clientes' : '/api/fornecedores';
+    
     const data = {
         nome: document.getElementById('edit-nome').value,
         documento: document.getElementById('edit-doc').value,
@@ -428,57 +552,160 @@ async function saveCadastro(e) {
         endereco: document.getElementById('edit-endereco').value
     };
 
-    const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `${API_URL}/api/${endpoint}/${id}` : `${API_URL}/api/${endpoint}`;
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${endpoint}/${id}` : endpoint;
+        const response = await fetchWithAuth(url, {
+            method,
+            body: JSON.stringify(data)
+        });
+
+        if (response && response.ok) {
+            showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} salvo com sucesso!`);
+            closeEditModal();
+            loadCadastros();
+        }
+    } catch (error) {
+        showError('Erro ao salvar cadastro.');
+    } finally {
+        hideLoading(btn);
+    }
+}
+
+function openEditModal(type, data = null) {
+    document.getElementById('edit-id').value = data ? data.id : '';
+    document.getElementById('edit-type').value = type;
+    document.getElementById('modal-title').innerText = (data ? 'Editar ' : 'Novo ') + (type === 'cliente' ? 'Cliente' : 'Fornecedor');
     
-    const res = await fetch(url, {
-        method,
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
+    document.getElementById('edit-nome').value = data ? data.nome : '';
+    document.getElementById('edit-doc').value = data ? data.documento : '';
+    document.getElementById('edit-ie').value = data ? data.ie : '';
+    document.getElementById('edit-email').value = data ? data.email : '';
+    document.getElementById('edit-tel').value = data ? data.telefone : '';
+    document.getElementById('edit-endereco').value = data ? data.endereco : '';
+    
+    document.getElementById('modal-edit').classList.add('active');
+}
+
+async function deleteCadastro(id, type) {
+    if (!confirm(`Excluir este ${type}?`)) return;
+    const endpoint = type === 'cliente' ? '/api/clientes' : '/api/fornecedores';
+    try {
+        const response = await fetchWithAuth(`${endpoint}/${id}`, { method: 'DELETE' });
+        if (response && response.ok) {
+            showSuccess(`${type} excluído!`);
+            loadCadastros();
+        }
+    } catch (error) {
+        showError('Erro ao excluir.');
+    }
+}
+
+// --- GESTÃO DE NF-E (API) ---
+async function loadNFe() {
+    try {
+        const response = await fetchWithAuth('/api/nfe');
+        if (response) {
+            const data = await response.json();
+            renderNFeTable(data);
+        }
+    } catch (error) {
+        console.error("Erro ao carregar NF-e:", error);
+    }
+}
+
+function renderNFeTable(data) {
+    const tbody = document.getElementById('nfe-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    data.forEach(item => {
+        const row = `<tr>
+            <td>${new Date(item.data_emissao).toLocaleString('pt-BR')}</td>
+            <td>#${item.venda_id}</td>
+            <td style="font-family: monospace; font-size: 0.8rem;">${item.chave_acesso}</td>
+            <td><span class="badge ${item.status === 'autorizada' ? 'badge-in' : 'badge-out'}">${item.status.toUpperCase()}</span></td>
+            <td style="text-align: right;">
+                <button onclick="downloadXML(${item.id})" class="btn-icon text-info" title="Baixar XML"><i class="fas fa-file-code"></i></button>
+                <button onclick="openDANFE(${item.id})" class="btn-icon text-primary" title="Ver DANFE"><i class="fas fa-file-pdf"></i></button>
+            </td>
+        </tr>`;
+        tbody.innerHTML += row;
     });
-
-    if (res.ok) {
-        closeEditModal();
-        loadCadastros();
-    }
 }
 
-async function deleteEntity(id, type) {
-    if (!confirm("Excluir este cadastro?")) return;
-    const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
-    await fetch(`${API_URL}/api/${endpoint}/${id}`, { method: 'DELETE' });
-    loadCadastros();
-}
-
-// --- PRODUTOS ---
-function openProdutoModal(id = null) {
-    const modal = document.getElementById('modal-produto');
-    document.getElementById('prod-id').value = id || '';
-    if (id) {
-        fetch(`${API_URL}/api/produtos`)
-            .then(res => res.json())
-            .then(list => {
-                const item = list.find(i => i.id == id);
-                if (item) {
-                    document.getElementById('prod-nome').value = item.nome;
-                    document.getElementById('prod-ncm').value = item.ncm || '';
-                    document.getElementById('prod-preco').value = item.preco_venda;
-                    document.getElementById('prod-min').value = item.estoque_minimo;
-                }
-            });
-    } else {
-        document.getElementById('modal-produto').querySelector('form').reset();
+async function openNFeModal() {
+    const modal = document.getElementById('modal-nfe');
+    if (!modal) return;
+    
+    // Carregar vendas recentes para o select
+    const select = document.getElementById('nfe-venda-id');
+    if (select) {
+        select.innerHTML = '<option value="">Carregando vendas...</option>';
+        const sales = appData.transactions.filter(t => t.type === 'saida');
+        select.innerHTML = '<option value="">Selecione uma venda...</option>';
+        sales.forEach(s => {
+            select.innerHTML += `<option value="${s.id}">Venda #${s.id} - ${s.desc} (R$ ${s.value.toFixed(2)})</option>`;
+        });
     }
+    
     modal.classList.add('active');
 }
 
-function closeProdutoModal() {
-    document.getElementById('modal-produto').classList.remove('active');
+function closeNFeModal() {
+    document.getElementById('modal-nfe')?.classList.remove('active');
 }
 
-async function saveProduto(e) {
-    e.preventDefault();
+async function handleGerarNFe(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
+    const vendaId = document.getElementById('nfe-venda-id').value;
+    // Mock de dados de emitente e destinatário para exemplo
+    const data = {
+        venda_id: vendaId,
+        emitente: {
+            cnpj: "12345678000100",
+            nome: "M&M CEBOLAS LTDA",
+            fantasia: "M&M CEBOLAS",
+            ie: "123456789",
+            endereco: { xLgr: "Rua Exemplo", nro: "100", xBairro: "Centro", cMun: "3541406", xMun: "Presidente Prudente", UF: "SP", CEP: "19000000" }
+        },
+        destinatario: {
+            nome: "Cliente Exemplo",
+            documento: "12345678901",
+            endereco: { xLgr: "Rua Destino", nro: "500", xBairro: "Bairro", cMun: "3541406", xMun: "Presidente Prudente", UF: "SP", CEP: "19000000" }
+        },
+        itens: [
+            { id: 1, nome: "Cebola Amarela", quantidade: 10, valor: 5.50 }
+        ]
+    };
+
+    try {
+        const response = await fetchWithAuth('/api/nfe/gerar', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+
+        if (response && response.ok) {
+            showSuccess('NF-e gerada com sucesso!');
+            closeNFeModal();
+            loadNFe();
+        }
+    } catch (error) {
+        showError('Erro ao gerar NF-e.');
+    } finally {
+        hideLoading(btn);
+    }
+}
+
+// --- GESTÃO DE PRODUTOS ---
+async function saveProduto(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
     const id = document.getElementById('prod-id').value;
     const data = {
         nome: document.getElementById('prod-nome').value,
@@ -486,423 +713,184 @@ async function saveProduto(e) {
         preco_venda: parseFloat(document.getElementById('prod-preco').value),
         estoque_minimo: parseInt(document.getElementById('prod-min').value)
     };
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `${API_URL}/api/produtos/${id}` : `${API_URL}/api/produtos`;
-    const res = await fetch(url, {
-        method,
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    if (res.ok) {
-        closeProdutoModal();
-        loadCadastros();
+
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/produtos/${id}` : '/api/produtos';
+        const response = await fetchWithAuth(url, {
+            method,
+            body: JSON.stringify(data)
+        });
+
+        if (response && response.ok) {
+            showSuccess('Produto salvo com sucesso!');
+            closeProdutoModal();
+            loadCadastros();
+        }
+    } catch (error) {
+        showError('Erro ao salvar produto.');
+    } finally {
+        hideLoading(btn);
     }
+}
+
+function openProdutoModal(data = null) {
+    const modal = document.getElementById('modal-produto');
+    if (!modal) return;
+    
+    document.getElementById('prod-id').value = data ? data.id : '';
+    document.getElementById('prod-nome').value = data ? data.nome : '';
+    document.getElementById('prod-ncm').value = data ? data.ncm : '';
+    document.getElementById('prod-preco').value = data ? data.preco_venda : '';
+    document.getElementById('prod-min').value = data ? data.estoque_minimo : '100';
+    
+    modal.classList.add('active');
 }
 
 async function deleteProduto(id) {
-    if (!confirm("Excluir este produto?")) return;
-    await fetch(`${API_URL}/api/produtos/${id}`, { method: 'DELETE' });
-    loadCadastros();
-}
-
-// --- OPERACIONAL ---
-async function handleEntry(e) {
-    e.preventDefault();
-    const data = {
-        desc: document.getElementById('entry-source').value,
-        productType: document.getElementById('entry-type').value,
-        qty: parseInt(document.getElementById('entry-qty').value),
-        value: parseFloat(document.getElementById('entry-value').value),
-        date: document.getElementById('entry-date').value
-    };
-    const res = await fetch(`${API_URL}/api/entrada`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    if (res.ok) {
-        alert("Entrada registrada!");
-        e.target.reset();
-        loadDataFromAPI();
-    }
-}
-
-async function handleExit(e) {
-    e.preventDefault();
-    const data = {
-        desc: document.getElementById('exit-dest').value,
-        productType: document.getElementById('exit-type').value,
-        qty: parseInt(document.getElementById('exit-qty').value),
-        value: parseFloat(document.getElementById('exit-value').value),
-        date: document.getElementById('exit-date').value
-    };
-    const res = await fetch(`${API_URL}/api/saida`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    if (res.ok) {
-        const result = await res.json();
-        if (confirm("Venda registrada! Deseja emitir a NF-e agora?")) {
-            showSection('nfe');
-            setTimeout(() => openNFeModal(result.id), 500);
+    if (!confirm('Excluir este produto?')) return;
+    try {
+        const response = await fetchWithAuth(`/api/produtos/${id}`, { method: 'DELETE' });
+        if (response && response.ok) {
+            showSuccess('Produto excluído!');
+            loadCadastros();
         }
-        e.target.reset();
-        loadDataFromAPI();
+    } catch (error) {
+        showError('Erro ao excluir produto.');
     }
 }
 
-async function handleExpense(e) {
-    e.preventDefault();
+function editProduto(item) {
+    openProdutoModal(item);
+}
+
+function editCadastro(id, type) {
+    // Buscar dados localmente ou via API
+    fetchWithAuth(`/api/${type === 'cliente' ? 'clientes' : 'fornecedores'}`)
+        .then(res => res.json())
+        .then(data => {
+            const item = data.find(i => i.id === id);
+            if (item) openEditModal(type, item);
+        });
+}
+
+// --- GESTÃO FINANCEIRA ---
+function updateFinanceKPIs() {
+    const totalIn = appData.transactions
+        .filter(t => t.type === 'saida')
+        .reduce((acc, curr) => acc + curr.value, 0);
+    
+    const totalOut = appData.transactions
+        .filter(t => t.type === 'entrada' || t.type === 'despesa')
+        .reduce((acc, curr) => acc + curr.value, 0);
+
+    const balance = totalIn - totalOut;
+
+    const elIn = document.getElementById('fin-total-in');
+    const elOut = document.getElementById('fin-total-out');
+    const elBalance = document.getElementById('fin-balance');
+
+    if (elIn) elIn.innerText = `R$ ${totalIn.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (elOut) elOut.innerText = `R$ ${totalOut.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (elBalance) {
+        elBalance.innerText = `R$ ${balance.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        elBalance.className = balance >= 0 ? 'text-success' : 'text-danger';
+    }
+}
+
+async function saveDespesa(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
     const data = {
         desc: document.getElementById('exp-desc').value,
         value: parseFloat(document.getElementById('exp-value').value),
         date: document.getElementById('exp-date').value
     };
-    const res = await fetch(`${API_URL}/api/despesa`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    if (res.ok) {
-        alert("Despesa registrada!");
-        e.target.reset();
-        loadDataFromAPI();
-        if (currentSectionId === 'financeiro') updateFinanceKPIs();
-    }
-}
-
-// --- NF-E ---
-async function loadNFe() {
-    const tbody = document.getElementById('nfe-table-body');
-    if (!tbody) return;
-    try {
-        const res = await fetch(`${API_URL}/api/nfe`);
-        const list = await res.json();
-        tbody.innerHTML = list.length ? '' : '<tr><td colspan="5" style="text-align:center; padding:20px;">Nenhuma nota emitida.</td></tr>';
-        list.forEach(n => {
-            tbody.innerHTML += `<tr>
-                <td>${new Date(n.data_emissao).toLocaleDateString('pt-BR')}</td>
-                <td>#${n.venda_id}</td>
-                <td style="font-family:monospace; font-size:0.8rem;">${n.chave_acesso}</td>
-                <td><span class="badge badge-in">${n.status.toUpperCase()}</span></td>
-                <td>
-                    <button class="btn-primary btn-sm" onclick="openNFeOptions(${n.id}, '${n.chave_acesso}')"><i class="fas fa-cog"></i> Opções</button>
-                </td>
-            </tr>`;
-        });
-    } catch (e) { console.error(e); }
-}
-
-function openNFeModal(vendaId = null) {
-    const modal = document.getElementById('modal-nfe');
-    const select = document.getElementById('nfe-venda-id');
-    modal.classList.add('active');
-    
-    // Carrega vendas recentes que não têm NF-e
-    fetch(`${API_URL}/api/movimentacoes`)
-        .then(res => res.json())
-        .then(movs => {
-            const vendas = movs.filter(m => m.tipo === 'saida');
-            select.innerHTML = '<option value="">Selecione uma venda...</option>';
-            vendas.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v.id;
-                opt.innerText = `Venda #${v.id} - ${v.descricao} (R$ ${v.valor.toFixed(2)})`;
-                if (v.id == vendaId) opt.selected = true;
-                select.appendChild(opt);
-            });
-            if (vendaId) updateNFePreview();
-        });
-}
-
-function closeNFeModal() {
-    document.getElementById('modal-nfe').classList.remove('active');
-}
-
-function updateNFePreview() {
-    const id = document.getElementById('nfe-venda-id').value;
-    const preview = document.getElementById('nfe-preview');
-    const content = document.getElementById('nfe-preview-content');
-    if (!id) { preview.style.display = 'none'; return; }
-    
-    fetch(`${API_URL}/api/movimentacoes`)
-        .then(res => res.json())
-        .then(movs => {
-            const v = movs.find(m => m.id == id);
-            if (v) {
-                preview.style.display = 'block';
-                content.innerHTML = `
-                    <strong>Destinatário:</strong> ${v.desc}<br>
-                    <strong>Produto:</strong> Cebola ${v.productType}<br>
-                    <strong>Quantidade:</strong> ${v.qty} Caixas<br>
-                    <strong>Valor Total:</strong> R$ ${v.valor.toFixed(2)}
-                `;
-            }
-        });
-}
-
-async function handleGerarNFe(e) {
-    e.preventDefault();
-    const vendaId = document.getElementById('nfe-venda-id').value;
-    const btn = document.getElementById('btn-emitir-nfe');
-    
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transmitindo...';
 
     try {
-        const movs = await (await fetch(`${API_URL}/api/movimentacoes`)).json();
-        const venda = movs.find(m => m.id == vendaId);
-        if (!venda) throw new Error("Venda não encontrada.");
-        
-        const clientes = await (await fetch(`${API_URL}/api/clientes`)).json();
-        const cliente = clientes.find(c => c.nome === venda.desc) || { 
-            nome: venda.desc, 
-            documento: '00000000000', 
-            ie: '', 
-            email: '',
-            endereco: '{"xLgr":"Endereço não cadastrado","nro":"SN","xBairro":"Bairro","cMun":"3541406","xMun":"Presidente Prudente","UF":"SP","CEP":"19000000"}'
-        };
-
-        let emitEndereco, destEndereco;
-        try {
-            emitEndereco = JSON.parse(document.getElementById('nfe-emit-endereco').value);
-        } catch(e) {
-            emitEndereco = { xLgr: "Rua das Cebolas", nro: "100", xBairro: "Centro", cMun: "3541406", xMun: "Presidente Prudente", UF: "SP", CEP: "19000000" };
-        }
-
-        try {
-            destEndereco = typeof cliente.endereco === 'string' ? JSON.parse(cliente.endereco) : cliente.endereco;
-        } catch(e) {
-            destEndereco = { xLgr: "Endereço não cadastrado", nro: "SN", xBairro: "Bairro", cMun: "3541406", xMun: "Presidente Prudente", UF: "SP", CEP: "19000000" };
-        }
-
-        const nfeData = {
-            venda_id: venda.id,
-            emitente: { 
-                cnpj: document.getElementById('nfe-emit-cnpj').value, 
-                nome: document.getElementById('nfe-emit-nome').value, 
-                fantasia: document.getElementById('nfe-emit-fantasia').value, 
-                ie: document.getElementById('nfe-emit-ie').value,
-                endereco: emitEndereco
-            },
-            destinatario: { 
-                nome: cliente.nome,
-                documento: cliente.documento.replace(/\D/g, ''), 
-                ie: cliente.ie ? cliente.ie.replace(/\D/g, '') : '', 
-                email: cliente.email,
-                endereco: destEndereco
-            },
-            itens: [{ 
-                id: '001',
-                nome: `CEBOLA ${venda.productType.toUpperCase()}`, 
-                ncm: '07031019', 
-                quantidade: venda.qty, 
-                valor: (venda.valor / venda.qty)
-            }]
-        };
-
-        const res = await fetch(`${API_URL}/api/nfe/gerar`, {
+        const response = await fetchWithAuth('/api/despesa', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(nfeData)
+            body: JSON.stringify(data)
         });
 
-        if (res.ok) {
-            const result = await res.json();
-            alert("NF-e Autorizada com Sucesso!");
-            closeNFeModal();
-            loadNFe();
-            showNFeAnimation();
-        } else {
-            const errorData = await res.json();
-            alert("Erro ao transmitir NF-e: " + (errorData.error || "Erro desconhecido"));
+        if (response && response.ok) {
+            showSuccess('Despesa lançada com sucesso!');
+            event.target.reset();
+            initDateInputs();
+            loadDataFromAPI();
+            if (currentSectionId === 'financeiro') updateFinanceKPIs();
         }
-    } catch (e) { console.error(e); } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-file-export"></i> Transmitir NF-e';
+    } catch (error) {
+        showError('Erro ao lançar despesa.');
+    } finally {
+        hideLoading(btn);
     }
 }
 
-function showNFeAnimation() {
-    const div = document.createElement('div');
-    div.style.position = 'fixed';
-    div.style.top = '50%';
-    div.style.left = '50%';
-    div.style.transform = 'translate(-50%, -50%)';
-    div.style.background = 'var(--success)';
-    div.style.color = 'white';
-    div.style.padding = '40px';
-    div.style.borderRadius = '20px';
-    div.style.zIndex = '100000';
-    div.style.textAlign = 'center';
-    div.style.boxShadow = '0 20px 50px rgba(0,0,0,0.3)';
-    div.innerHTML = '<i class="fas fa-check-circle" style="font-size: 4rem; margin-bottom: 20px; display: block;"></i><h2 style="margin:0;">NF-e GERADA!</h2>';
-    document.body.appendChild(div);
-    
-    div.animate([
-        { opacity: 0, transform: 'translate(-50%, -50%) scale(0.5)' },
-        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }
-    ], { duration: 500, easing: 'ease-out' });
-
-    setTimeout(() => {
-        div.animate([
-            { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
-            { opacity: 0, transform: 'translate(-50%, -50%) scale(1.5)' }
-        ], { duration: 500, easing: 'ease-in' }).onfinish = () => div.remove();
-    }, 2000);
-}
-
-let currentNFeId = null;
-let currentNFeChave = '';
-
-function openNFeOptions(id, chave) {
-    currentNFeId = id;
-    currentNFeChave = chave;
-    document.getElementById('nfe-options-info').innerText = `Nota Fiscal #${id} - Chave: ${chave.slice(0,20)}...`;
-    document.getElementById('modal-nfe-options').classList.add('active');
-}
-
-function closeNFeOptionsModal() {
-    document.getElementById('modal-nfe-options').classList.remove('active');
-}
-
-function downloadNFePDF() {
-    if (!currentNFeId) return;
-    window.location.href = `${API_URL}/api/nfe/${currentNFeId}/pdf`;
-}
-
-function downloadNFeXML() {
-    if (!currentNFeId) return;
-    window.location.href = `${API_URL}/api/nfe/${currentNFeId}/xml`;
-}
-
-function openNFePDF() {
-    // Em um sistema real, abriria o PDF gerado. Aqui simulamos abrindo o portal da NF-e com a chave
-    window.open(`https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g=&chaveAcesso=${currentNFeChave}`, '_blank');
-}
-
-// --- SELEÇÃO (LUPA) ---
-function openSelectionModal(type) {
-    currentSelectionTarget = type;
-    const modal = document.getElementById('modal-selection');
-    const list = document.getElementById('selection-list');
-    const title = document.getElementById('selection-title');
-    
-    title.innerText = type === 'cliente' ? 'Selecionar Cliente' : 'Selecionar Fornecedor';
-    list.innerHTML = '<div style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i></div>';
-    modal.classList.add('active');
-    
-    const endpoint = type === 'cliente' ? 'clientes' : 'fornecedores';
-    fetch(`${API_URL}/api/${endpoint}`)
-        .then(res => res.json())
-        .then(data => {
-            list.innerHTML = '';
-            data.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'selection-item';
-                div.style.padding = '12px 20px';
-                div.style.borderBottom = '1px solid #eee';
-                div.style.cursor = 'pointer';
-                div.innerText = item.nome;
-                div.onclick = () => {
-                    const inputId = currentSelectionTarget === 'cliente' ? 'exit-dest' : 'entry-source';
-                    document.getElementById(inputId).value = item.nome;
-                    closeSelectionModal();
-                };
-                list.appendChild(div);
-            });
-        });
-}
-
-function closeSelectionModal() {
-    document.getElementById('modal-selection').classList.remove('active');
-}
-
-function filterSelection() {
-    const term = document.getElementById('search-selection').value.toLowerCase();
-    document.querySelectorAll('.selection-item').forEach(item => {
-        item.style.display = item.innerText.toLowerCase().includes(term) ? 'block' : 'none';
-    });
-}
-
-// --- FINANCEIRO ---
-function updateFinanceKPIs() {
-    const revenue = appData.transactions.filter(t => t.type === 'saida').reduce((acc, curr) => acc + curr.value, 0);
-    const expenses = appData.transactions.filter(t => t.type === 'entrada' || t.type === 'despesa').reduce((acc, curr) => acc + curr.value, 0);
-    
-    const inEl = document.getElementById('fin-total-in');
-    if (inEl) inEl.innerText = `R$ ${revenue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    
-    const outEl = document.getElementById('fin-total-out');
-    if (outEl) outEl.innerText = `R$ ${expenses.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    
-    const balEl = document.getElementById('fin-balance');
-    if (balEl) {
-        const bal = revenue - expenses;
-        balEl.innerText = `R$ ${bal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-        balEl.className = bal >= 0 ? 'text-success' : 'text-danger';
-    }
-}
-
-// --- CONFIGURAÇÕES & USUÁRIOS ---
+// --- GESTÃO DE USUÁRIOS E CONFIGS ---
 async function loadUsers() {
-    const el = document.getElementById('list-users');
-    if (!el) return;
     try {
-        const res = await fetch(`${API_URL}/api/usuarios`);
-        const list = await res.json();
-        el.innerHTML = '';
-        list.forEach(u => {
-            el.innerHTML += `
-                <div class="list-item" style="display:flex; justify-content:space-between; padding:12px 20px; border-bottom:1px solid #eee; align-items:center;">
-                    <div>
-                        <div style="font-weight:600;">${u.username}</div>
-                        <div style="font-size:0.75rem; color:#666;">${u.label} | ${u.role}</div>
-                    </div>
-                    <button onclick="deleteUser(${u.id})" style="color:var(--danger); background:none; border:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-        });
-    } catch (e) { console.error(e); }
-}
-
-function openUserModal() {
-    document.getElementById('modal-user').classList.add('active');
-}
-
-function closeUserModal() {
-    document.getElementById('modal-user').classList.remove('active');
-}
-
-async function saveUser(e) {
-    e.preventDefault();
-    const data = {
-        username: document.getElementById('user-username').value,
-        password: document.getElementById('user-password').value,
-        label: document.getElementById('user-label').value,
-        role: document.getElementById('user-role').value
-    };
-    const res = await fetch(`${API_URL}/api/usuarios`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    if (res.ok) {
-        closeUserModal();
-        loadUsers();
+        const response = await fetchWithAuth('/api/usuarios');
+        if (response) {
+            const users = await response.json();
+            const tbody = document.getElementById('list-users');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            users.forEach(u => {
+                tbody.innerHTML += `<tr>
+                    <td><strong>${u.username}</strong></td>
+                    <td><span class="badge ${u.role === 'admin' ? 'badge-in' : 'badge-bra'}">${u.role.toUpperCase()}</span></td>
+                    <td style="text-align: right;">
+                        <button onclick="deleteUser(${u.id})" class="btn-icon text-danger"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+        }
+    } catch (error) {
+        console.error("Erro ao carregar usuários:", error);
     }
 }
 
 async function deleteUser(id) {
-    if (!confirm("Excluir este usuário?")) return;
-    await fetch(`${API_URL}/api/usuarios/${id}`, { method: 'DELETE' });
-    loadUsers();
+    if (!confirm('Excluir este usuário?')) return;
+    try {
+        const response = await fetchWithAuth(`/api/usuarios/${id}`, { method: 'DELETE' });
+        if (response && response.ok) {
+            showSuccess('Usuário removido!');
+            loadUsers();
+        }
+    } catch (error) {
+        showError('Erro ao excluir usuário.');
+    }
 }
 
-function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    event.currentTarget.classList.add('active');
+function loadConfigs() {
+    const modo = localStorage.getItem('mm_nfe_modo') || 'homologacao';
+    const radio = document.querySelector(`input[name="nfe_modo"][value="${modo}"]`);
+    if (radio) radio.checked = true;
+}
+
+function updateNFeModo(modo) {
+    localStorage.setItem('mm_nfe_modo', modo);
+    showSuccess(`Ambiente alterado para ${modo.toUpperCase()}`);
+}
+
+async function resetSystem() {
+    if (!confirm('AVISO CRÍTICO: Isso apagará TODOS os dados do sistema permanentemente. Deseja continuar?')) return;
+    const pass = prompt('Digite a senha de administrador para confirmar:');
+    if (pass === 'admin') { // Mock de confirmação
+        try {
+            const response = await fetchWithAuth('/api/reset', { method: 'POST' });
+            if (response && response.ok) {
+                showSuccess('Sistema resetado com sucesso!');
+                location.reload();
+            }
+        } catch (error) {
+            showError('Erro ao resetar sistema.');
+        }
+    } else {
+        showError('Senha incorreta.');
+    }
 }

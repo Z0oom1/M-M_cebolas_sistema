@@ -286,6 +286,84 @@ app.delete('/api/movimentacoes/:id', authenticateToken, (req, res) => {
     });
 });
 
+// --- ROTAS DE CLIENTES ---
+app.get('/api/clientes', authenticateToken, (req, res) => {
+    db.all(`SELECT * FROM clientes ORDER BY nome ASC`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/clientes', authenticateToken, (req, res) => {
+    const { nome, documento, ie, email, telefone, endereco } = req.body;
+    db.run(`INSERT INTO clientes (nome, documento, ie, email, telefone, endereco) VALUES (?, ?, ?, ?, ?, ?)`,
+        [nome, documento, ie, email, telefone, endereco],
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID });
+        }
+    );
+});
+
+app.delete('/api/clientes/:id', authenticateToken, (req, res) => {
+    db.run(`DELETE FROM clientes WHERE id = ?`, req.params.id, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ deleted: true });
+    });
+});
+
+// --- ROTAS DE FORNECEDORES ---
+app.get('/api/fornecedores', authenticateToken, (req, res) => {
+    db.all(`SELECT * FROM fornecedores ORDER BY nome ASC`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/fornecedores', authenticateToken, (req, res) => {
+    const { nome, documento, ie, email, telefone, endereco } = req.body;
+    db.run(`INSERT INTO fornecedores (nome, documento, ie, email, telefone, endereco) VALUES (?, ?, ?, ?, ?, ?)`,
+        [nome, documento, ie, email, telefone, endereco],
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID });
+        }
+    );
+});
+
+app.delete('/api/fornecedores/:id', authenticateToken, (req, res) => {
+    db.run(`DELETE FROM fornecedores WHERE id = ?`, req.params.id, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ deleted: true });
+    });
+});
+
+// --- ROTAS DE PRODUTOS ---
+app.get('/api/produtos', authenticateToken, (req, res) => {
+    db.all(`SELECT * FROM produtos ORDER BY nome ASC`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/produtos', authenticateToken, (req, res) => {
+    const { nome, ncm, preco_venda, estoque_minimo } = req.body;
+    db.run(`INSERT INTO produtos (nome, ncm, preco_venda, estoque_minimo) VALUES (?, ?, ?, ?)`,
+        [nome, ncm, preco_venda, estoque_minimo],
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID });
+        }
+    );
+});
+
+app.delete('/api/produtos/:id', authenticateToken, (req, res) => {
+    db.run(`DELETE FROM produtos WHERE id = ?`, req.params.id, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ deleted: true });
+    });
+});
+
 app.put('/api/movimentacoes/:id', authenticateToken, (req, res) => {
     const { desc, productType, qty, value } = req.body;
     db.run(`UPDATE movimentacoes SET descricao = ?, produto = ?, quantidade = ?, valor = ? WHERE id = ?`,

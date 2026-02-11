@@ -4,6 +4,12 @@ const API_URL = isElectron ? 'http://localhost:3000' : '';
 
 async function fazerLogin(e) {
     e.preventDefault();
+    const btn = e.submitter || e.target.querySelector('button');
+    const oldText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Autenticando...';
+
     const username = document.getElementById('loginUser').value;
     const password = document.getElementById('loginPass').value;
 
@@ -20,42 +26,35 @@ async function fazerLogin(e) {
             window.location.href = 'home.html';
         } else {
             const err = await response.json();
-            alert(err.error || "Erro ao fazer login.");
+            showLoginError(err.error || "Usuário ou senha incorretos.");
+            btn.disabled = false;
+            btn.innerHTML = oldText;
         }
     } catch (error) {
         console.error("Erro no login:", error);
-        alert("Erro de conexão com o servidor.");
+        showLoginError("Erro de conexão com o servidor.");
+        btn.disabled = false;
+        btn.innerHTML = oldText;
     }
 }
 
-async function abrirSwitcher() {
-    const lista = document.getElementById('listaContas');
-    lista.innerHTML = '<div style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
-    document.getElementById('modalSwitcher').style.display = 'flex';
-
-    try {
-        const response = await fetch(`${API_URL}/api/usuarios`);
-        const users = await response.json();
-        
-        lista.innerHTML = '';
-        users.forEach(u => {
-            const div = document.createElement('div');
-            div.className = 'account-item';
-            div.innerHTML = `
-                <div style="width:30px; height:30px; background:#1A5632; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center;">${u.username[0].toUpperCase()}</div>
-                <div><strong>${u.username}</strong><br><small>${u.label}</small></div>
-            `;
-            div.onclick = () => {
-                document.getElementById('loginUser').value = u.username;
-                document.getElementById('loginPass').value = '';
-                document.getElementById('loginPass').focus();
-                document.getElementById('modalSwitcher').style.display = 'none';
-            };
-            lista.appendChild(div);
-        });
-    } catch (error) {
-        lista.innerHTML = '<div style="padding:20px; color:red;">Erro ao carregar usuários.</div>';
+function showLoginError(msg) {
+    let errEl = document.getElementById('login-error');
+    if (!errEl) {
+        errEl = document.createElement('div');
+        errEl.id = 'login-error';
+        errEl.style.color = '#ef4444';
+        errEl.style.background = '#fee2e2';
+        errEl.style.padding = '10px';
+        errEl.style.borderRadius = '8px';
+        errEl.style.marginTop = '15px';
+        errEl.style.fontSize = '0.85rem';
+        errEl.style.textAlign = 'center';
+        errEl.style.fontWeight = '600';
+        document.querySelector('form').after(errEl);
     }
+    errEl.innerText = msg;
+    errEl.style.display = 'block';
 }
 
 window.onload = function() {
