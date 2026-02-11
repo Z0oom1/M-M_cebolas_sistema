@@ -1,101 +1,80 @@
 <header class="top-bar">
-    <h2 class="page-title">Cadastros e Contatos</h2>
+    <h2 class="page-title">Gestão de Contatos</h2>
+    <div style="display: flex; gap: 12px;">
+        <button class="btn-primary" onclick="openEditModal('cliente')">
+            <i class="fas fa-user-plus"></i> Novo Cliente
+        </button>
+        <button class="btn-primary" onclick="openEditModal('fornecedor')" style="background: var(--accent); color: var(--primary);">
+            <i class="fas fa-truck"></i> Novo Fornecedor
+        </button>
+    </div>
 </header>
 
-<div class="panel" style="background: transparent; border: none; box-shadow: none;">
-    <div class="tabs-header" style="background: white; padding: 8px; border-radius: 16px; border: 1px solid var(--border); display: inline-flex; margin-bottom: 24px;">
-        <button class="tab-btn active" onclick="switchTab('tab-clientes', this)">Clientes</button>
-        <button class="tab-btn" onclick="switchTab('tab-fornecedores', this)">Fornecedores</button>
-        <button class="tab-btn" onclick="switchTab('tab-produtos', this)">Produtos</button>
-    </div>
-
-    <div id="tab-clientes" class="tab-content active">
-        <div class="panel">
-            <div class="panel-header">
-                <h4 style="font-weight: 700;">Clientes Cadastrados</h4>
-                <button class="btn-primary" onclick="openEditModal('cliente')">
-                    <i class="fas fa-plus"></i> Novo Cliente
-                </button>
-            </div>
-            <div class="table-container">
-                <table class="table-compact">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Documento</th>
-                            <th>Telefone</th>
-                            <th>E-mail</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="list-clientes">
-                        <!-- JS -->
-                    </tbody>
-                </table>
-            </div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <!-- LISTA DE CLIENTES -->
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight: 700;"><i class="fas fa-users" style="color: var(--primary);"></i> Meus Clientes</h4>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Documento</th>
+                        <th>Telefone</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="list-clientes">
+                    <!-- Via JS -->
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div id="tab-fornecedores" class="tab-content">
-        <div class="panel">
-            <div class="panel-header">
-                <h4 style="font-weight: 700;">Fornecedores Cadastrados</h4>
-                <button class="btn-primary" onclick="openEditModal('fornecedor')">
-                    <i class="fas fa-plus"></i> Novo Fornecedor
-                </button>
-            </div>
-            <div class="table-container">
-                <table class="table-compact">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Documento</th>
-                            <th>Telefone</th>
-                            <th>E-mail</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="list-fornecedores">
-                        <!-- JS -->
-                    </tbody>
-                </table>
-            </div>
+    <!-- LISTA DE FORNECEDORES -->
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight: 700;"><i class="fas fa-truck-moving" style="color: var(--accent);"></i> Meus Fornecedores</h4>
         </div>
-    </div>
-
-    <div id="tab-produtos" class="tab-content">
-        <div class="panel">
-            <div class="panel-header">
-                <h4 style="font-weight: 700;">Catálogo de Produtos</h4>
-                <button class="btn-primary" onclick="openProdutoModal()">
-                    <i class="fas fa-plus"></i> Novo Produto
-                </button>
-            </div>
-            <div class="table-container">
-                <table class="table-compact">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>NCM</th>
-                            <th>Preço Venda</th>
-                            <th>Estoque Mín.</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="list-produtos">
-                        <!-- JS -->
-                    </tbody>
-                </table>
-            </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Documento</th>
+                        <th>Telefone</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="list-fornecedores">
+                    <!-- Via JS -->
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<script>
-    function switchTab(id, btn) {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        btn.classList.add('active');
-    }
-</script>
+<div class="panel" style="margin-top: 24px;">
+    <div class="panel-header">
+        <h4 style="font-weight: 700;"><i class="fas fa-box-open" style="color: var(--primary);"></i> Produtos / Variedades</h4>
+        <button class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem;" onclick="alert('Funcionalidade de novo produto em breve')">Novo Produto</button>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Variedade</th>
+                    <th>NCM</th>
+                    <th>Preço Base</th>
+                    <th>Estoque Mín.</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="list-produtos">
+                <!-- Via JS -->
+            </tbody>
+        </table>
+    </div>
+</div>

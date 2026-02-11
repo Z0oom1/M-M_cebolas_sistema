@@ -1,64 +1,77 @@
 <header class="top-bar">
     <div>
         <h2 class="page-title">Visão Geral</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Bem-vindo, acompanhe o desempenho da M&M Cebolas.</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Bem-vindo, acompanhe o desempenho da M&M Cebolas.</p>
     </div>
-    <div style="display: flex; gap: 12px; align-items: center;">
-        <div class="status-indicator" style="display: flex; align-items: center; gap: 8px; background: #f0fdf4; padding: 8px 16px; border-radius: 100px; border: 1px solid #dcfce7; color: #166534; font-size: 0.75rem; font-weight: 700;">
-            <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
+    <div style="display: flex; gap: 15px;">
+        <div style="background: white; padding: 8px 16px; border-radius: 100px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
+            <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 10px #22c55e;"></span>
             SISTEMA ONLINE
         </div>
-        <div style="background: white; padding: 8px 16px; border-radius: 12px; border: 1px solid var(--border); font-weight: 600; font-size: 0.85rem; color: var(--text-muted);">
-            <i class="far fa-calendar-alt" style="margin-right: 8px;"></i> <span id="current-date">--/--/----</span>
+        <div style="background: white; padding: 8px 16px; border-radius: 100px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">
+            <i class="far fa-calendar-alt"></i>
+            <span id="current-date">--/--/----</span>
         </div>
     </div>
 </header>
 
-<div class="kpi-grid">
-    <div class="kpi-card">
-        <div class="kpi-icon" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-boxes"></i></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px;">
+    <div class="panel" style="padding: 24px; display: flex; align-items: center; gap: 20px;">
+        <div style="width: 56px; height: 56px; background: #dcfce7; color: #166534; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+            <i class="fas fa-boxes"></i>
+        </div>
         <div>
-            <small style="color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem;">Estoque Total</small>
-            <h3 id="dash-stock" style="font-size: 1.5rem; font-weight: 800; margin-top: 4px;">0 Cx</h3>
+            <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Estoque Total</p>
+            <h3 id="dash-stock" style="font-size: 1.5rem; font-weight: 800;">0 Cx</h3>
         </div>
     </div>
-    <div class="kpi-card">
-        <div class="kpi-icon" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-hand-holding-usd"></i></div>
+
+    <div class="panel" style="padding: 24px; display: flex; align-items: center; gap: 20px;">
+        <div style="width: 56px; height: 56px; background: #dbeafe; color: #1e40af; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+            <i class="fas fa-hand-holding-usd"></i>
+        </div>
         <div>
-            <small style="color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem;">Receita (Mês)</small>
-            <h3 id="dash-revenue" class="text-success" style="font-size: 1.5rem; font-weight: 800; margin-top: 4px;">R$ 0,00</h3>
+            <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Receita (Mês)</p>
+            <h3 id="dash-revenue" style="font-size: 1.5rem; font-weight: 800;">R$ 0,00</h3>
         </div>
     </div>
-    <div class="kpi-card">
-        <div class="kpi-icon" style="background: #fff1f2; color: #ef4444;"><i class="fas fa-file-invoice-dollar"></i></div>
+
+    <div class="panel" style="padding: 24px; display: flex; align-items: center; gap: 20px;">
+        <div style="width: 56px; height: 56px; background: #fee2e2; color: #991b1b; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+            <i class="fas fa-file-invoice"></i>
+        </div>
         <div>
-            <small style="color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem;">Despesas</small>
-            <h3 id="dash-expenses" class="text-danger" style="font-size: 1.5rem; font-weight: 800; margin-top: 4px;">R$ 0,00</h3>
+            <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Despesas</p>
+            <h3 id="dash-expenses" style="font-size: 1.5rem; font-weight: 800;">R$ 0,00</h3>
         </div>
     </div>
-    <div class="kpi-card">
-        <div class="kpi-icon" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-coins"></i></div>
+
+    <div class="panel" style="padding: 24px; display: flex; align-items: center; gap: 20px;">
+        <div style="width: 56px; height: 56px; background: #fef3c7; color: #92400e; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+            <i class="fas fa-coins"></i>
+        </div>
         <div>
-            <small style="color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem;">Lucro Estimado</small>
-            <h3 id="dash-profit" style="font-size: 1.5rem; font-weight: 800; margin-top: 4px;">R$ 0,00</h3>
+            <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Lucro Estimado</p>
+            <h3 id="dash-profit" style="font-size: 1.5rem; font-weight: 800;">R$ 0,00</h3>
         </div>
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700; font-size: 1rem;">Fluxo de Caixa (Últimos 6 meses)</h4>
+            <h4 style="font-weight: 700;">Fluxo de Caixa (Últimos 6 meses)</h4>
         </div>
-        <div style="height: 300px; padding: 24px;">
+        <div style="padding: 24px; height: 300px;">
             <canvas id="financeChart"></canvas>
         </div>
     </div>
+
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700; font-size: 1rem;">Estoque por Tipo</h4>
+            <h4 style="font-weight: 700;">Estoque por Tipo</h4>
         </div>
-        <div style="height: 300px; padding: 24px; display: flex; justify-content: center; align-items: center;">
+        <div style="padding: 24px; height: 300px;">
             <canvas id="stockChart"></canvas>
         </div>
     </div>
@@ -66,11 +79,11 @@
 
 <div class="panel">
     <div class="panel-header">
-        <h4 style="font-weight: 700; font-size: 1rem;">Últimas Movimentações</h4>
-        <button class="btn-primary" style="padding: 6px 16px; font-size: 0.8rem;" onclick="showSection('estoque')">Ver Todas</button>
+        <h4 style="font-weight: 700;">Últimas Movimentações</h4>
+        <button class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem;" onclick="showSection(\'estoque\')">Ver Todas</button>
     </div>
     <div class="table-container">
-        <table class="table-compact">
+        <table>
             <thead>
                 <tr>
                     <th>Tipo</th>
@@ -82,16 +95,8 @@
                 </tr>
             </thead>
             <tbody id="recent-table-body">
-                <!-- Preenchido via JS -->
+                <!-- Injetado via JS -->
             </tbody>
         </table>
     </div>
 </div>
-
-<style>
-    @media (max-width: 1200px) {
-        div[style*="grid-template-columns: 2fr 1fr"] {
-            grid-template-columns: 1fr !important;
-        }
-    }
-</style>

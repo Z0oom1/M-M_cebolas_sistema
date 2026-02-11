@@ -22,12 +22,13 @@ window.onload = function() {
     // Fechar menus ao clicar fora
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('modal-overlay')) {
-            closeEditModal();
-            closeSelectionModal();
-            closeProdutoModal();
-            closeNFeModal();
-            closeNFeOptionsModal();
-            closeUserModal();
+            const modals = ['modal-edit', 'modal-selection', 'modal-produto', 'modal-nfe'];
+            modals.forEach(id => {
+                const modal = document.getElementById(id);
+                if (modal && e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
         }
     });
 
@@ -219,26 +220,36 @@ async function loadDataFromAPI() {
 // --- FEEDBACK VISUAL (TOASTS) ---
 function showSuccess(message) {
     const toast = document.createElement('div');
-    toast.className = 'toast toast-success';
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.background = '#1A5632';
+    toast.style.color = 'white';
+    toast.style.padding = '12px 24px';
+    toast.style.borderRadius = '10px';
+    toast.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+    toast.style.zIndex = '999999';
+    toast.style.fontWeight = '700';
     toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
     document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 100);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    setTimeout(() => toast.remove(), 3000);
 }
 
 function showError(message) {
     const toast = document.createElement('div');
-    toast.className = 'toast toast-error';
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.background = '#ef4444';
+    toast.style.color = 'white';
+    toast.style.padding = '12px 24px';
+    toast.style.borderRadius = '10px';
+    toast.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+    toast.style.zIndex = '999999';
+    toast.style.fontWeight = '700';
     toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
     document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 100);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    setTimeout(() => toast.remove(), 3000);
 }
 
 function showLoading(btn) {
@@ -340,8 +351,8 @@ function renderCharts(grouped) {
                 datasets: [{
                     label: 'Receita',
                     data: [1200, 1900, 3000, 5000, 2000, 3000],
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderColor: '#1A5632',
+                    backgroundColor: 'rgba(26, 86, 50, 0.1)',
                     tension: 0.4,
                     fill: true
                 }]
@@ -361,7 +372,7 @@ function renderCharts(grouped) {
                 labels: labels,
                 datasets: [{
                     data: data,
-                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']
+                    backgroundColor: ['#1A5632', '#E89C31', '#3b82f6', '#ef4444', '#8b5cf6']
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
@@ -369,115 +380,77 @@ function renderCharts(grouped) {
     }
 }
 
-// --- CADASTROS (API INTEGRATION) ---
-async function saveEntry(event) {
-    event.preventDefault();
-    const btn = event.submitter;
-    showLoading(btn);
-
-    const formData = {
-        desc: document.getElementById('entry-desc').value,
-        productType: document.getElementById('entry-product').value,
-        qty: parseInt(document.getElementById('entry-qty').value),
-        value: parseFloat(document.getElementById('entry-value').value),
-        date: document.getElementById('entry-date').value
-    };
-
-    try {
-        const response = await fetchWithAuth('/api/entrada', {
-            method: 'POST',
-            body: JSON.stringify(formData)
-        });
-
-        if (response && response.ok) {
-            showSuccess('Entrada registrada com sucesso!');
-            event.target.reset();
-            initDateInputs();
-            loadDataFromAPI();
-        }
-    } catch (error) {
-        showError('Erro ao registrar entrada.');
-    } finally {
-        hideLoading(btn);
-    }
-}
-
-async function saveExit(event) {
-    event.preventDefault();
-    const btn = event.submitter;
-    showLoading(btn);
-
-    const formData = {
-        desc: document.getElementById('exit-desc').value,
-        productType: document.getElementById('exit-product').value,
-        qty: parseInt(document.getElementById('exit-qty').value),
-        value: parseFloat(document.getElementById('exit-value').value),
-        date: document.getElementById('exit-date').value
-    };
-
-    try {
-        const response = await fetchWithAuth('/api/saida', {
-            method: 'POST',
-            body: JSON.stringify(formData)
-        });
-
-        if (response && response.ok) {
-            showSuccess('Saída registrada com sucesso!');
-            event.target.reset();
-            initDateInputs();
-            loadDataFromAPI();
-        }
-    } catch (error) {
-        showError('Erro ao registrar saída.');
-    } finally {
-        hideLoading(btn);
-    }
-}
-
-// --- ESTOQUE ---
-function renderFullTable() {
-    const tbody = document.getElementById('full-table-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
+// --- CADASTROS E SELEÇÃO ---
+async function openSelectionModal(type) {
+    currentSelectionTarget = type;
+    const modal = document.getElementById('modal-selection');
+    const title = document.getElementById('selection-title');
+    const list = document.getElementById('selection-list');
     
-    appData.transactions.forEach(t => {
-        const row = `<tr>
-            <td>${new Date(t.date).toLocaleDateString('pt-BR')}</td>
-            <td><span class="badge ${t.type === 'entrada' ? 'badge-in' : (t.type === 'saida' ? 'badge-out' : 'badge-despesa')}">${t.type.toUpperCase()}</span></td>
-            <td>${t.productType}</td>
-            <td>${t.desc}</td>
-            <td>${t.qty}</td>
-            <td>R$ ${t.value.toFixed(2)}</td>
-            <td>
-                <button onclick="deleteTransaction(${t.id})" class="btn-icon text-danger"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>`;
-        tbody.innerHTML += row;
-    });
-}
-
-async function deleteTransaction(id) {
-    if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+    if (!modal || !list) return;
+    
+    title.innerText = `Selecionar ${type === 'cliente' ? 'Cliente' : 'Fornecedor'}`;
+    list.innerHTML = '<div style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+    modal.classList.add('active');
 
     try {
-        const response = await fetchWithAuth(`/api/movimentacoes/${id}`, { method: 'DELETE' });
-        if (response && response.ok) {
-            showSuccess('Registro excluído!');
-            loadDataFromAPI();
-            if (currentSectionId === 'estoque') renderFullTable();
+        const endpoint = type === 'cliente' ? '/api/clientes' : '/api/fornecedores';
+        const response = await fetchWithAuth(endpoint);
+        const data = await response.json();
+        
+        list.innerHTML = '';
+        if (data.length === 0) {
+            list.innerHTML = '<div style="padding:20px; text-align:center; color: var(--text-muted);">Nenhum registro encontrado.</div>';
+            return;
         }
+
+        data.forEach(item => {
+            const div = document.createElement('div');
+            div.style.padding = '12px 16px';
+            div.style.borderBottom = '1px solid var(--border)';
+            div.style.cursor = 'pointer';
+            div.style.transition = 'var(--transition)';
+            div.innerHTML = `<strong>${item.nome}</strong><br><small style="color:var(--text-muted)">${item.documento || 'Sem doc'}</small>`;
+            div.onmouseover = () => div.style.background = '#f8fafc';
+            div.onmouseout = () => div.style.background = 'transparent';
+            div.onclick = () => {
+                const targetId = currentSelectionTarget === 'cliente' ? 'exit-desc' : 'entry-desc';
+                const input = document.getElementById(targetId);
+                if (input) input.value = item.nome;
+                closeSelectionModal();
+            };
+            list.appendChild(div);
+        });
     } catch (error) {
-        showError('Erro ao excluir registro.');
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:red;">Erro ao carregar.</div>';
     }
 }
 
-// Funções de Modal (Stub para manter compatibilidade)
-function closeEditModal() { document.getElementById('modal-edit')?.classList.remove('active'); }
-function closeSelectionModal() { document.getElementById('modal-selection')?.classList.remove('active'); }
-function closeProdutoModal() { document.getElementById('modal-produto')?.classList.remove('active'); }
-function closeNFeModal() { document.getElementById('modal-nfe')?.classList.remove('active'); }
-function closeNFeOptionsModal() { document.getElementById('modal-nfe-options')?.classList.remove('active'); }
-function closeUserModal() { document.getElementById('modal-user')?.classList.remove('active'); }
+function closeSelectionModal() {
+    document.getElementById('modal-selection')?.classList.remove('active');
+}
+
+function openEditModal(type, data = null) {
+    const modal = document.getElementById('modal-edit');
+    if (!modal) return;
+    
+    document.getElementById('edit-id').value = data ? data.id : '';
+    document.getElementById('edit-type').value = type;
+    document.getElementById('modal-title').innerText = (data ? 'Editar ' : 'Novo ') + (type === 'cliente' ? 'Cliente' : 'Fornecedor');
+    
+    document.getElementById('edit-nome').value = data ? data.nome : '';
+    document.getElementById('edit-doc').value = data ? data.documento : '';
+    document.getElementById('edit-ie').value = data ? data.ie : '';
+    document.getElementById('edit-email').value = data ? data.email : '';
+    document.getElementById('edit-tel').value = data ? data.telefone : '';
+    document.getElementById('edit-endereco').value = data ? data.endereco : '';
+    
+    modal.classList.add('active');
+}
+
+function closeEditModal() {
+    document.getElementById('modal-edit')?.classList.remove('active');
+}
 
 // --- GESTÃO DE CADASTROS (API) ---
 async function loadCadastros() {
@@ -506,8 +479,8 @@ function renderCadastroList(elementId, data, type) {
             <td>${item.telefone || '-'}</td>
             <td>${item.email || '-'}</td>
             <td style="text-align: right;">
-                <button onclick="editCadastro(${item.id}, '${type}')" class="btn-icon text-info"><i class="fas fa-edit"></i></button>
-                <button onclick="deleteCadastro(${item.id}, '${type}')" class="btn-icon text-danger"><i class="fas fa-trash"></i></button>
+                <button onclick="editCadastro(${item.id}, '${type}')" style="background:none; border:none; cursor:pointer; color:var(--info); margin-right:10px;"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteCadastro(${item.id}, '${type}')" style="background:none; border:none; cursor:pointer; color:var(--danger);"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
         tbody.innerHTML += row;
@@ -526,8 +499,8 @@ function renderProdutoList(elementId, data) {
             <td>R$ ${item.preco_venda.toFixed(2)}</td>
             <td>${item.estoque_minimo}</td>
             <td style="text-align: right;">
-                <button onclick="editProduto(${JSON.stringify(item).replace(/"/g, '&quot;')})" class="btn-icon text-info"><i class="fas fa-edit"></i></button>
-                <button onclick="deleteProduto(${item.id})" class="btn-icon text-danger"><i class="fas fa-trash"></i></button>
+                <button onclick='editProduto(${JSON.stringify(item)})' style="background:none; border:none; cursor:pointer; color:var(--info); margin-right:10px;"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteProduto(${item.id})" style="background:none; border:none; cursor:pointer; color:var(--danger);"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
         tbody.innerHTML += row;
@@ -572,21 +545,6 @@ async function saveCadastro(event) {
     }
 }
 
-function openEditModal(type, data = null) {
-    document.getElementById('edit-id').value = data ? data.id : '';
-    document.getElementById('edit-type').value = type;
-    document.getElementById('modal-title').innerText = (data ? 'Editar ' : 'Novo ') + (type === 'cliente' ? 'Cliente' : 'Fornecedor');
-    
-    document.getElementById('edit-nome').value = data ? data.nome : '';
-    document.getElementById('edit-doc').value = data ? data.documento : '';
-    document.getElementById('edit-ie').value = data ? data.ie : '';
-    document.getElementById('edit-email').value = data ? data.email : '';
-    document.getElementById('edit-tel').value = data ? data.telefone : '';
-    document.getElementById('edit-endereco').value = data ? data.endereco : '';
-    
-    document.getElementById('modal-edit').classList.add('active');
-}
-
 async function deleteCadastro(id, type) {
     if (!confirm(`Excluir este ${type}?`)) return;
     const endpoint = type === 'cliente' ? '/api/clientes' : '/api/fornecedores';
@@ -601,180 +559,107 @@ async function deleteCadastro(id, type) {
     }
 }
 
-// --- GESTÃO DE NF-E (API) ---
-async function loadNFe() {
+// --- OPERACIONAL ---
+async function saveEntry(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
+    const formData = {
+        desc: document.getElementById('entry-desc').value,
+        productType: document.getElementById('entry-product').value,
+        qty: parseInt(document.getElementById('entry-qty').value),
+        value: parseFloat(document.getElementById('entry-value').value),
+        date: document.getElementById('entry-date').value
+    };
+
     try {
-        const response = await fetchWithAuth('/api/nfe');
-        if (response) {
-            const data = await response.json();
-            renderNFeTable(data);
+        const response = await fetchWithAuth('/api/entrada', {
+            method: 'POST',
+            body: JSON.stringify(formData)
+        });
+
+        if (response && response.ok) {
+            showSuccess('Entrada registrada!');
+            event.target.reset();
+            initDateInputs();
+            loadDataFromAPI();
         }
     } catch (error) {
-        console.error("Erro ao carregar NF-e:", error);
+        showError('Erro ao registrar.');
+    } finally {
+        hideLoading(btn);
     }
 }
 
-function renderNFeTable(data) {
-    const tbody = document.getElementById('nfe-table-body');
+async function saveExit(event) {
+    event.preventDefault();
+    const btn = event.submitter;
+    showLoading(btn);
+
+    const formData = {
+        desc: document.getElementById('exit-desc').value,
+        productType: document.getElementById('exit-product').value,
+        qty: parseInt(document.getElementById('exit-qty').value),
+        value: parseFloat(document.getElementById('exit-value').value),
+        date: document.getElementById('exit-date').value
+    };
+
+    try {
+        const response = await fetchWithAuth('/api/saida', {
+            method: 'POST',
+            body: JSON.stringify(formData)
+        });
+
+        if (response && response.ok) {
+            showSuccess('Venda registrada!');
+            event.target.reset();
+            initDateInputs();
+            loadDataFromAPI();
+        }
+    } catch (error) {
+        showError('Erro ao registrar.');
+    } finally {
+        hideLoading(btn);
+    }
+}
+
+function renderFullTable() {
+    const tbody = document.getElementById('full-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-
-    data.forEach(item => {
+    
+    appData.transactions.forEach(t => {
         const row = `<tr>
-            <td>${new Date(item.data_emissao).toLocaleString('pt-BR')}</td>
-            <td>#${item.venda_id}</td>
-            <td style="font-family: monospace; font-size: 0.8rem;">${item.chave_acesso}</td>
-            <td><span class="badge ${item.status === 'autorizada' ? 'badge-in' : 'badge-out'}">${item.status.toUpperCase()}</span></td>
+            <td>${new Date(t.date).toLocaleDateString('pt-BR')}</td>
+            <td><span class="badge ${t.type === 'entrada' ? 'badge-in' : (t.type === 'saida' ? 'badge-out' : 'badge-despesa')}">${t.type.toUpperCase()}</span></td>
+            <td>${t.productType}</td>
+            <td>${t.desc}</td>
+            <td>${t.qty}</td>
+            <td>R$ ${t.value.toFixed(2)}</td>
             <td style="text-align: right;">
-                <button onclick="downloadXML(${item.id})" class="btn-icon text-info" title="Baixar XML"><i class="fas fa-file-code"></i></button>
-                <button onclick="openDANFE(${item.id})" class="btn-icon text-primary" title="Ver DANFE"><i class="fas fa-file-pdf"></i></button>
+                <button onclick="deleteTransaction(${t.id})" style="background:none; border:none; cursor:pointer; color:var(--danger);"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
         tbody.innerHTML += row;
     });
 }
 
-async function openNFeModal() {
-    const modal = document.getElementById('modal-nfe');
-    if (!modal) return;
-    
-    // Carregar vendas recentes para o select
-    const select = document.getElementById('nfe-venda-id');
-    if (select) {
-        select.innerHTML = '<option value="">Carregando vendas...</option>';
-        const sales = appData.transactions.filter(t => t.type === 'saida');
-        select.innerHTML = '<option value="">Selecione uma venda...</option>';
-        sales.forEach(s => {
-            select.innerHTML += `<option value="${s.id}">Venda #${s.id} - ${s.desc} (R$ ${s.value.toFixed(2)})</option>`;
-        });
-    }
-    
-    modal.classList.add('active');
-}
-
-function closeNFeModal() {
-    document.getElementById('modal-nfe')?.classList.remove('active');
-}
-
-async function handleGerarNFe(event) {
-    event.preventDefault();
-    const btn = event.submitter;
-    showLoading(btn);
-
-    const vendaId = document.getElementById('nfe-venda-id').value;
-    // Mock de dados de emitente e destinatário para exemplo
-    const data = {
-        venda_id: vendaId,
-        emitente: {
-            cnpj: "12345678000100",
-            nome: "M&M CEBOLAS LTDA",
-            fantasia: "M&M CEBOLAS",
-            ie: "123456789",
-            endereco: { xLgr: "Rua Exemplo", nro: "100", xBairro: "Centro", cMun: "3541406", xMun: "Presidente Prudente", UF: "SP", CEP: "19000000" }
-        },
-        destinatario: {
-            nome: "Cliente Exemplo",
-            documento: "12345678901",
-            endereco: { xLgr: "Rua Destino", nro: "500", xBairro: "Bairro", cMun: "3541406", xMun: "Presidente Prudente", UF: "SP", CEP: "19000000" }
-        },
-        itens: [
-            { id: 1, nome: "Cebola Amarela", quantidade: 10, valor: 5.50 }
-        ]
-    };
-
+async function deleteTransaction(id) {
+    if (!confirm('Excluir este registro?')) return;
     try {
-        const response = await fetchWithAuth('/api/nfe/gerar', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-
+        const response = await fetchWithAuth(`/api/movimentacoes/${id}`, { method: 'DELETE' });
         if (response && response.ok) {
-            showSuccess('NF-e gerada com sucesso!');
-            closeNFeModal();
-            loadNFe();
+            showSuccess('Registro excluído!');
+            loadDataFromAPI();
+            if (currentSectionId === 'estoque') renderFullTable();
         }
     } catch (error) {
-        showError('Erro ao gerar NF-e.');
-    } finally {
-        hideLoading(btn);
+        showError('Erro ao excluir.');
     }
 }
 
-// --- GESTÃO DE PRODUTOS ---
-async function saveProduto(event) {
-    event.preventDefault();
-    const btn = event.submitter;
-    showLoading(btn);
-
-    const id = document.getElementById('prod-id').value;
-    const data = {
-        nome: document.getElementById('prod-nome').value,
-        ncm: document.getElementById('prod-ncm').value,
-        preco_venda: parseFloat(document.getElementById('prod-preco').value),
-        estoque_minimo: parseInt(document.getElementById('prod-min').value)
-    };
-
-    try {
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `/api/produtos/${id}` : '/api/produtos';
-        const response = await fetchWithAuth(url, {
-            method,
-            body: JSON.stringify(data)
-        });
-
-        if (response && response.ok) {
-            showSuccess('Produto salvo com sucesso!');
-            closeProdutoModal();
-            loadCadastros();
-        }
-    } catch (error) {
-        showError('Erro ao salvar produto.');
-    } finally {
-        hideLoading(btn);
-    }
-}
-
-function openProdutoModal(data = null) {
-    const modal = document.getElementById('modal-produto');
-    if (!modal) return;
-    
-    document.getElementById('prod-id').value = data ? data.id : '';
-    document.getElementById('prod-nome').value = data ? data.nome : '';
-    document.getElementById('prod-ncm').value = data ? data.ncm : '';
-    document.getElementById('prod-preco').value = data ? data.preco_venda : '';
-    document.getElementById('prod-min').value = data ? data.estoque_minimo : '100';
-    
-    modal.classList.add('active');
-}
-
-async function deleteProduto(id) {
-    if (!confirm('Excluir este produto?')) return;
-    try {
-        const response = await fetchWithAuth(`/api/produtos/${id}`, { method: 'DELETE' });
-        if (response && response.ok) {
-            showSuccess('Produto excluído!');
-            loadCadastros();
-        }
-    } catch (error) {
-        showError('Erro ao excluir produto.');
-    }
-}
-
-function editProduto(item) {
-    openProdutoModal(item);
-}
-
-function editCadastro(id, type) {
-    // Buscar dados localmente ou via API
-    fetchWithAuth(`/api/${type === 'cliente' ? 'clientes' : 'fornecedores'}`)
-        .then(res => res.json())
-        .then(data => {
-            const item = data.find(i => i.id === id);
-            if (item) openEditModal(type, item);
-        });
-}
-
-// --- GESTÃO FINANCEIRA ---
+// --- FINANCEIRO ---
 function updateFinanceKPIs() {
     const totalIn = appData.transactions
         .filter(t => t.type === 'saida')
@@ -816,20 +701,46 @@ async function saveDespesa(event) {
         });
 
         if (response && response.ok) {
-            showSuccess('Despesa lançada com sucesso!');
+            showSuccess('Despesa lançada!');
             event.target.reset();
             initDateInputs();
             loadDataFromAPI();
             if (currentSectionId === 'financeiro') updateFinanceKPIs();
         }
     } catch (error) {
-        showError('Erro ao lançar despesa.');
+        showError('Erro ao lançar.');
     } finally {
         hideLoading(btn);
     }
 }
 
-// --- GESTÃO DE USUÁRIOS E CONFIGS ---
+// --- NF-E ---
+async function loadNFe() {
+    try {
+        const response = await fetchWithAuth('/api/nfe');
+        if (response) {
+            const data = await response.json();
+            const tbody = document.getElementById('nfe-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                tbody.innerHTML += `<tr>
+                    <td>${new Date(item.data_emissao).toLocaleString('pt-BR')}</td>
+                    <td>#${item.venda_id}</td>
+                    <td style="font-family: monospace; font-size: 0.8rem;">${item.chave_acesso}</td>
+                    <td><span class="badge ${item.status === 'autorizada' ? 'badge-in' : 'badge-out'}">${item.status.toUpperCase()}</span></td>
+                    <td style="text-align: right;">
+                        <button onclick="alert('Funcionalidade de download em breve')" style="background:none; border:none; cursor:pointer; color:var(--info);"><i class="fas fa-file-pdf"></i></button>
+                    </td>
+                </tr>`;
+            });
+        }
+    } catch (error) {
+        console.error("Erro ao carregar NF-e:", error);
+    }
+}
+
+// --- CONFIGURAÇÕES ---
 async function loadUsers() {
     try {
         const response = await fetchWithAuth('/api/usuarios');
@@ -841,9 +752,9 @@ async function loadUsers() {
             users.forEach(u => {
                 tbody.innerHTML += `<tr>
                     <td><strong>${u.username}</strong></td>
-                    <td><span class="badge ${u.role === 'admin' ? 'badge-in' : 'badge-bra'}">${u.role.toUpperCase()}</span></td>
+                    <td><span class="badge ${u.role === 'admin' ? 'badge-in' : 'badge-out'}">${u.role.toUpperCase()}</span></td>
                     <td style="text-align: right;">
-                        <button onclick="deleteUser(${u.id})" class="btn-icon text-danger"><i class="fas fa-trash"></i></button>
+                        <button onclick="deleteUser(${u.id})" style="background:none; border:none; cursor:pointer; color:var(--danger);"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>`;
             });
@@ -862,7 +773,7 @@ async function deleteUser(id) {
             loadUsers();
         }
     } catch (error) {
-        showError('Erro ao excluir usuário.');
+        showError('Erro ao excluir.');
     }
 }
 
@@ -874,23 +785,35 @@ function loadConfigs() {
 
 function updateNFeModo(modo) {
     localStorage.setItem('mm_nfe_modo', modo);
-    showSuccess(`Ambiente alterado para ${modo.toUpperCase()}`);
+    showSuccess(`Ambiente: ${modo.toUpperCase()}`);
 }
 
 async function resetSystem() {
-    if (!confirm('AVISO CRÍTICO: Isso apagará TODOS os dados do sistema permanentemente. Deseja continuar?')) return;
-    const pass = prompt('Digite a senha de administrador para confirmar:');
-    if (pass === 'admin') { // Mock de confirmação
+    if (!confirm('AVISO: Isso apagará TODOS os dados. Deseja continuar?')) return;
+    const pass = prompt('Digite "admin" para confirmar:');
+    if (pass === 'admin') {
         try {
-            const response = await fetchWithAuth('/api/reset', { method: 'POST' });
+            const response = await fetchWithAuth('/api/reset', { method: 'DELETE' });
             if (response && response.ok) {
-                showSuccess('Sistema resetado com sucesso!');
+                showSuccess('Sistema resetado!');
                 location.reload();
             }
         } catch (error) {
-            showError('Erro ao resetar sistema.');
+            showError('Erro ao resetar.');
         }
-    } else {
-        showError('Senha incorreta.');
     }
+}
+
+function editProduto(item) {
+    // Stub para edição de produto
+    alert('Edição de produto em desenvolvimento.');
+}
+
+function editCadastro(id, type) {
+    fetchWithAuth(`/api/${type === 'cliente' ? 'clientes' : 'fornecedores'}`)
+        .then(res => res.json())
+        .then(data => {
+            const item = data.find(i => i.id === id);
+            if (item) openEditModal(type, item);
+        });
 }
