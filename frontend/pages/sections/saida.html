@@ -1,64 +1,49 @@
 <header class="top-bar">
-    <h2 class="page-title">Registrar Saída (Venda)</h2>
+    <div>
+        <h2 class="page-title">Registrar Saída (Venda)</h2>
+        <p style="color: var(--text-muted);">Selecione o produto abaixo para preencher rapidamente.</p>
+    </div>
 </header>
 
-<div class="panel">
-    <div class="panel-header" style="background: #f8fafc;">
-        <span style="font-weight: 600; color: var(--text-muted);"><i class="fas fa-info-circle"></i> Informe os dados da venda</span>
+<div class="panel" style="padding: 24px;">
+    <h4 style="margin-bottom: 20px; font-weight: 700;">Vitrine de Produtos</h4>
+    <div id="product-showcase" class="product-grid">
+        <!-- Injetado via JS -->
     </div>
-    <form onsubmit="saveExit(event)" class="form-grid">
-        <div class="form-group span-2">
-            <label>Cliente / Destino</label>
-            <div class="input-group">
-                <input type="text" id="exit-desc" placeholder="Ex: Supermercado Central ou Nome do Cliente" required>
-                <button type="button" class="btn-search" onclick="openSelectionModal('cliente')" title="Buscar Cliente">
-                    <i class="fas fa-search"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Tipo de Cebola</label>
-            <select id="exit-product">
-                <option value="Amarela">Amarela (Padrão)</option>
-                <option value="Roxa">Roxa</option>
-                <option value="Branca">Branca</option>
-                <option value="Miúda">Miúda</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>Quantidade (Caixas)</label>
-            <input type="number" id="exit-qty" placeholder="0" required min="1">
-        </div>
-
-        <div class="form-group">
-            <label>Valor Total (R$)</label>
-            <div class="input-group">
-                <span style="padding: 10px; background: #f1f5f9; border: 1px solid var(--border); border-right: none; border-radius: 10px 0 0 10px; font-weight: 600;">R$</span>
-                <input type="number" step="0.01" id="exit-value" placeholder="0.00" required style="border-radius: 0 10px 10px 0;">
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Data da Saída</label>
-            <input type="date" id="exit-date" required>
-        </div>
-
-        <div class="form-group span-2" style="margin-top: 12px;">
-            <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem; border-radius: 12px; background: var(--success);">
-                <i class="fas fa-check-circle"></i> FINALIZAR VENDA
-            </button>
-        </div>
-    </form>
 </div>
 
 <div class="panel">
     <div class="panel-header">
-        <h4 style="font-weight: 700;">Dicas de Preenchimento</h4>
+        <h4 style="font-weight: 700;"><i class="fas fa-file-invoice-dollar" style="color: var(--primary);"></i> Dados da Venda</h4>
     </div>
-    <div style="padding: 20px; color: var(--text-muted); font-size: 0.9rem; line-height: 1.6;">
-        <p><i class="fas fa-lightbulb" style="color: var(--accent);"></i> Utilize a <strong>lupa</strong> para buscar clientes já cadastrados no sistema.</p>
-        <p><i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i> Certifique-se de que a quantidade em estoque é suficiente antes de finalizar.</p>
-    </div>
+    <form onsubmit="saveSaida(event)" class="form-grid">
+        <div class="form-group span-2">
+            <label>Cliente / Destino</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="exit-desc" placeholder="Ex: Supermercado Central ou Nome do Cliente" style="flex: 1;" required>
+                <button type="button" class="btn-primary" onclick="openSelectionModal(\'cliente\')" style="padding: 12px;"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Produto Selecionado</label>
+            <input type="text" id="exit-product" readonly style="background: #f1f5f9; font-weight: 700; color: var(--primary);">
+        </div>
+        <div class="form-group">
+            <label>Quantidade (Caixas)</label>
+            <input type="number" id="exit-qty" placeholder="0" required>
+        </div>
+        <div class="form-group">
+            <label>Valor Total (R$)</label>
+            <input type="number" step="0.01" id="exit-value" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+            <label>Data da Saída</label>
+            <input type="date" id="exit-date" required>
+        </div>
+        <div class="form-group span-2" style="margin-top: 10px;">
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">
+                <i class="fas fa-check-circle"></i> FINALIZAR VENDA E GERAR NOTA
+            </button>
+        </div>
+    </form>
 </div>
