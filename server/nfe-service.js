@@ -101,7 +101,7 @@ class NFeService {
                         CNPJ: emit.cnpj,
                         xNome: emit.xNome,
                         xFant: emit.xFant,
-                        enderEmit: emit.enderEmit,
+                        enderEmit: typeof emit.enderEmit === 'string' ? JSON.parse(emit.enderEmit) : emit.enderEmit,
                         IE: emit.ie,
                         CRT: emit.crt
                     },
@@ -111,7 +111,7 @@ class NFeService {
                         xNome: this.isProduction
                             ? dest.xNome
                             : 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
-                        enderDest: dest.enderDest,
+                        enderDest: typeof dest.enderDest === 'string' ? JSON.parse(dest.enderDest) : dest.enderDest,
                         indIEDest: dest.indIEDest,
                         IE: dest.ie || undefined,
                         email: dest.email || undefined

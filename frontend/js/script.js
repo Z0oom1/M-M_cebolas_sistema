@@ -664,6 +664,19 @@ async function handleGerarNFe(e) {
             endereco: '{"xLgr":"Endereço não cadastrado","nro":"SN","xBairro":"Bairro","cMun":"3541406","xMun":"Presidente Prudente","UF":"SP","CEP":"19000000"}'
         };
 
+        let emitEndereco, destEndereco;
+        try {
+            emitEndereco = JSON.parse(document.getElementById('nfe-emit-endereco').value);
+        } catch(e) {
+            emitEndereco = { xLgr: "Rua das Cebolas", nro: "100", xBairro: "Centro", cMun: "3541406", xMun: "Presidente Prudente", UF: "SP", CEP: "19000000" };
+        }
+
+        try {
+            destEndereco = typeof cliente.endereco === 'string' ? JSON.parse(cliente.endereco) : cliente.endereco;
+        } catch(e) {
+            destEndereco = { xLgr: "Endereço não cadastrado", nro: "SN", xBairro: "Bairro", cMun: "3541406", xMun: "Presidente Prudente", UF: "SP", CEP: "19000000" };
+        }
+
         const nfeData = {
             venda_id: venda.id,
             emitente: { 
@@ -671,14 +684,14 @@ async function handleGerarNFe(e) {
                 nome: document.getElementById('nfe-emit-nome').value, 
                 fantasia: document.getElementById('nfe-emit-fantasia').value, 
                 ie: document.getElementById('nfe-emit-ie').value,
-                endereco: JSON.parse(document.getElementById('nfe-emit-endereco').value)
+                endereco: emitEndereco
             },
             destinatario: { 
                 nome: cliente.nome,
                 documento: cliente.documento.replace(/\D/g, ''), 
                 ie: cliente.ie ? cliente.ie.replace(/\D/g, '') : '', 
                 email: cliente.email,
-                endereco: typeof cliente.endereco === 'string' ? JSON.parse(cliente.endereco) : cliente.endereco
+                endereco: destEndereco
             },
             itens: [{ 
                 id: '001',

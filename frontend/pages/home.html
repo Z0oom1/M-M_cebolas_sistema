@@ -61,16 +61,16 @@
     </div>
 
     <nav class="sidebar" id="sidebar">
-        <div class="logo-area">
-            <img src="../Imgs/Logo_M&M_Cebolas.png" alt="M&M Cebolas Logo">
-            <h4>M&M <span>CEBOLAS</span></h4>
+        <div class="logo-area" style="padding: 40px 24px;">
+            <img src="../Imgs/Logo_M&M_Cebolas.png" alt="M&M Cebolas Logo" style="width: 90px; height: 90px; margin-bottom: 16px;">
+            <h4 style="font-size: 1.2rem; letter-spacing: 1px;">M&M <span style="color: var(--accent);">CEBOLAS</span></h4>
         </div>
         
-        <div class="user-profile">
-            <div class="avatar">U</div>
+        <div class="user-profile" style="margin: 0 20px 20px 20px; background: rgba(255,255,255,0.1); border: none;">
+            <div class="avatar" style="background: var(--accent); font-weight: 800;">U</div>
             <div class="user-info">
-                <span id="user-name-display">Usuário</span>
-                <small id="user-role-display">Administrador</small>
+                <span id="user-name-display" style="font-weight: 700; font-size: 0.95rem;">Usuário</span>
+                <small id="user-role-display" style="opacity: 0.8; font-size: 0.75rem;">Administrador</small>
             </div>
         </div>
 
@@ -143,9 +143,9 @@
                     <label>Endereço (JSON ou Texto)</label>
                     <input type="text" id="edit-endereco" placeholder='{"xLgr":"Rua...","nro":"123",...}'>
                 </div>
-                <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Cadastro</button>
+                <div class="form-group span-2" style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-top: 20px;">
+                    <button type="button" class="btn-danger" onclick="closeEditModal()" style="padding: 14px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="padding: 14px;">Salvar Cadastro</button>
                 </div>
             </form>
         </div>
@@ -173,9 +173,9 @@
                     <label>Estoque Mínimo</label>
                     <input type="number" id="prod-min" value="100">
                 </div>
-                <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button type="button" class="btn-danger" onclick="closeProdutoModal()" style="flex: 1;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Produto</button>
+                <div class="form-group span-2" style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-top: 20px;">
+                    <button type="button" class="btn-danger" onclick="closeProdutoModal()" style="padding: 14px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="padding: 14px;">Salvar Produto</button>
                 </div>
             </form>
         </div>
@@ -222,9 +222,9 @@
                 <input type="hidden" id="nfe-emit-ie" value="123456789">
                 <input type="hidden" id="nfe-emit-endereco" value='{"xLgr":"Rua das Cebolas","nro":"100","xBairro":"Centro","cMun":"3541406","xMun":"Presidente Prudente","UF":"SP","CEP":"19000000"}'>
 
-                <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button type="button" class="btn-danger" onclick="closeNFeModal()" style="flex: 1;">Cancelar</button>
-                    <button type="submit" id="btn-emitir-nfe" class="btn-primary" style="flex: 2;">
+                <div class="form-group span-2" style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-top: 20px;">
+                    <button type="button" class="btn-danger" onclick="closeNFeModal()" style="padding: 14px;">Cancelar</button>
+                    <button type="submit" id="btn-emitir-nfe" class="btn-primary" style="padding: 14px;">
                         <i class="fas fa-file-export"></i> Transmitir NF-e
                     </button>
                 </div>

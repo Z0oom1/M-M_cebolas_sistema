@@ -292,7 +292,9 @@ app.post('/api/nfe/gerar', async (req, res) => {
     }
 
     try {
+        console.log("[API] Iniciando geração de NF-e para venda:", venda_id);
         if (!nfeService.certInfo) {
+            console.error("[API] Erro: Certificado não carregado.");
             throw new Error("Certificado digital não configurado ou inválido.");
         }
         const agora = new Date();
@@ -337,10 +339,10 @@ app.post('/api/nfe/gerar', async (req, res) => {
                 crt: '1' // Simples Nacional
             },
             dest: {
-                cnpj: destinatario.documento.length > 11 ? destinatario.documento.replace(/\D/g, '') : undefined,
-                cpf: destinatario.documento.length <= 11 ? destinatario.documento.replace(/\D/g, '') : undefined,
+                cnpj: (destinatario.documento && destinatario.documento.length > 11) ? destinatario.documento.replace(/\D/g, '') : undefined,
+                cpf: (destinatario.documento && destinatario.documento.length <= 11) ? destinatario.documento.replace(/\D/g, '') : undefined,
                 xNome: destinatario.nome,
-                enderDest: destinatario.endereco,
+                enderDest: typeof destinatario.endereco === 'string' ? JSON.parse(destinatario.endereco) : destinatario.endereco,
                 indIEDest: destinatario.ie ? '1' : '9',
                 ie: destinatario.ie ? destinatario.ie.replace(/\D/g, '') : undefined,
                 email: destinatario.email
@@ -382,7 +384,9 @@ app.post('/api/nfe/gerar', async (req, res) => {
             infAdic: { infCpl: 'Documento emitido por ME ou EPP optante pelo Simples Nacional.' }
         };
 
+        console.log("[API] Gerando XML...");
         const xml = nfeService.createNFeXML(dadosNFe);
+        console.log("[API] XML gerado com sucesso. Salvando no banco...");
         
         db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
             [venda_id, chave, xml, 'pendente', agora.toISOString()],
