@@ -1,0 +1,39 @@
+<header class="top-bar"><h2 class="page-title">Cadastros do Sistema</h2></header>
+
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchTab('tab-clientes')">Clientes</button>
+        <button class="tab-btn" onclick="switchTab('tab-fornecedores')">Fornecedores</button>
+        <button class="tab-btn" onclick="switchTab('tab-produtos')">Produtos</button>
+    </div>
+
+    <div id="tab-clientes" class="tab-content active">
+        <div class="panel">
+            <div class="panel-header">
+                <h4>Lista de Clientes</h4>
+                <button class="btn-primary btn-sm" onclick="openEditModal('cliente')"><i class="fas fa-plus"></i> Novo Cliente</button>
+            </div>
+            <div id="list-clientes" class="list-container"></div>
+        </div>
+    </div>
+
+    <div id="tab-fornecedores" class="tab-content">
+        <div class="panel">
+            <div class="panel-header">
+                <h4>Lista de Fornecedores</h4>
+                <button class="btn-primary btn-sm" onclick="openEditModal('fornecedor')"><i class="fas fa-plus"></i> Novo Fornecedor</button>
+            </div>
+            <div id="list-fornecedores" class="list-container"></div>
+        </div>
+    </div>
+
+    <div id="tab-produtos" class="tab-content">
+        <div class="panel">
+            <div class="panel-header">
+                <h4>Catálogo de Produtos</h4>
+                <button class="btn-primary btn-sm" onclick="openProdutoModal()"><i class="fas fa-plus"></i> Novo Produto</button>
+            </div>
+            <div id="list-produtos" class="list-container"></div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,24 @@
+<header class="top-bar">
+    <h2 class="page-title">Notas Fiscais (NF-e)</h2>
+    <button class="btn-primary" onclick="openNFeModal()"><i class="fas fa-plus"></i> Emitir Nova NF-e</button>
+</header>
+
+<div class="panel">
+    <div class="panel-header">
+        <h4>Notas Emitidas</h4>
+    </div>
+    <div class="table-responsive">
+        <table class="table-compact">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>ID Venda</th>
+                    <th>Chave de Acesso</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="nfe-table-body"></tbody>
+        </table>
+    </div>
+</div>

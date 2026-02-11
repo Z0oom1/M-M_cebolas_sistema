@@ -1,0 +1,34 @@
+<header class="top-bar">
+    <h2 class="page-title">Estoque & Movimentações</h2>
+    <div style="display: flex; gap: 10px;">
+        <button class="btn-primary btn-sm" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Exportar</button>
+    </div>
+</header>
+
+<div class="panel">
+    <div class="panel-header">
+        <div style="display: flex; gap: 20px; align-items: center;">
+            <h4>Histórico Geral</h4>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="search-mov" placeholder="Filtrar por produto ou destino..." onkeyup="filterTable()">
+            </div>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table-compact" id="main-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Produto</th>
+                    <th>Origem/Destino</th>
+                    <th>Qtd</th>
+                    <th>Valor</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="full-table-body"></tbody>
+        </table>
+    </div>
+</div>

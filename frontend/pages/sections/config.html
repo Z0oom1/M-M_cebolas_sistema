@@ -1,0 +1,33 @@
+<header class="top-bar"><h2 class="page-title">Configurações do Sistema</h2></header>
+
+<div class="content-grid">
+    <div class="panel">
+        <div class="panel-header"><h4>Ambiente NF-e</h4></div>
+        <div class="form-panel">
+            <div class="config-group">
+                <label class="config-option">
+                    <input type="radio" name="nfe_modo" value="homologacao" onchange="updateNFeModo('homologacao')">
+                    <div>
+                        <strong>Homologação</strong>
+                        <p>Ambiente de testes (Sem valor fiscal)</p>
+                    </div>
+                </label>
+                <label class="config-option" style="margin-top: 12px;">
+                    <input type="radio" name="nfe_modo" value="producao" onchange="updateNFeModo('producao')">
+                    <div>
+                        <strong>Produção</strong>
+                        <p>Ambiente real (Com valor fiscal)</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h4>Usuários do Sistema</h4>
+            <button class="btn-primary btn-sm" onclick="openUserModal()"><i class="fas fa-user-plus"></i> Novo</button>
+        </div>
+        <div id="list-users" class="list-container"></div>
+    </div>
+</div>

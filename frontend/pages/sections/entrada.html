@@ -1,0 +1,40 @@
+<header class="top-bar"><h2 class="page-title">Registrar Entrada</h2></header>
+<div class="panel form-panel">
+    <form onsubmit="handleEntry(event)" class="form-grid">
+        <div class="form-group span-2">
+            <label>Fornecedor / Origem</label>
+            <div class="input-group">
+                <input type="text" id="entry-source" placeholder="Ex: Fazenda Santa Inês" required>
+                <button type="button" class="btn-search" onclick="openSelectionModal('fornecedor')" title="Buscar Fornecedor"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Tipo de Cebola</label>
+            <select id="entry-type">
+                <option value="Amarela">Amarela (Padrão)</option>
+                <option value="Roxa">Roxa</option>
+                <option value="Branca">Branca</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Quantidade (Caixas)</label>
+            <input type="number" id="entry-qty" placeholder="0" required>
+        </div>
+
+        <div class="form-group">
+            <label>Valor Total (R$)</label>
+            <input type="number" step="0.01" id="entry-value" placeholder="0,00" required>
+        </div>
+
+        <div class="form-group">
+            <label>Data da Entrada</label>
+            <input type="date" id="entry-date" required>
+        </div>
+
+        <div class="form-group span-2" style="margin-top: 10px;">
+            <button type="submit" class="btn-primary" style="width: 100%;"><i class="fas fa-save"></i> Confirmar Entrada</button>
+        </div>
+    </form>
+</div>

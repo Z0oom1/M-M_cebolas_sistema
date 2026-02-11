@@ -6,7 +6,7 @@
     <title>Sistema M&M Cebolas</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <link rel="stylesheet" href="../css/estilo_geral.css">
@@ -18,10 +18,8 @@
             70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
-        /* Ajustes Específicos para Layout com Barra Fixa */
         body { margin: 0; padding: 0; overflow: hidden; background-color: #f4f4f9; }
 
-        /* BARRA FIXA */
         #titlebar {
             display: flex; align-items: center; background-color: #202020;
             height: 38px; padding: 0 15px; -webkit-app-region: drag;
@@ -29,12 +27,10 @@
             z-index: 99999; box-sizing: border-box;
         }
 
-        /* Espaçamento para o conteúdo não ficar embaixo da barra */
         .sidebar { top: 38px !important; height: calc(100vh - 38px) !important; }
         .main-content { margin-top: 38px !important; height: calc(100vh - 38px); overflow-y: auto; }
         #loading-screen { top: 38px !important; height: calc(100vh - 38px) !important; }
 
-        /* Estilo dos Botões da Janela */
         .window-controls { display: flex; gap: 8px; -webkit-app-region: no-drag; }
         .control-btn { width: 12px; height: 12px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.1s; }
         .close-btn { background-color: #FF5F56; border: 1px solid #E0443E; }
@@ -101,7 +97,7 @@
         </ul>
     </nav>
 
-    <main class="main-content">
+    <main class="main-content" id="main-content-area">
         <div class="header-mobile">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <img src="../Imgs/Logo_M&M_Cebolas.png" alt="Logo" style="height: 30px;">
@@ -110,534 +106,177 @@
             <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor: pointer; font-size: 1.5rem;"></i>
         </div>
         
-        <section id="dashboard" class="active">
-            <header class="top-bar">
-                <div>
-                    <h2 class="page-title">Dashboard</h2>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Bem-vindo ao painel de controle da M&M Cebolas.</p>
-                </div>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <div class="status-indicator" style="display: flex; align-items: center; gap: 8px; background: #f0fdf4; padding: 8px 16px; border-radius: 100px; border: 1px solid #dcfce7; color: #166534; font-size: 0.75rem; font-weight: 700;">
-                        <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; animation: pulse 2s infinite;"></span>
-                        SISTEMA ONLINE
-                    </div>
-                    <div class="date-display">
-                        <i class="far fa-calendar-alt"></i> <span id="current-date">--/--/----</span>
-                    </div>
-                </div>
-            </header>
-            
-            <div class="kpi-grid">
-                <div class="kpi-card main-stock">
-                    <div class="kpi-icon stock"><i class="fas fa-layer-group"></i></div>
-                    <div style="flex: 1;">
-                        <small>Estoque Total</small>
-                        <h3 id="dash-stock">0 Cx</h3>
-                        <div id="stock-breakdown" class="mini-stock-bar"></div>
-                    </div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon money"><i class="fas fa-dollar-sign"></i></div>
-                    <div><small>Receita (Mês)</small><h3 id="dash-revenue" class="text-success">R$ 0,00</h3></div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon expense"><i class="fas fa-file-invoice"></i></div>
-                    <div><small>Despesas</small><h3 id="dash-expenses" class="text-danger">R$ 0,00</h3></div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon profit"><i class="fas fa-coins"></i></div>
-                    <div><small>Lucro Líquido</small><h3 id="dash-profit">R$ 0,00</h3></div>
-                </div>
-            </div>
-
-            <div class="content-grid">
-                <div class="panel chart-panel">
-                    <div class="panel-header"><h4>Balanço Financeiro</h4></div>
-                    <div style="height: 250px; padding: 10px;"><canvas id="financeChart"></canvas></div>
-                </div>
-                <div class="panel chart-panel">
-                    <div class="panel-header"><h4>Distribuição de Estoque</h4></div>
-                    <div style="height: 250px; display:flex; justify-content:center; padding: 10px;"><canvas id="stockChart"></canvas></div>
-                </div>
-            </div>
-
-            <div class="panel" style="margin-top: 20px;">
-                <div class="panel-header">
-                    <h4>Últimas Movimentações</h4>
-                    <button class="btn-sm" onclick="showSection('estoque')">Ver tudo</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="table-compact">
-                        <thead><tr><th>Tipo</th><th>Produto</th><th>Origem/Destino</th><th>Qtd</th><th>Valor</th><th>Data</th></tr></thead>
-                        <tbody id="recent-table-body"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <section id="entrada">
-            <header class="top-bar"><h2 class="page-title">Registrar Entrada</h2></header>
-            <div class="panel form-panel">
-                <form onsubmit="handleEntry(event)" class="form-grid">
-                    <div class="form-group span-2">
-                        <label>Fornecedor / Origem</label>
-                        <div class="input-group">
-                            <input type="text" id="entry-source" placeholder="Ex: Fazenda Santa Inês" required>
-                            <button type="button" class="btn-search" onclick="openSelectionModal('fornecedor')" title="Buscar Fornecedor"><i class="fas fa-search"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Tipo de Cebola</label>
-                        <select id="entry-type">
-                            <option value="Amarela">Amarela (Padrão)</option>
-                            <option value="Roxa">Roxa</option>
-                            <option value="Branca">Branca</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Qtd (Caixas)</label>
-                        <input type="number" id="entry-qty" required min="1" placeholder="0">
-                    </div>
-
-                    <div class="form-group span-2 calc-options">
-                        <label style="margin-bottom:8px; display:block; font-weight:600;">Modo de Lançamento:</label>
-                        <div style="display: flex; gap: 20px;">
-                            <label class="radio-label"><input type="radio" name="entry-calc-mode" value="total" checked> Valor Total (Lote)</label>
-                            <label class="radio-label"><input type="radio" name="entry-calc-mode" value="unit"> Valor Unitário (por caixa)</label>
-                        </div>
-                    </div>
-
-                    <div class="form-group span-2">
-                        <label>Valor (R$)</label>
-                        <input type="number" id="entry-cost" step="0.01" required placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Data</label>
-                        <input type="date" id="entry-date" required>
-                    </div>
-                    <div class="form-group span-2" style="margin-top: 10px;">
-                        <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Registrar Entrada</button>
-                    </div>
-                </form>
-            </div>
-        </section>
-
-        <section id="saida">
-            <header class="top-bar"><h2 class="page-title">Registrar Saída</h2></header>
-            <div class="panel form-panel">
-                <form onsubmit="handleExit(event)" class="form-grid">
-                    <div class="form-group span-2">
-                        <label>Cliente / Comprador</label>
-                        <div class="input-group">
-                            <input type="text" id="exit-client" placeholder="Ex: Mercado Central" required>
-                            <button type="button" class="btn-search" onclick="openSelectionModal('cliente')" title="Buscar Cliente"><i class="fas fa-search"></i></button>
-                        </div>
-                    </div>
-
-                     <div class="form-group">
-                        <label>Tipo Vendido</label>
-                        <select id="exit-type">
-                            <option value="Amarela">Amarela</option>
-                            <option value="Roxa">Roxa</option>
-                            <option value="Branca">Branca</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Qtd (Caixas)</label>
-                        <input type="number" id="exit-qty" required min="1" placeholder="0">
-                    </div>
-                    <div class="form-group">
-                        <label>Valor Venda Total (R$)</label>
-                        <input type="number" id="exit-value" step="0.01" required placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Data</label>
-                        <input type="date" id="exit-date" required>
-                    </div>
-                    <div class="form-group span-2" style="margin-top: 10px;">
-                        <button type="submit" class="btn-primary btn-orange"><i class="fas fa-dollar-sign"></i> Finalizar Venda</button>
-                    </div>
-                </form>
-
-                <div style="margin-top: 25px; border-top: 1px solid var(--border); padding-top: 15px;">
-                    <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 10px; display: block;">
-                        <i class="fas fa-boxes"></i> Disponibilidade Atual (Clique para selecionar)
-                    </label>
-                    <div id="saida-stock-display" class="mini-stock-grid">
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="estoque">
-            <header class="top-bar"><h2 class="page-title">Estoque Detalhado</h2></header>
-            <p class="helper-text">
-                <i class="fas fa-info-circle"></i> Clique em um item para ver o <b>Histórico de Entradas</b> (Fornecedores).
-            </p>
-            <div id="stock-grid" class="grid-stock"></div>
-        </section>
-
-        <section id="cadastro">
-            <header class="top-bar"><h2 class="page-title">Gestão de Cadastros</h2></header>
-            
-            <div class="content-grid">
-                <div class="panel" style="padding: 20px; grid-column: span 2;">
-                    <div class="panel-header" style="margin-bottom: 15px;">
-                        <h5><i class="fas fa-box"></i> Produtos (Catálogo)</h5>
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <button class="btn-primary" onclick="openProdutoModal()" style="width: 100%;">
-                            <i class="fas fa-plus"></i> Novo Produto
-                        </button>
-                    </div>
-                    <div class="list-header" style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; margin-bottom:10px; font-size:0.8rem; color:#888; padding: 0 10px;">
-                        <span>NOME</span>
-                        <span>NCM</span>
-                        <span>PREÇO</span>
-                        <span style="text-align:right;">AÇÕES</span>
-                    </div>
-                    <div class="list-container" id="list-produtos"></div>
-                </div>
-
-                <div class="panel" style="padding: 20px;">
-                    <div class="panel-header" style="margin-bottom: 15px;">
-                        <h5><i class="fas fa-truck"></i> Fornecedores</h5>
-                    </div>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <button class="btn-primary" onclick="openCadastroModal('fornecedor')" style="width: 100%;">
-                            <i class="fas fa-plus"></i> Novo Fornecedor
-                        </button>
-                    </div>
-        
-                    <div class="list-header" style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.8rem; color:#888;">
-                        <span>NOME</span>
-                        <span>AÇÕES</span>
-                    </div>
-                    <div class="list-container" id="list-fornecedores">
-                        </div>
-                </div>
-        
-                <div class="panel" style="padding: 20px;">
-                    <div class="panel-header" style="margin-bottom: 15px;">
-                        <h5><i class="fas fa-users"></i> Clientes</h5>
-                    </div>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <button class="btn-primary" onclick="openCadastroModal('cliente')" style="width: 100%;">
-                            <i class="fas fa-plus"></i> Novo Cliente
-                        </button>
-                    </div>
-        
-                    <div class="list-header" style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.8rem; color:#888;">
-                        <span>NOME</span>
-                        <span>AÇÕES</span>
-                    </div>
-                    <div class="list-container" id="list-clientes">
-                        </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="nfe">
-            <header class="top-bar">
-                <h2 class="page-title">Notas Fiscais (NF-e)</h2>
-                <button class="btn-primary" onclick="openEmissaoModal()"><i class="fas fa-plus"></i> Nova NF-e</button>
-            </header>
-            <div class="panel">
-                <div class="panel-header">
-                    <h4>Histórico de Emissões</h4>
-                    <button class="btn-sm" onclick="loadNFe()"><i class="fas fa-sync"></i> Atualizar</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="table-compact">
-                        <thead><tr><th>Data</th><th>Chave de Acesso</th><th>Status</th><th>Ações</th></tr></thead>
-                        <tbody id="nfe-table-body"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <section id="financeiro">
-            <header class="top-bar"><h2 class="page-title">Financeiro</h2></header>
-            <div class="content-grid">
-                <div class="panel">
-                    <div class="panel-header"><h5><i class="fas fa-home"></i> Imposto Fixo (Mensal)</h5></div>
-                    <form onsubmit="updateTax(event)" style="padding:20px; display:flex; gap:10px;">
-                        <input type="number" id="tax-value" placeholder="R$ 0,00" class="input-sm">
-                        <button class="btn-primary" style="width: auto;">Salvar</button>
-                    </form>
-                </div>
-                <div class="panel">
-                    <div class="panel-header"><h5><i class="fas fa-receipt"></i> Lançar Despesa Extra</h5></div>
-                    <form onsubmit="handleExpense(event)" style="padding:20px; display:flex; gap:10px; flex-wrap:wrap;">
-                        <input type="text" id="exp-desc" placeholder="Motivo" class="input-sm" style="flex:2;">
-                        <input type="number" id="exp-val" placeholder="Valor" class="input-sm" style="flex:1;">
-                        <button class="btn-danger" style="width: auto;">Lançar</button>
-                    </form>
-                </div>
-            </div>
-            <div class="panel" style="margin-top:20px;">
-                <div class="panel-header">
-                    <h4>Histórico Financeiro</h4>
-                    <button class="btn-sm" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Exportar CSV</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="table-compact" id="financial-table">
-                         <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Entrada</th><th>Saída</th></tr></thead>
-                         <tbody id="financial-table-body"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <section id="config">
-            <header class="top-bar">
-                <div>
-                    <h2 class="page-title">Configurações do Sistema</h2>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Gerencie o comportamento do sistema e usuários.</p>
-                </div>
-            </header>
-
-            <div class="content-grid">
-                <!-- Configurações de NF-e -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h4><i class="fas fa-file-invoice-dollar"></i> Emissão de NF-e</h4>
-                    </div>
-                    <div style="padding: 24px;">
-                        <p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o ambiente de emissão das notas fiscais.</p>
-                        <div style="display: flex; flex-direction: column; gap: 15px;">
-                            <label class="config-option" style="display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: var(--transition);">
-                                <input type="radio" name="nfe_mode" value="homologacao" style="width: auto;" onchange="updateNFeMode('homologacao')">
-                                <div>
-                                    <strong style="display: block;">Modo Teste (Homologação)</strong>
-                                    <small style="color: var(--text-muted);">As notas não possuem valor fiscal e servem apenas para testes.</small>
-                                </div>
-                            </label>
-                            <label class="config-option" style="display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: var(--transition);">
-                                <input type="radio" name="nfe_mode" value="producao" style="width: auto;" onchange="updateNFeMode('producao')">
-                                <div>
-                                    <strong style="display: block; color: var(--danger);">Modo Sério (Produção)</strong>
-                                    <small style="color: var(--text-muted);">As notas possuem valor fiscal real perante a SEFAZ.</small>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gestão de Usuários -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h4><i class="fas fa-users"></i> Gestão de Contas</h4>
-                        <button class="btn-primary btn-sm" onclick="openUserModal()"><i class="fas fa-plus"></i> Novo</button>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table-compact">
-                            <thead>
-                                <tr>
-                                    <th>Usuário</th>
-                                    <th>Cargo</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="user-table-body">
-                                <!-- Usuários serão carregados aqui -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="panel" style="padding: 30px; margin-top: 24px;">
-                <h4 style="margin-bottom: 15px; color: var(--danger);">Zona de Perigo</h4>
-                <p style="margin-bottom: 20px; color: var(--text-muted);">Apagar todo o banco de dados. Irreversível.</p>
-                <button onclick="clearAllData()" class="btn-danger"><i class="fas fa-trash"></i> Resetar Fábrica</button>
-            </div>
-        </section>
+        <!-- O conteúdo será carregado dinamicamente aqui -->
+        <section id="content-section" class="active"></section>
     </main>
 
-    <div id="context-menu">
-        <div class="ctx-item" onclick="openEditModal()"><i class="fas fa-edit"></i> Editar</div>
-        <div class="ctx-item delete" onclick="deleteItem()"><i class="fas fa-trash-alt"></i> Excluir</div>
-    </div>
+    <!-- MODAIS (Mantidos no home.html por serem globais) -->
     
+    <!-- Modal de Cadastro (Cliente/Fornecedor) -->
     <div id="modal-edit" class="modal-overlay">
         <div class="edit-modal">
-            <h3 style="margin-bottom: 20px; color: var(--primary);"><i class="fas fa-pen-square"></i> Editar Registro</h3>
-            <form onsubmit="saveEdit(event)" class="form-grid" style="grid-template-columns: 1fr;">
+            <h3 id="modal-title" style="margin-bottom: 20px;">Novo Cadastro</h3>
+            <form onsubmit="saveCadastro(event)" class="form-grid">
                 <input type="hidden" id="edit-id">
-                <div class="form-group"><label>Descrição / Cliente</label><input type="text" id="edit-desc" required></div>
-                <div class="form-group"><label>Tipo de Produto</label><select id="edit-type"><option value="Amarela">Amarela</option><option value="Roxa">Roxa</option><option value="Branca">Branca</option></select></div>
-                <div class="form-group"><label>Quantidade</label><input type="number" id="edit-qty" required></div>
-                <div class="form-group" style="background: #f9fafb; padding: 10px; border-radius: 6px; border:1px solid #eee;">
-                    <label style="font-size:0.85rem; font-weight:600; margin-bottom:5px; display:block;">Recalcular Valor:</label>
-                     <div style="display: flex; gap: 15px; font-size: 0.9rem;">
-                        <label class="radio-label"><input type="radio" name="edit-calc-mode" value="total" checked> Manter Total</label>
-                        <label class="radio-label"><input type="radio" name="edit-calc-mode" value="unit"> Usar Unitário</label>
-                    </div>
-                </div>
-                <div class="form-group"><label>Valor (R$)</label><input type="number" id="edit-val" step="0.01" required></div>
-                <div class="form-group" style="display:flex; gap:15px; margin-top:15px;">
-                    <button type="button" class="btn-sm" onclick="closeEditModal()" style="flex:1; padding: 12px;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex:1;">Salvar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="modal-stock-details" class="modal-overlay">
-        <div class="edit-modal" style="max-width: 600px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 id="detail-title" style="color: var(--primary); font-size: 1.3rem;">Detalhes</h3>
-                <button onclick="closeStockDetails()" class="btn-sm" style="border:none; font-size:1.5rem; color:#666;">&times;</button>
-            </div>
-            <div class="detail-summary-card" id="detail-summary"></div>
-            <h5 style="margin: 20px 0 10px 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Histórico de Entradas</h5>
-            <div class="table-responsive" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
-                <table class="table-compact">
-                    <thead><tr><th>Data</th><th>Fornecedor</th><th>Qtd Original</th><th>Custo Unit.</th><th>Total</th></tr></thead>
-                    <tbody id="detail-table-body"></tbody>
-                </table>
-            </div>
-            <div style="margin-top: 20px; text-align: right;"><button onclick="closeStockDetails()" class="btn-primary" style="width: auto;">Fechar</button></div>
-        </div>
-    </div>
-
-    <div id="modal-selection" class="modal-overlay">
-        <div class="edit-modal" style="max-width: 400px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 id="selection-title" style="color: var(--primary);">Selecionar</h3>
-                <button onclick="closeSelectionModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
-            </div>
-            <input type="text" id="search-selection" placeholder="Filtrar..." onkeyup="filterSelectionList()" style="margin-bottom: 15px;">
-            <div id="selection-list" class="selection-list-container">
-                </div>
-        </div>
-    </div>
-
-    <div id="modal-emissao-nfe" class="modal-overlay">
-        <div class="edit-modal" style="max-width: 600px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="color: var(--primary);">Emitir Nova NF-e</h3>
-                <button onclick="closeEmissaoModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
-            </div>
-            <form onsubmit="emitirNFe(event)" class="form-grid">
+                <input type="hidden" id="edit-type">
                 <div class="form-group span-2">
-                    <label>Cliente</label>
-                    <div class="input-group">
-                        <input type="text" id="nfe-cliente-nome" placeholder="Selecione um cliente" readonly required>
-                        <input type="hidden" id="nfe-cliente-id">
-                        <button type="button" class="btn-search" onclick="openSelectionModal('cliente', 'nfe')"><i class="fas fa-search"></i></button>
-                    </div>
-                </div>
-                <div class="form-group span-2">
-                    <label>Produto</label>
-                    <div class="input-group">
-                        <input type="text" id="nfe-produto-nome" placeholder="Selecione um produto" readonly required>
-                        <input type="hidden" id="nfe-produto-id">
-                        <button type="button" class="btn-search" onclick="openSelectionModal('produto', 'nfe')"><i class="fas fa-search"></i></button>
-                    </div>
+                    <label>Nome / Razão Social</label>
+                    <input type="text" id="edit-nome" required>
                 </div>
                 <div class="form-group">
-                    <label>Quantidade (KG)</label>
-                    <input type="number" id="nfe-qtd" step="0.01" required>
+                    <label>CPF / CNPJ</label>
+                    <input type="text" id="edit-doc">
                 </div>
                 <div class="form-group">
-                    <label>Valor Unitário (R$)</label>
-                    <input type="number" id="nfe-valor" step="0.01" required>
+                    <label>Inscrição Estadual</label>
+                    <input type="text" id="edit-ie">
                 </div>
-                <div class="form-group span-2" style="display:flex; gap:15px; margin-top:15px;">
-                    <button type="button" class="btn-sm" onclick="closeEmissaoModal()" style="flex:1; padding: 12px;">Cancelar</button>
-                    <button type="submit" class="btn-primary" id="btn-emitir-nfe" style="flex:1;">Gerar e Assinar XML</button>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" id="edit-email">
+                </div>
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="text" id="edit-tel">
+                </div>
+                <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Cadastro</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div id="modal-cadastro" class="modal-overlay">
-        <div class="edit-modal" style="max-width: 500px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 id="cadastro-modal-title" style="color: var(--primary);">Novo Cadastro</h3>
-                <button onclick="closeCadastroModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
-            </div>
-            <form onsubmit="saveCadastro(event)" class="form-grid" style="grid-template-columns: 1fr;">
-                <input type="hidden" id="cadastro-id">
-                <input type="hidden" id="cadastro-type">
-                <div class="form-group"><label>Nome / Razão Social</label><input type="text" id="cad-nome" required></div>
-                <div class="form-group">
-                    <label>CNPJ / CPF</label>
-                    <div class="input-group">
-                        <input type="text" id="cad-documento" placeholder="Apenas números">
-                        <button type="button" class="btn-search" onclick="lookupDocumento()" title="Buscar Dados"><i class="fas fa-search"></i></button>
-                    </div>
-                </div>
-                <div class="form-group"><label>Inscrição Estadual</label><input type="text" id="cad-ie"></div>
-                <div class="form-group"><label>Email</label><input type="email" id="cad-email"></div>
-                <div class="form-group"><label>Telefone</label><input type="text" id="cad-telefone"></div>
-                <div class="form-group" style="display:flex; gap:15px; margin-top:15px;">
-                    <button type="button" class="btn-sm" onclick="closeCadastroModal()" style="flex:1; padding: 12px;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex:1;">Salvar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
+    <!-- Modal de Produto -->
     <div id="modal-produto" class="modal-overlay">
-        <div class="edit-modal" style="max-width: 500px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 id="produto-modal-title" style="color: var(--primary);">Novo Produto</h3>
-                <button onclick="closeProdutoModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
-            </div>
-            <form onsubmit="saveProduto(event)" class="form-grid" style="grid-template-columns: 1fr;">
+        <div class="edit-modal">
+            <h3 id="produto-modal-title" style="margin-bottom: 20px;">Novo Produto</h3>
+            <form onsubmit="saveProduto(event)" class="form-grid">
                 <input type="hidden" id="prod-id">
-                <div class="form-group"><label>Nome do Produto</label><input type="text" id="prod-nome" required placeholder="Ex: Cebola Amarela Especial"></div>
-                <div class="form-group"><label>NCM</label><input type="text" id="prod-ncm" placeholder="Ex: 0703.10.11"></div>
-                <div class="form-group"><label>Preço de Venda (R$)</label><input type="number" id="prod-preco" step="0.01" required placeholder="0.00"></div>
-                <div class="form-group"><label>Estoque Mínimo (Alerta)</label><input type="number" id="prod-min" value="100"></div>
-                <div class="form-group" style="display:flex; gap:15px; margin-top:15px;">
-                    <button type="button" class="btn-sm" onclick="closeProdutoModal()" style="flex:1; padding: 12px;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex:1;">Salvar</button>
+                <div class="form-group span-2">
+                    <label>Nome do Produto</label>
+                    <input type="text" id="prod-nome" required>
+                </div>
+                <div class="form-group">
+                    <label>NCM</label>
+                    <input type="text" id="prod-ncm">
+                </div>
+                <div class="form-group">
+                    <label>Preço de Venda (R$)</label>
+                    <input type="number" step="0.01" id="prod-preco" required>
+                </div>
+                <div class="form-group">
+                    <label>Estoque Mínimo</label>
+                    <input type="number" id="prod-min" value="100">
+                </div>
+                <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="button" class="btn-danger" onclick="closeProdutoModal()" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Produto</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div id="modal-usuario" class="modal-overlay">
-        <div class="edit-modal" style="max-width: 400px;">
+    <!-- Modal de Seleção (Lupa) -->
+    <div id="modal-selection" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 500px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="color: var(--primary);">Novo Usuário</h3>
-                <button onclick="closeUserModal()" class="btn-sm" style="border:none; font-size:1.5rem;">&times;</button>
+                <h3 id="selection-title">Selecionar</h3>
+                <button onclick="closeSelectionModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
-            <form onsubmit="saveUser(event)" class="form-grid" style="grid-template-columns: 1fr;">
-                <div class="form-group"><label>Nome de Usuário (Login)</label><input type="text" id="user-username" required></div>
-                <div class="form-group"><label>Nome Completo / Exibição</label><input type="text" id="user-label" required></div>
-                <div class="form-group"><label>Senha</label><input type="password" id="user-password" required></div>
-                <div class="form-group">
-                    <label>Cargo / Permissão</label>
-                    <select id="user-role">
-                        <option value="user">Funcionário (Padrão)</option>
-                        <option value="admin">Administrador (Acesso Total)</option>
+            <div class="search-box" style="margin-bottom: 15px; width: 100%;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="search-selection" placeholder="Pesquisar..." onkeyup="filterSelection()">
+            </div>
+            <div id="selection-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
+                <!-- Itens carregados via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de NF-e -->
+    <div id="modal-nfe" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 700px;">
+            <h3 style="margin-bottom: 20px;">Emitir Nota Fiscal Eletrônica</h3>
+            <form onsubmit="handleGerarNFe(event)" class="form-grid">
+                <div class="form-group span-2">
+                    <label>Selecione a Venda (Saída)</label>
+                    <select id="nfe-venda-id" required onchange="updateNFePreview()">
+                        <option value="">Selecione uma venda recente...</option>
                     </select>
                 </div>
-                <div class="form-group" style="display:flex; gap:15px; margin-top:15px;">
-                    <button type="button" class="btn-sm" onclick="closeUserModal()" style="flex:1; padding: 12px;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex:1;">Criar Conta</button>
+                
+                <div id="nfe-preview" class="panel" style="grid-column: span 2; padding: 15px; background: #f8fafc; display: none;">
+                    <h5 style="margin-bottom: 10px; color: var(--primary);">Resumo da Operação</h5>
+                    <div id="nfe-preview-content" style="font-size: 0.85rem; line-height: 1.6;"></div>
+                </div>
+
+                <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="button" class="btn-danger" onclick="closeNFeModal()" style="flex: 1;">Cancelar</button>
+                    <button type="submit" id="btn-emitir-nfe" class="btn-primary" style="flex: 2;">
+                        <i class="fas fa-file-export"></i> Transmitir NF-e
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div id="toast-container"></div>
+    <!-- Modal de Opções da NF-e -->
+    <div id="modal-nfe-options" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 400px; text-align: center;">
+            <h3 style="margin-bottom: 10px;">Opções da NF-e</h3>
+            <p id="nfe-options-info" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 25px;"></p>
+            
+            <div style="display: grid; gap: 12px;">
+                <button onclick="downloadNFePDF()" class="btn-primary" style="background: #e11d48;">
+                    <i class="fas fa-file-pdf"></i> Baixar PDF (DANFE)
+                </button>
+                <button onclick="downloadNFeXML()" class="btn-primary" style="background: #2563eb;">
+                    <i class="fas fa-file-code"></i> Baixar XML
+                </button>
+                <button onclick="openNFePDF()" class="btn-primary" style="background: #059669;">
+                    <i class="fas fa-external-link-alt"></i> Abrir no Navegador
+                </button>
+                <button onclick="closeNFeOptionsModal()" class="btn-danger" style="margin-top: 10px;">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Usuário -->
+    <div id="modal-user" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 400px;">
+            <h3 id="user-modal-title" style="margin-bottom: 20px;">Novo Usuário</h3>
+            <form onsubmit="saveUser(event)" class="form-grid">
+                <input type="hidden" id="user-id">
+                <div class="form-group span-2">
+                    <label>Nome de Usuário</label>
+                    <input type="text" id="user-username" required>
+                </div>
+                <div class="form-group span-2">
+                    <label>Senha</label>
+                    <input type="password" id="user-password" required>
+                </div>
+                <div class="form-group">
+                    <label>Cargo/Label</label>
+                    <input type="text" id="user-label" placeholder="Ex: Gerente">
+                </div>
+                <div class="form-group">
+                    <label>Nível de Acesso</label>
+                    <select id="user-role">
+                        <option value="staff">Staff (Operacional)</option>
+                        <option value="admin">Admin (Total)</option>
+                    </select>
+                </div>
+                <div class="form-group span-2" style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="button" class="btn-danger" onclick="closeUserModal()" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Usuário</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script src="../js/script.js"></script>
-
-    <script>
-        const { ipcRenderer } = require('electron');
-        document.getElementById('minBtn').addEventListener('click', () => ipcRenderer.send('minimize-app'));
-        document.getElementById('maxBtn').addEventListener('click', () => ipcRenderer.send('maximize-app'));
-        document.getElementById('closeBtn').addEventListener('click', () => ipcRenderer.send('close-app'));
-    </script>
 </body>
 </html>
