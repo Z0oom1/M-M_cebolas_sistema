@@ -61,11 +61,15 @@ async function fetchWithAuth(url, options = {}) {
     return response;
 }
 
+// --- CONFIGURAÇÃO DE REDE ---
+const isElectron = window.location.protocol === 'file:';
+const API_URL = isElectron ? 'http://localhost:3000' : '';
+
 async function loadDataFromAPI() {
     try {
         const [resMov, resProd] = await Promise.all([
-            fetchWithAuth('/api/movimentacoes'),
-            fetchWithAuth('/api/produtos')
+            fetchWithAuth(`${API_URL}/api/movimentacoes`),
+            fetchWithAuth(`${API_URL}/api/produtos`)
         ]);
 
         if (resMov) appData.transactions = await resMov.json();
@@ -167,7 +171,7 @@ async function saveProduto(event) {
     };
 
     const method = id ? 'PUT' : 'POST';
-    const url = id ? `/api/produtos/${id}` : '/api/produtos';
+    const url = id ? `${API_URL}/api/produtos/${id}` : `${API_URL}/api/produtos`;
 
     await fetchWithAuth(url, {
         method,
@@ -193,6 +197,7 @@ function generateNFe(type) {
 // Outras funções auxiliares...
 function logout() {
     localStorage.removeItem('token');
+    localStorage.removeItem('mm_user');
     window.location.href = 'login.html';
 }
 

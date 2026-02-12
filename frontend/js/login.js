@@ -21,8 +21,9 @@ async function fazerLogin(e) {
         });
 
         if (response.ok) {
-            const user = await response.json();
-            sessionStorage.setItem('mm_user', JSON.stringify(user));
+            const data = await response.json();
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('mm_user', JSON.stringify(data));
             window.location.href = 'home.html';
         } else {
             const err = await response.json();
