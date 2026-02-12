@@ -133,6 +133,7 @@ app.get('/api/usuarios', authenticateToken, (req, res) => {
 });
 
 app.post('/api/usuarios', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Acesso negado" });
     const { id, username, password, role, label } = req.body;
     if (id) {
         let query = `UPDATE usuarios SET username=?, role=?, label=? WHERE id=?`;
@@ -157,6 +158,7 @@ app.post('/api/usuarios', authenticateToken, async (req, res) => {
 });
 
 app.delete('/api/usuarios/:id', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Acesso negado" });
     if (req.params.id == 1) return res.status(400).json({ error: "Não é possível excluir o admin principal" });
     db.run(`DELETE FROM usuarios WHERE id = ?`, req.params.id, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -342,6 +344,36 @@ app.delete('/api/movimentacoes/:id', authenticateToken, (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ deleted: true });
     });
+});
+
+// --- CONFIGURAÇÕES ---
+app.get('/api/configs', authenticateToken, (req, res) => {
+    db.all(`SELECT * FROM configs`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const configObj = {};
+        rows.forEach(row => configObj[row.chave] = row.valor);
+        res.json(configObj);
+    });
+});
+
+app.post('/api/configs', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Acesso negado" });
+    const { chave, valor } = req.body;
+    db.run(`INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)`, [chave, valor], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+app.delete('/api/reset', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Acesso negado" });
+    db.serialize(() => {
+        db.run("DELETE FROM movimentacoes");
+        db.run("DELETE FROM clientes");
+        db.run("DELETE FROM fornecedores");
+        db.run("DELETE FROM nfe");
+    });
+    res.json({ message: "Sistema resetado" });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
