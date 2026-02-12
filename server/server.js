@@ -93,9 +93,7 @@ app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     db.get('SELECT * FROM usuarios WHERE username = ?', [username], async (err, user) => {
         if (err || !user) return res.status(401).json({ error: "Usuário não encontrado" });
-        const match = await bcrypt.hash(password, 10); // Simplificado para teste ou use bcrypt.compare
-        // Nota: No sistema real, use bcrypt.compare(password, user.password)
-        // Para este ambiente de teste, aceitaremos se o hash bater ou se for a senha padrão
+        
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return res.status(401).json({ error: "Senha incorreta" });
         
