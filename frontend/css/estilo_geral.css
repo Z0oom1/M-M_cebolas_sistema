@@ -317,3 +317,20 @@ tr:hover td {
         grid-template-columns: 1fr;
     }
 }
+
+/* --- SEARCH MODAL ITEMS --- */
+.search-item {
+    padding: 12px 16px;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.search-item:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+.search-item strong { display: block; margin-bottom: 2px; }
+.search-item small { opacity: 0.8; font-size: 0.75rem; }

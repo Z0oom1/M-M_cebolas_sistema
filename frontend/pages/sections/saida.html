@@ -21,7 +21,7 @@
             <label>Cliente / Destino</label>
             <div style="display: flex; gap: 10px;">
                 <input type="text" id="exit-desc" placeholder="Ex: Supermercado Central ou Nome do Cliente" style="flex: 1;" required>
-                <button type="button" class="btn-primary" onclick="openSelectionModal(\'cliente\')" style="padding: 12px;"><i class="fas fa-search"></i></button>
+                <button type="button" class="btn-primary" onclick="openSearchModal('cliente')" style="padding: 12px;"><i class="fas fa-search"></i></button>
             </div>
         </div>
         <div class="form-group">
@@ -40,12 +40,7 @@
             <label>Data da Saída</label>
             <input type="date" id="exit-date" required>
         </div>
-        <div class="form-group">
-            <label>Caminhão (Placa)</label>
-            <select id="exit-truck">
-                <option value="">Selecione o Caminhão</option>
-            </select>
-        </div><div class="form-group span-2" style="margin-top: 10px;">
+        <div class="form-group span-2" style="margin-top: 10px;">
             <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">
                 <i class="fas fa-check-circle"></i> FINALIZAR VENDA E GERAR NOTA
             </button>

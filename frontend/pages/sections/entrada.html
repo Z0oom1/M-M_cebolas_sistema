@@ -21,7 +21,7 @@
             <label>Fornecedor / Origem</label>
             <div style="display: flex; gap: 10px;">
                 <input type="text" id="entry-desc" placeholder="Ex: Fazenda Bela Vista ou Nome do Fornecedor" style="flex: 1;" required>
-                <button type="button" class="btn-primary" onclick="openSelectionModal(\'fornecedor\')" style="padding: 12px;"><i class="fas fa-search"></i></button>
+                <button type="button" class="btn-primary" onclick="openSearchModal('fornecedor')" style="padding: 12px;"><i class="fas fa-search"></i></button>
             </div>
         </div>
         <div class="form-group">
@@ -35,16 +35,12 @@
         <div class="form-group">
             <label>Custo Total (R$)</label>
             <input type="number" step="0.01" id="entry-value" placeholder="0.00" required>
-        </di        <div class="form-group">
+        </div>
+        <div class="form-group">
             <label>Data da Entrada</label>
             <input type="date" id="entry-date" required>
         </div>
-        <div class="form-group">
-            <label>Caminhão (Placa)</label>
-            <select id="entry-truck">
-                <option value="">Selecione o Caminhão</option>
-            </select>
-        </div>   <div class="form-group span-2" style="margin-top: 10px;">
+        <div class="form-group span-2" style="margin-top: 10px;">
             <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">
                 <i class="fas fa-plus-circle"></i> REGISTRAR ENTRADA NO ESTOQUE
             </button>
