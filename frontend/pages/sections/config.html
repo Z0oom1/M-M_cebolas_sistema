@@ -5,7 +5,7 @@
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;">Ambiente de Emissão NF-e</h4>
+            <h4 style="font-weight: 700;">Ambiente e Certificado NF-e</h4>
         </div>
         <div style="padding: 24px;">
             <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -23,6 +23,19 @@
                         <span style="color: var(--text-muted); font-size: 0.8rem;">Ambiente real de operação. As notas geradas possuem validade jurídica e fiscal.</span>
                     </div>
                 </label>
+                
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 8px 0;">
+                
+                <div class="form-group">
+                    <label>Senha do Certificado (.pfx)</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="password" id="cert-password" placeholder="Digite a senha do certificado" style="flex: 1;">
+                        <button class="btn-primary" onclick="saveCertPassword()" style="padding: 10px 16px;">
+                            <i class="fas fa-save"></i>
+                        </button>
+                    </div>
+                    <small style="color: var(--text-muted); margin-top: 4px;">O certificado deve estar em: <code>/server/certificado/certificado.pfx</code></small>
+                </div>
             </div>
         </div>
     </div>

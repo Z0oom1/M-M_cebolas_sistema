@@ -33,13 +33,19 @@ db.serialize(() => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT,
         documento TEXT,
-        telefone TEXT
+        telefone TEXT,
+        ie TEXT,
+        email TEXT,
+        endereco TEXT
     )`);
     db.run(`CREATE TABLE IF NOT EXISTS fornecedores (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT,
         documento TEXT,
-        telefone TEXT
+        telefone TEXT,
+        ie TEXT,
+        email TEXT,
+        endereco TEXT
     )`);
     db.run(`CREATE TABLE IF NOT EXISTS movimentacoes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -167,16 +173,16 @@ app.get('/api/clientes', authenticateToken, (req, res) => {
 });
 
 app.post('/api/clientes', authenticateToken, (req, res) => {
-    const { id, nome, documento, telefone } = req.body;
+    const { id, nome, documento, telefone, ie, email, endereco } = req.body;
     if (id) {
-        db.run(`UPDATE clientes SET nome = ?, documento = ?, telefone = ? WHERE id = ?`,
-            [nome, documento, telefone, id], (err) => {
+        db.run(`UPDATE clientes SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`,
+            [nome, documento, telefone, ie, email, endereco, id], (err) => {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ success: true });
             });
     } else {
-        db.run(`INSERT INTO clientes (nome, documento, telefone) VALUES (?, ?, ?)`,
-            [nome, documento, telefone], function(err) {
+        db.run(`INSERT INTO clientes (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`,
+            [nome, documento, telefone, ie, email, endereco], function(err) {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ id: this.lastID });
             });
@@ -191,16 +197,16 @@ app.get('/api/fornecedores', authenticateToken, (req, res) => {
 });
 
 app.post('/api/fornecedores', authenticateToken, (req, res) => {
-    const { id, nome, documento, telefone } = req.body;
+    const { id, nome, documento, telefone, ie, email, endereco } = req.body;
     if (id) {
-        db.run(`UPDATE fornecedores SET nome = ?, documento = ?, telefone = ? WHERE id = ?`,
-            [nome, documento, telefone, id], (err) => {
+        db.run(`UPDATE fornecedores SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`,
+            [nome, documento, telefone, ie, email, endereco, id], (err) => {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ success: true });
             });
     } else {
-        db.run(`INSERT INTO fornecedores (nome, documento, telefone) VALUES (?, ?, ?)`,
-            [nome, documento, telefone], function(err) {
+        db.run(`INSERT INTO fornecedores (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`,
+            [nome, documento, telefone, ie, email, endereco], function(err) {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ id: this.lastID });
             });
@@ -271,16 +277,72 @@ app.get('/api/nfe', authenticateToken, (req, res) => {
     });
 });
 
-app.post('/api/nfe/gerar', authenticateToken, (req, res) => {
+app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
     const { venda_id, destinatario, itens } = req.body;
-    const chave = Array.from({length: 44}, () => Math.floor(Math.random() * 10)).join('');
-    const xml = `<nfe><infNFe><ide><nNF>${venda_id}</nNF></ide><dest><xNome>${destinatario}</xNome></dest></infNFe></nfe>`;
-    
-    db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
-        [venda_id, chave, xml, 'autorizada', new Date().toISOString()], function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: this.lastID, chave });
-        });
+
+    // Buscar configurações para o NFeService
+    db.all('SELECT * FROM configs', [], async (err, rows) => {
+        const configs = {};
+        rows?.forEach(r => configs[r.chave] = r.valor);
+        
+        const isProduction = configs.nfe_modo === 'producao';
+        const certPass = configs.cert_password || '';
+        const pfxPath = path.join(__dirname, 'certificado', 'certificado.pfx');
+
+        // Se não houver senha, não podemos usar o NFeService real
+        if (!certPass) {
+            // Fallback para simulação se não houver certificado configurado
+            const chave = Array.from({length: 44}, () => Math.floor(Math.random() * 10)).join('');
+            const xml = `<nfe><infNFe><ide><nNF>${venda_id}</nNF></ide><dest><xNome>${destinatario}</xNome></dest></infNFe></nfe>`;
+            db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
+                [venda_id, chave, xml, 'autorizada', new Date().toISOString()], function(err) {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json({ id: this.lastID, chave, warning: "Certificado não configurado. Nota simulada." });
+                });
+            return;
+        }
+
+        try {
+            const nfeService = new NFeService(pfxPath, certPass, isProduction);
+            
+            // Dados básicos para a chave de acesso
+            const paramsChave = {
+                cUF: '35', // SP por exemplo
+                year: new Date().getFullYear().toString().slice(-2),
+                month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+                cnpj: '00000000000000', // CNPJ da empresa (deveria vir das configs)
+                mod: '55',
+                serie: 1,
+                nNF: venda_id,
+                tpEmis: '1',
+                cNF: Math.floor(Math.random() * 100000000)
+            };
+            
+            const chaveAcesso = nfeService.generateChaveAcesso(paramsChave);
+            
+            // Estrutura mínima para o XML assinado
+            const dadosNFe = {
+                ide: { ...paramsChave, chaveAcesso, natOp: 'VENDA', dhEmi: new Date().toISOString(), tpNF: '1', idDest: '1', cMunFG: '3550308', tpImp: '1', finNFe: '1', indFinal: '1', indPres: '1' },
+                emit: { cnpj: paramsChave.cnpj, xNome: 'M&M CEBOLAS LTDA', xFant: 'M&M CEBOLAS', enderEmit: { xLgr: 'Rua Teste', nro: '123', xBairro: 'Centro', cMun: '3550308', xMun: 'SAO PAULO', UF: 'SP', CEP: '01001000' }, ie: '123456789', crt: '1' },
+                dest: { xNome: destinatario, enderDest: { xLgr: 'Endereco Destino', nro: 'S/N', xBairro: 'Bairro', cMun: '3550308', xMun: 'Cidade', UF: 'SP', CEP: '00000000' }, indIEDest: '9' },
+                det: itens.map(i => ({ prod: { cProd: '001', xProd: i.produto, NCM: '07031019', CFOP: '5102', uCom: 'CX', qCom: i.qtd, vUnCom: (i.valor / i.qtd).toFixed(2), vProd: i.valor.toFixed(2) }, imposto: { vTotTrib: '0.00' } })),
+                total: { icmsTot: { vBC: '0.00', vICMS: '0.00', vProd: itens.reduce((a, b) => a + b.valor, 0).toFixed(2), vNF: itens.reduce((a, b) => a + b.valor, 0).toFixed(2) } },
+                transp: { modFrete: '9' },
+                infAdic: { infCpl: 'NF-e gerada pelo sistema M&M Cebolas' }
+            };
+
+            const xmlAssinado = nfeService.createNFeXML(dadosNFe);
+            
+            db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
+                [venda_id, chaveAcesso, xmlAssinado, 'autorizada', new Date().toISOString()], function(err) {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json({ id: this.lastID, chave: chaveAcesso });
+                });
+        } catch (nfeErr) {
+            console.error("Erro NFeService:", nfeErr);
+            res.status(500).json({ error: "Erro ao gerar NF-e real: " + nfeErr.message });
+        }
+    });
 });
 
 app.get('/api/nfe/:id/xml', authenticateToken, (req, res) => {
@@ -352,11 +414,11 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
 
 // --- CONFIGS ---
 app.get('/api/configs', authenticateToken, (req, res) => {
-    db.all('SELECT chave, valor FROM configs', [], (err, rows) => {
+    db.all('SELECT * FROM configs', [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        const configMap = {};
-        rows.forEach(r => configMap[r.chave] = r.valor);
-        res.json(configMap);
+        const configs = {};
+        rows.forEach(r => configs[r.chave] = r.valor);
+        res.json(configs);
     });
 });
 

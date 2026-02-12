@@ -287,13 +287,17 @@ function loadCadastros() {
 
 function openEditModal(type, data = null) {
     const modal = document.getElementById('modal-edit');
+    if (!modal) return;
     modal.classList.add('active');
-    document.getElementById('modal-title').innerText = (data ? 'Editar ' : 'Novo ') + type.charAt(0).toUpperCase() + type.slice(1);
+    document.getElementById('modal-title').innerText = (data ? 'Editar ' : 'Novo ') + (type === 'cliente' ? 'Cliente' : 'Fornecedor');
     document.getElementById('edit-type').value = type;
     document.getElementById('edit-id').value = data ? data.id : '';
     document.getElementById('edit-nome').value = data ? data.nome : '';
     document.getElementById('edit-doc').value = data ? data.documento : '';
     document.getElementById('edit-tel').value = data ? data.telefone : '';
+    document.getElementById('edit-ie').value = data ? (data.ie || '') : '';
+    document.getElementById('edit-email').value = data ? (data.email || '') : '';
+    document.getElementById('edit-end').value = data ? (data.endereco || '') : '';
 }
 function closeEditModal() { document.getElementById('modal-edit').classList.remove('active'); }
 
@@ -304,14 +308,28 @@ async function saveCadastro(event) {
         id: document.getElementById('edit-id').value || null,
         nome: document.getElementById('edit-nome').value,
         documento: document.getElementById('edit-doc').value,
-        telefone: document.getElementById('edit-tel').value
+        telefone: document.getElementById('edit-tel').value,
+        ie: document.getElementById('edit-ie').value,
+        email: document.getElementById('edit-email').value,
+        endereco: document.getElementById('edit-end').value
     };
-    const res = await fetchWithAuth(`/api/${type}s`, { method: 'POST', body: JSON.stringify(data) });
-    if (res && res.ok) { 
-        showSuccess("Cadastro salvo!"); 
-        closeEditModal(); 
-        await loadDataFromAPI(); 
-        if (currentSectionId === 'config') loadConfigData();
+    
+    const endpoint = type === 'cliente' ? '/api/clientes' : '/api/fornecedores';
+    
+    try {
+        const res = await fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify(data) });
+        if (res && res.ok) { 
+            showSuccess(`${type === 'cliente' ? 'Cliente' : 'Fornecedor'} salvo com sucesso!`); 
+            closeEditModal(); 
+            await loadDataFromAPI(); 
+            if (currentSectionId === 'config') loadConfigData();
+            if (currentSectionId === 'cadastro') loadCadastros();
+        } else {
+            const errData = await res.json();
+            showError("Erro ao salvar: " + (errData.error || "Erro desconhecido"));
+        }
+    } catch (err) {
+        showError("Erro na conexão com o servidor.");
     }
 }
 
@@ -674,6 +692,15 @@ async function updateNFeModo(modo) {
     if (res && res.ok) showSuccess(`Ambiente alterado para ${modo}`);
 }
 
+async function saveCertPassword() {
+    const password = document.getElementById('cert-password').value;
+    const res = await fetchWithAuth('/api/configs', {
+        method: 'POST',
+        body: JSON.stringify({ chave: 'cert_password', valor: password })
+    });
+    if (res && res.ok) showSuccess("Senha do certificado salva!");
+}
+
 async function loadConfigData() {
     const res = await fetchWithAuth('/api/configs');
     if (res && res.ok) {
@@ -681,6 +708,10 @@ async function loadConfigData() {
         if (configs.nfe_modo) {
             const radio = document.querySelector(`input[name="nfe_modo"][value="${configs.nfe_modo}"]`);
             if (radio) radio.checked = true;
+        }
+        if (configs.cert_password) {
+            const passInput = document.getElementById('cert-password');
+            if (passInput) passInput.value = configs.cert_password;
         }
     }
     
