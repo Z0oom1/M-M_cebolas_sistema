@@ -69,11 +69,14 @@ db.serialize(() => {
         valor TEXT
     )`);
 
-    // Criar admin padrão se não existir
+    // Criar ou atualizar admin padrão com a senha '123'
     db.get("SELECT * FROM usuarios WHERE username = 'admin'", async (err, row) => {
+        const hash = await bcrypt.hash('123', 10);
         if (!row) {
-            const hash = await bcrypt.hash('admin123', 10);
             db.run("INSERT INTO usuarios (label, username, password, role) VALUES ('Administrador', 'admin', ?, 'admin')", [hash]);
+        } else {
+            // Garante que a senha seja '123' mesmo se o usuário já existir
+            db.run("UPDATE usuarios SET password = ? WHERE username = 'admin'", [hash]);
         }
     });
 });
