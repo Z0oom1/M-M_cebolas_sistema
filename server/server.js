@@ -114,6 +114,7 @@ function initDb() {
 // --- AUTENTICAÇÃO ---
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
     db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], async (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(401).json({ error: "Usuário ou senha incorretos" });
@@ -340,7 +341,9 @@ app.get('/api/nfe/:id/xml', authenticateToken, (req, res) => {
 });
 
 app.delete('/api/movimentacoes/:id', authenticateToken, (req, res) => {
-    db.run(`DELETE FROM movimentacoes WHERE id = ?`, req.params.id, function(err) {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
+    db.run(`DELETE FROM movimentacoes WHERE id = ?`, [id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ deleted: true });
     });
@@ -359,6 +362,7 @@ app.get('/api/configs', authenticateToken, (req, res) => {
 app.post('/api/configs', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: "Acesso negado" });
     const { chave, valor } = req.body;
+    if (!chave) return res.status(400).json({ error: "Chave não informada" });
     db.run(`INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)`, [chave, valor], (err) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });

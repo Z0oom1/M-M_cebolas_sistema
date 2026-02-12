@@ -18,7 +18,27 @@ window.onload = function() {
     checkLogin();
     loadDataFromAPI();
     setupSelectors();
+    checkEnvironment();
 };
+
+function checkEnvironment() {
+    if (window.location.protocol !== 'file:') {
+        const titlebar = document.getElementById('titlebar');
+        if (titlebar) titlebar.style.display = 'none';
+        
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.style.top = '0';
+            sidebar.style.height = '100vh';
+        }
+        
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.marginTop = '0';
+            mainContent.style.height = '100vh';
+        }
+    }
+}
 
 function setupSelectors() {
     document.addEventListener('click', (e) => {
@@ -104,11 +124,17 @@ function showSection(id) {
     const activeBtn = document.querySelector(`.nav-item[onclick*="${id}"]`);
     if (activeBtn) activeBtn.classList.add('active');
     
+    const mainContent = document.getElementById('main-content');
+    mainContent.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;"><i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary);"></i></div>';
+    
     fetch(`sections/${id}.html`)
         .then(res => res.text())
         .then(html => {
-            document.getElementById('main-content').innerHTML = html;
+            mainContent.innerHTML = html;
             initSection(id);
+        })
+        .catch(err => {
+            mainContent.innerHTML = '<div class="panel" style="padding:24px;text-align:center;"><i class="fas fa-exclamation-triangle fa-3x" style="color:var(--danger);margin-bottom:16px;"></i><h3>Erro ao carregar seção</h3><p>Verifique sua conexão ou tente novamente.</p></div>';
         });
 }
 
@@ -138,10 +164,11 @@ function initSection(id) {
     if (id === 'config') {
         loadConfigData();
         if (!isAdmin) {
-            const userPanel = document.querySelector('.panel:has(#list-usuarios)');
-            if (userPanel) userPanel.style.display = 'none';
-            const dangerZone = document.querySelector('.panel:has(.btn-danger)');
-            if (dangerZone) dangerZone.style.display = 'none';
+            const adminPanels = ['#admin-users-panel', '#admin-entities-panel', '#admin-products-panel', '.panel:has(.btn-danger)'];
+            adminPanels.forEach(selector => {
+                const el = document.querySelector(selector);
+                if (el) el.style.display = 'none';
+            });
         }
     }
 }
@@ -188,6 +215,12 @@ function renderRecentTransactions() {
     const tbody = document.getElementById('recent-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
+    
+    if (appData.transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhuma movimentação registrada</td></tr>';
+        return;
+    }
+    
     appData.transactions.slice(0, 5).forEach(t => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -206,6 +239,12 @@ function renderProductShowcase(section) {
     const container = document.getElementById('product-showcase');
     if (!container) return;
     container.innerHTML = '';
+    
+    if (appData.products.length === 0) {
+        container.innerHTML = '<div style="grid-column:span 4;text-align:center;padding:40px;color:var(--text-muted);"><i class="fas fa-info-circle fa-2x"></i><p style="margin-top:10px;">Nenhum produto cadastrado no sistema.</p></div>';
+        return;
+    }
+    
     const stockMap = calculateStock();
 
     appData.products.forEach(p => {
@@ -235,14 +274,16 @@ function selectProduct(p, section, event) {
 
 // --- GESTÃO DE CADASTROS ---
 function loadCadastros() {
+    const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const isAdmin = user.role === 'admin';
     const listCli = document.getElementById('list-clientes'), listForn = document.getElementById('list-fornecedores'), listProd = document.getElementById('list-produtos');
     if (listCli) {
         listCli.innerHTML = '';
         appData.clients.forEach(c => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${c.nome}</td><td>${c.documento}</td><td>${c.telefone}</td>
-                <td><button class="btn-icon" onclick='openEditModal("cliente", ${JSON.stringify(c)})'><i class="fas fa-edit"></i></button>
-                <button class="btn-icon text-danger" onclick="deleteCadastro('cliente', ${c.id})"><i class="fas fa-trash"></i></button></td>`;
+            const actions = isAdmin ? `<td><button class="btn-icon" onclick='openEditModal("cliente", ${JSON.stringify(c)})'><i class="fas fa-edit"></i></button>
+                <button class="btn-icon text-danger" onclick="deleteCadastro('cliente', ${c.id})"><i class="fas fa-trash"></i></button></td>` : '<td>-</td>';
+            tr.innerHTML = `<td>${c.nome}</td><td>${c.documento}</td><td>${c.telefone}</td>${actions}`;
             listCli.appendChild(tr);
         });
     }
@@ -250,9 +291,9 @@ function loadCadastros() {
         listForn.innerHTML = '';
         appData.suppliers.forEach(f => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${f.nome}</td><td>${f.documento}</td><td>${f.telefone}</td>
-                <td><button class="btn-icon" onclick='openEditModal("fornecedor", ${JSON.stringify(f)})'><i class="fas fa-edit"></i></button>
-                <button class="btn-icon text-danger" onclick="deleteCadastro('fornecedor', ${f.id})"><i class="fas fa-trash"></i></button></td>`;
+            const actions = isAdmin ? `<td><button class="btn-icon" onclick='openEditModal("fornecedor", ${JSON.stringify(f)})'><i class="fas fa-edit"></i></button>
+                <button class="btn-icon text-danger" onclick="deleteCadastro('fornecedor', ${f.id})"><i class="fas fa-trash"></i></button></td>` : '<td>-</td>';
+            tr.innerHTML = `<td>${f.nome}</td><td>${f.documento}</td><td>${f.telefone}</td>${actions}`;
             listForn.appendChild(tr);
         });
     }
@@ -260,10 +301,10 @@ function loadCadastros() {
         listProd.innerHTML = '';
         appData.products.forEach(p => {
             const tr = document.createElement('tr');
+            const actions = isAdmin ? `<td><button class="btn-icon" onclick='openProdutoModal(${JSON.stringify(p)})'><i class="fas fa-edit"></i></button>
+                <button class="btn-icon text-danger" onclick="deleteProduto(${p.id})"><i class="fas fa-trash"></i></button></td>` : '<td>-</td>';
             tr.innerHTML = `<td><i class="fas ${p.icone || 'fa-box'}" style="color: ${p.cor}"></i> ${p.nome}</td><td>${p.ncm}</td>
-                <td>R$ ${p.preco_venda.toLocaleString('pt-BR')}</td>
-                <td><button class="btn-icon" onclick='openProdutoModal(${JSON.stringify(p)})'><i class="fas fa-edit"></i></button>
-                <button class="btn-icon text-danger" onclick="deleteProduto(${p.id})"><i class="fas fa-trash"></i></button></td>`;
+                <td>R$ ${p.preco_venda.toLocaleString('pt-BR')}</td>${actions}`;
             listProd.appendChild(tr);
         });
     }
@@ -502,6 +543,12 @@ function renderStockTable() {
     const tbody = document.getElementById('full-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
+    
+    if (appData.transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum registro de movimentação encontrado</td></tr>';
+        return;
+    }
+    
     appData.transactions.forEach(t => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -533,6 +580,12 @@ async function loadNFeTable() {
     if (!res) return;
     const data = await res.json();
     tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhuma nota fiscal emitida</td></tr>';
+        return;
+    }
+    
     data.forEach(n => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${new Date(n.data_emissao).toLocaleDateString('pt-BR')}</td><td>#${n.venda_id}</td>
@@ -540,7 +593,7 @@ async function loadNFeTable() {
             <td><span class="badge" style="background: #dcfce7; color: #166534;">${n.status.toUpperCase()}</span></td>
             <td style="text-align: right;">
                 <button class="btn-icon" onclick="downloadXML(${n.id})" title="Baixar XML"><i class="fas fa-file-code"></i></button>
-                <button class="btn-icon" onclick="alert('Funcionalidade de PDF em desenvolvimento')" title="Imprimir DANFE"><i class="fas fa-file-pdf"></i></button>
+                <button class="btn-icon" onclick="showError('A impressão de DANFE PDF está sendo implementada.')" title="Imprimir DANFE"><i class="fas fa-file-pdf"></i></button>
             </td>`;
         tbody.appendChild(tr);
     });
@@ -618,9 +671,11 @@ function renderCharts(stockMap) {
         if (stockChart) stockChart.destroy();
         const labels = Object.keys(stockMap);
         const data = Object.values(stockMap);
+        const hasData = data.some(v => v > 0);
         
-        if (labels.length === 0) {
-            ctxStock.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">Nenhum dado disponível</div>';
+        if (!hasData) {
+            const container = ctxStock.parentElement;
+            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);flex-direction:column;gap:10px;"><i class="fas fa-box-open fa-2x"></i><span>Sem estoque disponível</span></div>';
             return;
         }
 
@@ -741,9 +796,10 @@ async function loadConfigData() {
             if (radio) radio.checked = true;
         }
     }
-    // Carregar usuários se for admin
+    
     const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
     if (user.role === 'admin') {
+        // Carregar Usuários
         const listUser = document.getElementById('list-usuarios');
         if (listUser) {
             listUser.innerHTML = '';
@@ -755,6 +811,53 @@ async function loadConfigData() {
                         <button class="btn-icon text-danger" onclick="deleteUsuario(${u.id})"><i class="fas fa-trash"></i></button>
                     </td>`;
                 listUser.appendChild(tr);
+            });
+        }
+        
+        // Carregar Clientes para Config
+        const listCliConfig = document.getElementById('config-list-clientes');
+        if (listCliConfig) {
+            listCliConfig.innerHTML = '';
+            appData.clients.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${c.nome}</td>
+                    <td style="text-align: right;">
+                        <button class="btn-icon" onclick='openEditModal("cliente", ${JSON.stringify(c)})'><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon text-danger" onclick="deleteCadastro('cliente', ${c.id})"><i class="fas fa-trash"></i></button>
+                    </td>`;
+                listCliConfig.appendChild(tr);
+            });
+        }
+        
+        // Carregar Fornecedores para Config
+        const listFornConfig = document.getElementById('config-list-fornecedores');
+        if (listFornConfig) {
+            listFornConfig.innerHTML = '';
+            appData.suppliers.forEach(f => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${f.nome}</td>
+                    <td style="text-align: right;">
+                        <button class="btn-icon" onclick='openEditModal("fornecedor", ${JSON.stringify(f)})'><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon text-danger" onclick="deleteCadastro('fornecedor', ${f.id})"><i class="fas fa-trash"></i></button>
+                    </td>`;
+                listFornConfig.appendChild(tr);
+            });
+        }
+        
+        // Carregar Produtos para Config
+        const listProdConfig = document.getElementById('config-list-produtos');
+        if (listProdConfig) {
+            listProdConfig.innerHTML = '';
+            appData.products.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td><i class="fas ${p.icone || 'fa-box'}" style="color: ${p.cor}"></i> ${p.nome}</td>
+                    <td>${p.ncm}</td>
+                    <td>R$ ${p.preco_venda.toLocaleString('pt-BR')}</td>
+                    <td style="text-align: right;">
+                        <button class="btn-icon" onclick='openProdutoModal(${JSON.stringify(p)})'><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon text-danger" onclick="deleteProduto(${p.id})"><i class="fas fa-trash"></i></button>
+                    </td>`;
+                listProdConfig.appendChild(tr);
             });
         }
     }

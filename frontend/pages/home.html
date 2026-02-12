@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id="titlebar">
+    <div id="titlebar" style="display: none;">
         <div class="window-controls">
             <button id="closeBtn" class="control-btn close" title="Fechar"></button>
             <button id="minBtn" class="control-btn minimize" title="Minimizar"></button>
@@ -47,7 +47,7 @@
             <div class="nav-group">
                 <span class="nav-label">CADASTROS</span>
                 <button class="nav-item" onclick="showSection('cadastro')">
-                    <i class="fas fa-address-book"></i> Contatos / Equipe
+                    <i class="fas fa-address-book"></i> Contatos
                 </button>
                 <button class="nav-item" onclick="showSection('nfe')">
                     <i class="fas fa-file-invoice"></i> Notas Fiscais
@@ -197,6 +197,16 @@
         </div>
     </div>
 
+    <script>
+        if (window.location.protocol === 'file:') {
+            document.getElementById('titlebar').style.display = 'flex';
+        } else {
+            document.querySelector('.sidebar').style.top = '0';
+            document.querySelector('.sidebar').style.height = '100vh';
+            document.querySelector('.main-content').style.marginTop = '0';
+            document.querySelector('.main-content').style.height = '100vh';
+        }
+    </script>
     <script src="../js/script.js"></script>
 </body>
 </html>

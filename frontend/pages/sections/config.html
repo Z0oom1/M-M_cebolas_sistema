@@ -27,7 +27,7 @@
         </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" id="admin-users-panel">
         <div class="panel-header">
             <h4 style="font-weight: 700;">Usuários e Acessos</h4>
             <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="openUsuarioModal()">
@@ -49,6 +49,70 @@
                 </tbody>
             </table>
         </div>
+    </div>
+</div>
+
+<!-- GESTÃO DE ENTIDADES (ADMIN APENAS) -->
+<div id="admin-entities-panel" style="margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight: 700;">Gerenciar Clientes</h4>
+            <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="openEditModal('cliente')">
+                <i class="fas fa-plus"></i> Novo Cliente
+            </button>
+        </div>
+        <div class="table-container">
+            <table class="table-compact">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th style="text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="config-list-clientes"></tbody>
+            </table>
+        </div>
+    </div>
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight: 700;">Gerenciar Fornecedores</h4>
+            <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="openEditModal('fornecedor')">
+                <i class="fas fa-plus"></i> Novo Fornecedor
+            </button>
+        </div>
+        <div class="table-container">
+            <table class="table-compact">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th style="text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="config-list-fornecedores"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="admin-products-panel" class="panel" style="margin-top: 24px;">
+    <div class="panel-header">
+        <h4 style="font-weight: 700;">Gerenciar Produtos / Variedades</h4>
+        <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="openProdutoModal()">
+            <i class="fas fa-plus"></i> Novo Produto
+        </button>
+    </div>
+    <div class="table-container">
+        <table class="table-compact">
+            <thead>
+                <tr>
+                    <th>Variedade</th>
+                    <th>NCM</th>
+                    <th>Preço Base</th>
+                    <th style="text-align: right;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="config-list-produtos"></tbody>
+        </table>
     </div>
 </div>
 

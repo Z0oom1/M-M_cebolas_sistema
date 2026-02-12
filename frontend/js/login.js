@@ -4,11 +4,11 @@ const API_URL = isElectron ? 'http://localhost:3000' : '';
 
 async function fazerLogin(e) {
     e.preventDefault();
-    const btn = e.submitter || e.target.querySelector('button');
+    const btn = e.target.querySelector('button[type="submit"]');
     const oldText = btn.innerHTML;
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Autenticando...';
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> AUTENTICANDO...';
 
     const username = document.getElementById('loginUser').value;
     const password = document.getElementById('loginPass').value;
@@ -65,17 +65,16 @@ window.onload = function() {
             setTimeout(() => loading.style.display = 'none', 500);
         }, 500);
     }
-}
 
-// --- LÓGICA DA BARRA DE CONTROLE (ELECTRON) ---
-if (isElectron) {
-    const { ipcRenderer } = require('electron');
-
-    document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
-    document.getElementById('minBtn')?.addEventListener('click', () => ipcRenderer.send('minimize-app'));
-    document.getElementById('maxBtn')?.addEventListener('click', () => ipcRenderer.send('maximize-app'));
-} else {
-    // Ocultar barra de título se não for Electron
+    // LÓGICA DA BARRA DE CONTROLE (ELECTRON)
     const titlebar = document.getElementById('titlebar');
-    if (titlebar) titlebar.style.display = 'none';
+    if (isElectron) {
+        if (titlebar) titlebar.style.display = 'flex';
+        const { ipcRenderer } = require('electron');
+        document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
+        document.getElementById('minBtn')?.addEventListener('click', () => ipcRenderer.send('minimize-app'));
+        document.getElementById('maxBtn')?.addEventListener('click', () => ipcRenderer.send('maximize-app'));
+    } else {
+        if (titlebar) titlebar.style.display = 'none';
+    }
 }
