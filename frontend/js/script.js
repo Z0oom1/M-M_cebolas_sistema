@@ -120,6 +120,7 @@ function initSection(id) {
     if (id === 'financeiro') {
         updateFinanceKPIs();
         renderFinanceChart();
+        renderFinanceTable();
     }
     if (id === 'estoque') renderStockTable();
     if (id === 'nfe') loadNFeTable();
@@ -375,8 +376,8 @@ async function saveEntrada(event) {
         tipo: 'entrada',
         produto: document.getElementById('entry-product').value,
         quantidade: parseInt(document.getElementById('entry-qty').value),
-        valor: parseFloat(document.getElementById('entry-price').value),
-        descricao: document.getElementById('entry-supplier').value,
+        valor: parseFloat(document.getElementById('entry-value').value),
+        descricao: document.getElementById('entry-desc').value,
         data: new Date().toISOString()
     };
     const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
@@ -389,8 +390,8 @@ async function saveSaida(event) {
         tipo: 'saida',
         produto: document.getElementById('exit-product').value,
         quantidade: parseInt(document.getElementById('exit-qty').value),
-        valor: parseFloat(document.getElementById('exit-price').value),
-        descricao: document.getElementById('exit-client').value,
+        valor: parseFloat(document.getElementById('exit-value').value),
+        descricao: document.getElementById('exit-desc').value,
         data: new Date().toISOString()
     };
     const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
@@ -483,12 +484,40 @@ async function saveDespesa(event) {
         tipo: 'despesa',
         produto: 'DESPESA GERAL',
         quantidade: 1,
-        valor: parseFloat(document.getElementById('expense-val').value),
-        descricao: document.getElementById('expense-desc').value,
-        data: new Date().toISOString()
+        valor: parseFloat(document.getElementById('desp-valor').value),
+        descricao: document.getElementById('desp-desc').value,
+        data: document.getElementById('desp-data').value || new Date().toISOString()
     };
     const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
-    if (res && res.ok) { showSuccess("Despesa lançada!"); loadDataFromAPI(); }
+    if (res && res.ok) { 
+        showSuccess("Despesa lançada!"); 
+        loadDataFromAPI(); 
+        event.target.reset();
+    }
+}
+
+function renderFinanceTable() {
+    const tbody = document.getElementById('finance-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    const financeData = appData.transactions.filter(t => t.tipo === 'saida' || t.tipo === 'entrada' || t.tipo === 'despesa');
+    
+    if (financeData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum lançamento financeiro</td></tr>';
+        return;
+    }
+    
+    financeData.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${new Date(t.data).toLocaleDateString('pt-BR')}</td>
+            <td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
+            <td>${t.descricao}</td>
+            <td style="color: ${t.tipo === 'saida' ? 'var(--primary)' : 'var(--danger)'}">R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 function renderStockTable() {
@@ -519,7 +548,17 @@ function renderStockTable() {
 async function deleteMovimentacao(id) {
     if (!confirm("Excluir este registro permanentemente?")) return;
     const res = await fetchWithAuth(`/api/movimentacoes/${id}`, { method: 'DELETE' });
-    if (res && res.ok) { showSuccess("Registro excluído!"); loadDataFromAPI(); }
+    if (res && res.ok) { 
+        showSuccess("Registro excluído!"); 
+        await loadDataFromAPI(); 
+        if (currentSectionId === 'estoque') renderStockTable();
+        if (currentSectionId === 'dashboard') renderRecentTransactions();
+    }
+}
+
+function openNFeModal() {
+    showSection('saida');
+    showSuccess("Selecione uma venda para emitir a nota.");
 }
 
 async function loadNFeTable() {
@@ -799,4 +838,20 @@ function renderFinanceChart() {
             options: { maintainAspectRatio: false }
         });
     }
+}
+
+function selectIcon(el, icon) {
+    document.querySelectorAll('.icon-option').forEach(opt => opt.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('prod-icone').value = icon;
+}
+
+function selectColor(el, color) {
+    document.querySelectorAll('.color-option').forEach(opt => {
+        opt.classList.remove('active');
+        opt.style.borderColor = 'transparent';
+    });
+    el.classList.add('active');
+    el.style.borderColor = 'var(--primary)';
+    document.getElementById('prod-cor').value = color;
 }

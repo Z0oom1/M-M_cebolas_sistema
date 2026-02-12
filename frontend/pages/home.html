@@ -99,24 +99,24 @@
                     <div class="form-group" style="grid-column: span 2;">
                         <label>Escolha um Ícone</label>
                         <div id="icon-selector" class="icon-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 10px;">
-                            <div class="icon-option active" data-icon="fa-box"><i class="fas fa-box"></i></div>
-                            <div class="icon-option" data-icon="fa-seedling"><i class="fas fa-seedling"></i></div>
-                            <div class="icon-option" data-icon="fa-leaf"><i class="fas fa-leaf"></i></div>
-                            <div class="icon-option" data-icon="fa-carrot"><i class="fas fa-carrot"></i></div>
-                            <div class="icon-option" data-icon="fa-truck"><i class="fas fa-truck"></i></div>
-                            <div class="icon-option" data-icon="fa-warehouse"><i class="fas fa-warehouse"></i></div>
+                            <div class="icon-option active" onclick="selectIcon(this, 'fa-box')" data-icon="fa-box"><i class="fas fa-box"></i></div>
+                            <div class="icon-option" onclick="selectIcon(this, 'fa-seedling')" data-icon="fa-seedling"><i class="fas fa-seedling"></i></div>
+                            <div class="icon-option" onclick="selectIcon(this, 'fa-leaf')" data-icon="fa-leaf"><i class="fas fa-leaf"></i></div>
+                            <div class="icon-option" onclick="selectIcon(this, 'fa-carrot')" data-icon="fa-carrot"><i class="fas fa-carrot"></i></div>
+                            <div class="icon-option" onclick="selectIcon(this, 'fa-truck')" data-icon="fa-truck"><i class="fas fa-truck"></i></div>
+                            <div class="icon-option" onclick="selectIcon(this, 'fa-warehouse')" data-icon="fa-warehouse"><i class="fas fa-warehouse"></i></div>
                         </div>
                         <input type="hidden" id="prod-icone" value="fa-box">
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label>Cor de Destaque</label>
                         <div id="color-selector" style="display: flex; gap: 12px; margin-top: 10px;">
-                            <div class="color-option active" data-color="#1A5632" style="background: #1A5632;"></div>
-                            <div class="color-option" data-color="#E89C31" style="background: #E89C31;"></div>
-                            <div class="color-option" data-color="#2563eb" style="background: #2563eb;"></div>
-                            <div class="color-option" data-color="#dc2626" style="background: #dc2626;"></div>
-                            <div class="color-option" data-color="#9333ea" style="background: #9333ea;"></div>
-                            <div class="color-option" data-color="#0891b2" style="background: #0891b2;"></div>
+                            <div class="color-option active" onclick="selectColor(this, '#1A5632')" data-color="#1A5632" style="background: #1A5632; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
+                            <div class="color-option" onclick="selectColor(this, '#E89C31')" data-color="#E89C31" style="background: #E89C31; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
+                            <div class="color-option" onclick="selectColor(this, '#2563eb')" data-color="#2563eb" style="background: #2563eb; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
+                            <div class="color-option" onclick="selectColor(this, '#dc2626')" data-color="#dc2626" style="background: #dc2626; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
+                            <div class="color-option" onclick="selectColor(this, '#9333ea')" data-color="#9333ea" style="background: #9333ea; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
+                            <div class="color-option" onclick="selectColor(this, '#0891b2')" data-color="#0891b2" style="background: #0891b2; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
                         </div>
                         <input type="hidden" id="prod-cor" value="#1A5632">
                     </div>
