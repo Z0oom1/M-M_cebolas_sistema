@@ -1,5 +1,8 @@
 <header class="top-bar">
-    <h2 class="page-title">Gestão de Contatos</h2>
+    <div>
+        <h2 class="page-title">Gestão de Cadastros</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Gerencie seus clientes, fornecedores e produtos em um só lugar.</p>
+    </div>
     <div style="display: flex; gap: 12px;">
         <button class="btn-primary" onclick="openEditModal('cliente')">
             <i class="fas fa-user-plus"></i> Novo Cliente
@@ -23,7 +26,7 @@
                         <th>Nome</th>
                         <th>Documento</th>
                         <th>Telefone</th>
-                        <th>Ações</th>
+                        <th style="width: 100px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="list-clientes">
@@ -45,7 +48,7 @@
                         <th>Nome</th>
                         <th>Documento</th>
                         <th>Telefone</th>
-                        <th>Ações</th>
+                        <th style="width: 100px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="list-fornecedores">
@@ -59,7 +62,9 @@
 <div class="panel" style="margin-top: 24px;">
     <div class="panel-header">
         <h4 style="font-weight: 700;"><i class="fas fa-box-open" style="color: var(--primary);"></i> Produtos / Variedades</h4>
-        <button class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem;" onclick="openProdutoModal()">Novo Produto</button>
+        <button class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem;" onclick="openProdutoModal()">
+            <i class="fas fa-plus"></i> Novo Produto
+        </button>
     </div>
     <div class="table-container">
         <table>
@@ -69,12 +74,54 @@
                     <th>NCM</th>
                     <th>Preço Base</th>
                     <th>Estoque Mín.</th>
-                    <th>Ações</th>
+                    <th style="width: 100px;">Ações</th>
                 </tr>
             </thead>
             <tbody id="list-produtos">
                 <!-- Via JS -->
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- Modal de Cadastro Genérico (Cliente/Fornecedor) -->
+<div id="modal-edit" class="modal-overlay">
+    <div class="edit-modal" style="max-width: 600px;">
+        <div class="panel-header" style="background: var(--primary); color: white; padding: 20px;">
+            <h3 id="modal-title" style="margin: 0;">Novo Cadastro</h3>
+            <button onclick="closeEditModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+        </div>
+        <form onsubmit="saveEdit(event)" class="form-grid">
+            <input type="hidden" id="edit-id">
+            <input type="hidden" id="edit-type">
+            <div class="form-group span-2">
+                <label>Nome / Razão Social</label>
+                <input type="text" id="edit-nome" required placeholder="Ex: João da Silva ou Empresa LTDA">
+            </div>
+            <div class="form-group">
+                <label>CPF / CNPJ</label>
+                <input type="text" id="edit-doc" placeholder="000.000.000-00">
+            </div>
+            <div class="form-group">
+                <label>Inscrição Estadual</label>
+                <input type="text" id="edit-ie" placeholder="Isento">
+            </div>
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="edit-email" placeholder="email@exemplo.com">
+            </div>
+            <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" id="edit-tel" placeholder="(00) 00000-0000">
+            </div>
+            <div class="form-group span-2">
+                <label>Endereço Completo</label>
+                <textarea id="edit-endereco" rows="2" placeholder="Rua, Número, Bairro, Cidade - UF"></textarea>
+            </div>
+            <div class="form-group span-2" style="display: flex; gap: 12px; margin-top: 10px;">
+                <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
+                <button type="submit" class="btn-primary" style="flex: 2;">Salvar Cadastro</button>
+            </div>
+        </form>
     </div>
 </div>

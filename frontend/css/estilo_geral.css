@@ -113,8 +113,52 @@ body.is-electron .main-content { margin-top: 38px; height: calc(100vh - 38px); }
 .page-title { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
 
 /* --- PANELS & CARDS --- */
-.panel { background: var(--bg-panel); border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 24px; overflow: hidden; }
+.panel { 
+    background: var(--bg-panel); 
+    border-radius: 16px; 
+    border: 1px solid var(--border); 
+    box-shadow: var(--shadow); 
+    margin-bottom: 24px; 
+    overflow: hidden; 
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.panel:hover { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
 .panel-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.2s;
+    color: var(--text-muted);
+}
+.btn-icon:hover { background: var(--bg-body); color: var(--primary); }
+.btn-icon.text-danger:hover { background: #fee2e2; color: #dc2626; }
+
+/* ✅ Toasts de notificação */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    color: white;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateX(400px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 10000;
+}
+.toast.show { opacity: 1; transform: translateX(0); }
+.toast-success { background: linear-gradient(135deg, #10b981, #059669); }
+.toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.toast i { font-size: 1.2rem; }
 
 /* --- VITRINE DE PRODUTOS --- */
 .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; margin-bottom: 24px; }
