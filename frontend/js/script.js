@@ -22,8 +22,21 @@ window.onload = function() {
 };
 
 function checkEnvironment() {
-    if (window.location.protocol !== 'file:') {
-        const titlebar = document.getElementById('titlebar');
+    const isElectron = window.location.protocol === 'file:';
+    const titlebar = document.getElementById('titlebar');
+    
+    if (isElectron) {
+        if (titlebar) titlebar.style.display = 'flex';
+        
+        try {
+            const { ipcRenderer } = require('electron');
+            document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
+            document.getElementById('minBtn')?.addEventListener('click', () => ipcRenderer.send('minimize-app'));
+            document.getElementById('maxBtn')?.addEventListener('click', () => ipcRenderer.send('maximize-app'));
+        } catch (e) {
+            console.warn("Electron IPC não disponível:", e);
+        }
+    } else {
         if (titlebar) titlebar.style.display = 'none';
         
         const sidebar = document.querySelector('.sidebar');
@@ -49,70 +62,20 @@ function setupSelectors() {
             const input = document.getElementById('prod-icone');
             if (input) input.value = opt.dataset.icon;
         }
-        if (e.target.closest('.color-option')) {
-            const opt = e.target.closest('.color-option');
-            document.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
-            opt.classList.add('active');
-            const input = document.getElementById('prod-cor');
-            if (input) input.value = opt.dataset.color;
-        }
     });
-}
-
-async function fetchWithAuth(url, options = {}) {
-    const token = localStorage.getItem('token');
-    if (!token) { window.location.href = 'login.html'; return; }
-    const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...options.headers
-    };
-    try {
-        const response = await fetch(`${API_URL}${url}`, { ...options, headers });
-        if (response.status === 401 || response.status === 403) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('mm_user');
-            window.location.href = 'login.html';
-            return;
-        }
-        return response;
-    } catch (err) {
-        console.error("Erro na requisição:", err);
-        showError("Erro de conexão com o servidor.");
-        throw err;
-    }
 }
 
 async function loadDataFromAPI() {
     try {
-        const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
-        const isAdmin = user.role === 'admin';
-
-        const requests = [
-            fetchWithAuth('/api/movimentacoes'),
-            fetchWithAuth('/api/produtos'),
-            fetchWithAuth('/api/clientes'),
-            fetchWithAuth('/api/fornecedores')
-        ];
-
-        if (isAdmin) {
-            requests.push(fetchWithAuth('/api/usuarios'));
-        }
-
-        const results = await Promise.all(requests);
-        
-        if (results[0]) appData.transactions = await results[0].json();
-        if (results[1]) appData.products = await results[1].json();
-        if (results[2]) appData.clients = await results[2].json();
-        if (results[3]) appData.suppliers = await results[3].json();
-        
-        if (isAdmin && results[4]) {
-            appData.users = await results[4].json();
-        } else {
-            appData.users = [];
-        }
-
-        showSection(currentSectionId);
+        const [trans, prods, clis, sups, usrs] = await Promise.all([
+            fetchWithAuth('/api/movimentacoes').then(r => r.json()),
+            fetchWithAuth('/api/produtos').then(r => r.json()),
+            fetchWithAuth('/api/clientes').then(r => r.json()),
+            fetchWithAuth('/api/fornecedores').then(r => r.json()),
+            fetchWithAuth('/api/usuarios').then(r => r.json())
+        ]);
+        appData = { transactions: trans, products: prods, clients: clis, suppliers: sups, users: usrs };
+        initSection(currentSectionId);
     } catch (err) {
         console.error("Erro ao carregar dados:", err);
     }
@@ -143,20 +106,20 @@ function initSection(id) {
     const isAdmin = user.role === 'admin';
 
     if (id === 'dashboard') {
-        renderDashboard();
-        const dateEl = document.getElementById('current-date');
-        if (dateEl) dateEl.innerText = new Date().toLocaleDateString('pt-BR');
+        const stockMap = calculateStock();
+        updateDashboardKPIs(stockMap);
+        renderCharts(stockMap);
+        renderRecentTransactions();
     }
     if (id === 'entrada' || id === 'saida') {
         renderProductShowcase(id);
-        const dateInput = document.getElementById(id === 'entrada' ? 'entry-date' : 'exit-date');
-        if (dateInput) dateInput.valueAsDate = new Date();
     }
-    if (id === 'cadastro') loadCadastros();
+    if (id === 'cadastro') {
+        loadCadastros();
+    }
     if (id === 'financeiro') {
         updateFinanceKPIs();
-        const dateInput = document.getElementById('desp-data');
-        if (dateInput) dateInput.valueAsDate = new Date();
+        renderFinanceChart();
     }
     if (id === 'estoque') renderStockTable();
     if (id === 'nfe') loadNFeTable();
@@ -164,10 +127,22 @@ function initSection(id) {
     if (id === 'config') {
         loadConfigData();
         if (!isAdmin) {
-            const adminPanels = ['#admin-users-panel', '#admin-entities-panel', '#admin-products-panel', '.panel:has(.btn-danger)'];
-            adminPanels.forEach(selector => {
-                const el = document.querySelector(selector);
-                if (el) el.style.display = 'none';
+            const adminSelectors = [
+                '#admin-users-panel', 
+                '#admin-entities-panel', 
+                '#admin-products-panel', 
+                '.panel:has(.btn-danger)'
+            ];
+            adminSelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(el => el.style.display = 'none');
+            });
+            
+            const panels = document.querySelectorAll('.panel');
+            panels.forEach(p => {
+                if (p.textContent.includes('Zona de Perigo') || p.textContent.includes('Usuários e Acessos')) {
+                    p.style.display = 'none';
+                }
             });
         }
     }
@@ -175,40 +150,38 @@ function initSection(id) {
 
 function calculateStock() {
     const stockMap = {};
-    appData.products.forEach(p => stockMap[p.nome] = 0);
     appData.transactions.forEach(t => {
-        if (t.tipo === 'entrada') stockMap[t.produto] = (stockMap[t.produto] || 0) + t.quantidade;
-        if (t.tipo === 'saida') stockMap[t.produto] = (stockMap[t.produto] || 0) - t.quantidade;
+        if (!stockMap[t.produto]) stockMap[t.produto] = 0;
+        if (t.tipo === 'entrada') stockMap[t.produto] += t.quantidade;
+        if (t.tipo === 'saida') stockMap[t.produto] -= t.quantidade;
     });
     return stockMap;
 }
 
-function renderDashboard() {
-    const stockMap = calculateStock();
+function updateDashboardKPIs(stockMap) {
     const totalStock = Object.values(stockMap).reduce((a, b) => a + b, 0);
-    let monthlyRevenue = 0, monthlyExpenses = 0;
-    const now = new Date(), currentMonth = now.getMonth(), currentYear = now.getFullYear();
+    const dashStock = document.getElementById('dash-stock');
+    if (dashStock) dashStock.innerText = `${totalStock} Cx`;
 
+    let revenue = 0, expenses = 0;
+    const now = new Date();
     appData.transactions.forEach(t => {
         const tDate = new Date(t.data);
-        if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-            if (t.tipo === 'saida') monthlyRevenue += t.valor;
-            if (t.tipo === 'entrada' || t.tipo === 'despesa') monthlyExpenses += t.valor;
+        if (tDate.getMonth() === now.getMonth() && tDate.getFullYear() === now.getFullYear()) {
+            if (t.tipo === 'saida') revenue += t.valor;
+            if (t.tipo === 'entrada' || t.tipo === 'despesa') expenses += t.valor;
         }
     });
 
-    const dashStock = document.getElementById('dash-stock');
-    const dashRevenue = document.getElementById('dash-revenue');
-    const dashExpenses = document.getElementById('dash-expenses');
-    const dashProfit = document.getElementById('dash-profit');
+    const dRev = document.getElementById('dash-revenue');
+    const dExp = document.getElementById('dash-expenses');
+    const dPro = document.getElementById('dash-profit');
+    const dDate = document.getElementById('current-date');
 
-    if (dashStock) dashStock.innerText = `${totalStock} Cx`;
-    if (dashRevenue) dashRevenue.innerText = `R$ ${monthlyRevenue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (dashExpenses) dashExpenses.innerText = `R$ ${monthlyExpenses.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (dashProfit) dashProfit.innerText = `R$ ${(monthlyRevenue - monthlyExpenses).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    
-    renderCharts(stockMap);
-    renderRecentTransactions();
+    if (dRev) dRev.innerText = `R$ ${revenue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (dExp) dExp.innerText = `R$ ${expenses.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (dPro) dPro.innerText = `R$ ${(revenue - expenses).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (dDate) dDate.innerText = now.toLocaleDateString('pt-BR');
 }
 
 function renderRecentTransactions() {
@@ -252,11 +225,13 @@ function renderProductShowcase(section) {
         const card = document.createElement('div');
         card.className = `product-card ${qty <= 0 && section === 'saida' ? 'disabled' : ''}`;
         card.innerHTML = `
-            <div class="product-icon-circle" style="background: ${p.cor || '#1A5632'}">
+            <div class="product-icon" style="background: ${p.cor}20; color: ${p.cor}">
                 <i class="fas ${p.icone || 'fa-box'}"></i>
             </div>
-            <div class="product-name">${p.nome}</div>
-            <div class="product-stock">${qty} em estoque</div>
+            <div class="product-info">
+                <strong>${p.nome}</strong>
+                <span>Estoque: ${qty} Cx</span>
+            </div>
         `;
         if (!(qty <= 0 && section === 'saida')) {
             card.onclick = (event) => selectProduct(p, section, event);
@@ -272,7 +247,6 @@ function selectProduct(p, section, event) {
     event.currentTarget.classList.add('active');
 }
 
-// --- GESTÃO DE CADASTROS ---
 function loadCadastros() {
     const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
     const isAdmin = user.role === 'admin';
@@ -310,19 +284,15 @@ function loadCadastros() {
     }
 }
 
-// --- MODAIS CADASTRO ---
 function openEditModal(type, data = null) {
     const modal = document.getElementById('modal-edit');
     modal.classList.add('active');
+    document.getElementById('modal-title').innerText = (data ? 'Editar ' : 'Novo ') + type.charAt(0).toUpperCase() + type.slice(1);
     document.getElementById('edit-type').value = type;
     document.getElementById('edit-id').value = data ? data.id : '';
     document.getElementById('edit-nome').value = data ? data.nome : '';
     document.getElementById('edit-doc').value = data ? data.documento : '';
-    document.getElementById('edit-ie').value = data ? data.ie : '';
-    document.getElementById('edit-email').value = data ? data.email : '';
     document.getElementById('edit-tel').value = data ? data.telefone : '';
-    document.getElementById('edit-end').value = data ? data.endereco : '';
-    document.getElementById('modal-title').innerText = data ? `Editar ${type}` : `Novo ${type}`;
 }
 function closeEditModal() { document.getElementById('modal-edit').classList.remove('active'); }
 
@@ -333,22 +303,27 @@ async function saveCadastro(event) {
         id: document.getElementById('edit-id').value || null,
         nome: document.getElementById('edit-nome').value,
         documento: document.getElementById('edit-doc').value,
-        ie: document.getElementById('edit-ie').value,
-        email: document.getElementById('edit-email').value,
-        telefone: document.getElementById('edit-tel').value,
-        endereco: document.getElementById('edit-end').value
+        telefone: document.getElementById('edit-tel').value
     };
     const res = await fetchWithAuth(`/api/${type}s`, { method: 'POST', body: JSON.stringify(data) });
-    if (res && res.ok) { showSuccess("Cadastro salvo!"); closeEditModal(); loadDataFromAPI(); }
+    if (res && res.ok) { 
+        showSuccess("Cadastro salvo!"); 
+        closeEditModal(); 
+        await loadDataFromAPI(); 
+        if (currentSectionId === 'config') loadConfigData();
+    }
 }
 
 async function deleteCadastro(type, id) {
     if (!confirm(`Excluir este ${type}?`)) return;
-    const res = await fetchWithAuth(`/api/${type}s/${id}`, { method: 'DELETE' });
-    if (res && res.ok) { showSuccess("Excluído!"); loadDataFromAPI(); }
+    const res = await fetchWithAuth(`/api/cadastros/${type}/${id}`, { method: 'DELETE' });
+    if (res && res.ok) { 
+        showSuccess("Registro excluído!"); 
+        await loadDataFromAPI(); 
+        if (currentSectionId === 'config') loadConfigData();
+    }
 }
 
-// --- PRODUTOS ---
 function openProdutoModal(data = null) {
     const modal = document.getElementById('modal-produto');
     modal.classList.add('active');
@@ -356,16 +331,11 @@ function openProdutoModal(data = null) {
     document.getElementById('prod-nome').value = data ? data.nome : '';
     document.getElementById('prod-ncm').value = data ? data.ncm : '';
     document.getElementById('prod-preco').value = data ? data.preco_venda : '';
-    document.getElementById('prod-min').value = data ? data.estoque_minimo : '100';
-    document.getElementById('prod-icone').value = data ? data.icone : 'fa-box';
     document.getElementById('prod-cor').value = data ? data.cor : '#1A5632';
+    document.getElementById('prod-icone').value = data ? data.icone : 'fa-box';
     
-    // Atualizar seletores visuais
-    document.querySelectorAll('.icon-option').forEach(o => {
-        o.classList.toggle('active', o.dataset.icon === (data ? data.icone : 'fa-box'));
-    });
-    document.querySelectorAll('.color-option').forEach(o => {
-        o.classList.toggle('active', o.dataset.color === (data ? data.cor : '#1A5632'));
+    document.querySelectorAll('.icon-option').forEach(opt => {
+        opt.classList.toggle('active', opt.dataset.icon === (data ? data.icone : 'fa-box'));
     });
 }
 function closeProdutoModal() { document.getElementById('modal-produto').classList.remove('active'); }
@@ -377,94 +347,71 @@ async function saveProduto(event) {
         nome: document.getElementById('prod-nome').value,
         ncm: document.getElementById('prod-ncm').value,
         preco_venda: parseFloat(document.getElementById('prod-preco').value),
-        estoque_minimo: parseInt(document.getElementById('prod-min').value),
-        icone: document.getElementById('prod-icone').value,
-        cor: document.getElementById('prod-cor').value
+        cor: document.getElementById('prod-cor').value,
+        icone: document.getElementById('prod-icone').value
     };
     const res = await fetchWithAuth('/api/produtos', { method: 'POST', body: JSON.stringify(data) });
-    if (res && res.ok) { showSuccess("Produto salvo!"); closeProdutoModal(); loadDataFromAPI(); }
+    if (res && res.ok) { 
+        showSuccess("Produto salvo!"); 
+        closeProdutoModal(); 
+        await loadDataFromAPI(); 
+        if (currentSectionId === 'config') loadConfigData();
+    }
 }
 
 async function deleteProduto(id) {
     if (!confirm("Excluir este produto?")) return;
     const res = await fetchWithAuth(`/api/produtos/${id}`, { method: 'DELETE' });
-    if (res && res.ok) { showSuccess("Excluído!"); loadDataFromAPI(); }
+    if (res && res.ok) { 
+        showSuccess("Produto excluído!"); 
+        await loadDataFromAPI(); 
+        if (currentSectionId === 'config') loadConfigData();
+    }
 }
 
-// --- ENTRADA E SAÍDA ---
 async function saveEntrada(event) {
     event.preventDefault();
     const data = {
-        desc: document.getElementById('entry-desc').value,
-        productType: document.getElementById('entry-product').value,
-        qty: parseInt(document.getElementById('entry-qty').value),
-        value: parseFloat(document.getElementById('entry-value').value),
-        date: document.getElementById('entry-date').value
+        tipo: 'entrada',
+        produto: document.getElementById('entry-product').value,
+        quantidade: parseInt(document.getElementById('entry-qty').value),
+        valor: parseFloat(document.getElementById('entry-price').value),
+        descricao: document.getElementById('entry-supplier').value,
+        data: new Date().toISOString()
     };
-    if (!data.productType) { showError("Selecione um produto!"); return; }
-    const res = await fetchWithAuth('/api/entrada', { method: 'POST', body: JSON.stringify(data) });
+    const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
     if (res && res.ok) { showSuccess("Entrada registrada!"); loadDataFromAPI(); }
 }
 
 async function saveSaida(event) {
     event.preventDefault();
     const data = {
-        desc: document.getElementById('exit-desc').value,
-        productType: document.getElementById('exit-product').value,
-        qty: parseInt(document.getElementById('exit-qty').value),
-        value: parseFloat(document.getElementById('exit-value').value),
-        date: document.getElementById('exit-date').value
+        tipo: 'saida',
+        produto: document.getElementById('exit-product').value,
+        quantidade: parseInt(document.getElementById('exit-qty').value),
+        valor: parseFloat(document.getElementById('exit-price').value),
+        descricao: document.getElementById('exit-client').value,
+        data: new Date().toISOString()
     };
-    if (!data.productType) { showError("Selecione um produto!"); return; }
-    
-    const res = await fetchWithAuth('/api/saida', { method: 'POST', body: JSON.stringify(data) });
+    const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
     if (res && res.ok) {
         const result = await res.json();
-        showSuccess("Venda registrada!");
-        if (confirm("Venda registrada com sucesso! Deseja gerar a NF-e agora?")) {
-            gerarNFe(result.id, data.desc, data.productType, data.qty, data.value);
+        showSuccess("Venda realizada!");
+        if (confirm("Deseja emitir a NF-e agora?")) {
+            emitirNFe(result.id, data.descricao, [{ produto: data.produto, qtd: data.quantidade, valor: data.valor }]);
         }
         loadDataFromAPI();
     }
 }
 
-async function gerarNFe(vendaId, clienteNome, produtoNome, qtd, valor) {
-    const cliente = appData.clients.find(c => c.nome === clienteNome) || { nome: clienteNome };
-    const produto = appData.products.find(p => p.nome === produtoNome) || { nome: produtoNome, id: 0 };
-    
-    const data = {
-        venda_id: vendaId,
-        destinatario: cliente,
-        itens: [{
-            id: produto.id,
-            nome: produto.nome,
-            ncm: produto.ncm,
-            quantidade: qtd,
-            valor: valor / qtd
-        }]
-    };
-    
-    const res = await fetchWithAuth('/api/nfe/gerar', { method: 'POST', body: JSON.stringify(data) });
+async function emitirNFe(vendaId, cliente, itens) {
+    const res = await fetchWithAuth('/api/nfe/gerar', {
+        method: 'POST',
+        body: JSON.stringify({ venda_id: vendaId, destinatario: cliente, itens })
+    });
     if (res && res.ok) {
-        showSuccess("NF-e gerada com sucesso!");
-        if (currentSectionId === 'nfe') loadNFeTable();
-    }
-}
-
-// --- USUÁRIOS (GESTÃO EM CONFIG) ---
-function loadConfigData() {
-    const listUser = document.getElementById('list-usuarios');
-    if (listUser) {
-        listUser.innerHTML = '';
-        appData.users.forEach(u => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${u.label}</td><td>${u.username}</td><td><span class="badge">${u.role.toUpperCase()}</span></td>
-                <td style="text-align: right;">
-                    <button class="btn-icon" onclick='openUsuarioModal(${JSON.stringify(u)})'><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon text-danger" onclick="deleteUsuario(${u.id})"><i class="fas fa-trash"></i></button>
-                </td>`;
-            listUser.appendChild(tr);
-        });
+        showSuccess("NF-e Emitida com Sucesso!");
+        showSection('nfe');
     }
 }
 
@@ -478,29 +425,44 @@ function openUsuarioModal(data = null) {
     document.getElementById('user-password').value = '';
     document.getElementById('user-role').value = data ? data.role : 'operador';
 }
-function closeUsuarioModal() { document.getElementById('modal-usuario').classList.remove('active'); }
+function closeUsuarioModal() { 
+    const modal = document.getElementById('modal-usuario');
+    if (modal) modal.classList.remove('active'); 
+}
 
 async function saveUsuario(event) {
     event.preventDefault();
+    const id = document.getElementById('user-id').value;
     const data = {
-        id: document.getElementById('user-id').value || null,
         label: document.getElementById('user-label').value,
         username: document.getElementById('user-username').value,
         password: document.getElementById('user-password').value,
         role: document.getElementById('user-role').value
     };
-    const res = await fetchWithAuth('/api/usuarios', { method: 'POST', body: JSON.stringify(data) });
-    if (res && res.ok) { showSuccess("Usuário salvo!"); closeUsuarioModal(); loadDataFromAPI(); }
+    
+    const url = id ? `/api/usuarios/${id}` : '/api/usuarios';
+    const method = id ? 'PUT' : 'POST';
+    
+    const res = await fetchWithAuth(url, { method: method, body: JSON.stringify(data) });
+    if (res && res.ok) { 
+        showSuccess("Usuário salvo!"); 
+        closeUsuarioModal(); 
+        await loadDataFromAPI(); 
+        if (currentSectionId === 'config') loadConfigData();
+    }
 }
 
 async function deleteUsuario(id) {
     if (id == 1) { showError("Não é possível excluir o admin principal."); return; }
     if (!confirm("Excluir este funcionário?")) return;
     const res = await fetchWithAuth(`/api/usuarios/${id}`, { method: 'DELETE' });
-    if (res && res.ok) { showSuccess("Excluído!"); loadDataFromAPI(); }
+    if (res && res.ok) { 
+        showSuccess("Excluído!"); 
+        await loadDataFromAPI(); 
+        if (currentSectionId === 'config') loadConfigData();
+    }
 }
 
-// --- FINANCEIRO ---
 function updateFinanceKPIs() {
     let totalRevenue = 0, totalExpenses = 0;
     appData.transactions.forEach(t => {
@@ -510,35 +472,25 @@ function updateFinanceKPIs() {
     const finIn = document.getElementById('fin-total-in');
     const finOut = document.getElementById('fin-total-out');
     const finBal = document.getElementById('fin-balance');
-
-    if (finIn) finIn.innerText = `R$ ${totalRevenue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (finOut) finOut.innerText = `R$ ${totalExpenses.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (finBal) finBal.innerText = `R$ ${(totalRevenue - totalExpenses).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    
-    const tbody = document.getElementById('finance-table-body');
-    if (tbody) {
-        tbody.innerHTML = '';
-        appData.transactions.slice(0, 15).forEach(t => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${new Date(t.data).toLocaleDateString('pt-BR')}</td><td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
-                <td>${t.descricao}</td><td style="font-weight: 700; color: ${t.tipo === 'saida' ? '#15803d' : '#b91c1c'}">R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>`;
-            tbody.appendChild(tr);
-        });
-    }
+    if (finIn) finIn.innerText = `R$ ${totalRevenue.toLocaleString('pt-BR')}`;
+    if (finOut) finOut.innerText = `R$ ${totalExpenses.toLocaleString('pt-BR')}`;
+    if (finBal) finBal.innerText = `R$ ${(totalRevenue - totalExpenses).toLocaleString('pt-BR')}`;
 }
 
 async function saveDespesa(event) {
     event.preventDefault();
     const data = {
-        desc: document.getElementById('desp-desc').value,
-        value: parseFloat(document.getElementById('desp-valor').value),
-        date: document.getElementById('desp-data').value
+        tipo: 'despesa',
+        produto: 'DESPESA GERAL',
+        quantidade: 1,
+        valor: parseFloat(document.getElementById('expense-val').value),
+        descricao: document.getElementById('expense-desc').value,
+        data: new Date().toISOString()
     };
-    const res = await fetchWithAuth('/api/despesa', { method: 'POST', body: JSON.stringify(data) });
+    const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
     if (res && res.ok) { showSuccess("Despesa lançada!"); loadDataFromAPI(); }
 }
 
-// --- ESTOQUE ---
 function renderStockTable() {
     const tbody = document.getElementById('full-table-body');
     if (!tbody) return;
@@ -557,22 +509,19 @@ function renderStockTable() {
             <td>${t.produto}</td>
             <td>${t.descricao}</td>
             <td>${t.quantidade}</td>
-            <td>R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-            <td style="text-align: right;">
-                <button class="btn-icon text-danger" onclick="deleteMovimentacao(${t.id})"><i class="fas fa-trash"></i></button>
-            </td>
+            <td>R$ ${t.valor.toLocaleString('pt-BR')}</td>
+            <td style="text-align: right;"><button class="btn-icon text-danger" onclick="deleteMovimentacao(${t.id})"><i class="fas fa-trash"></i></button></td>
         `;
         tbody.appendChild(tr);
     });
 }
 
 async function deleteMovimentacao(id) {
-    if (!confirm("Excluir este registro de movimentação?")) return;
+    if (!confirm("Excluir este registro permanentemente?")) return;
     const res = await fetchWithAuth(`/api/movimentacoes/${id}`, { method: 'DELETE' });
     if (res && res.ok) { showSuccess("Registro excluído!"); loadDataFromAPI(); }
 }
 
-// --- NF-e ---
 async function loadNFeTable() {
     const tbody = document.getElementById('nfe-table-body');
     if (!tbody) return;
@@ -590,195 +539,94 @@ async function loadNFeTable() {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${new Date(n.data_emissao).toLocaleDateString('pt-BR')}</td><td>#${n.venda_id}</td>
             <td style="font-family: monospace; font-size: 0.8rem;">${n.chave_acesso}</td>
-            <td><span class="badge" style="background: #dcfce7; color: #166534;">${n.status.toUpperCase()}</span></td>
+            <td><span class="badge entrada">${n.status.toUpperCase()}</span></td>
             <td style="text-align: right;">
-                <button class="btn-icon" onclick="downloadXML(${n.id})" title="Baixar XML"><i class="fas fa-file-code"></i></button>
-                <button class="btn-icon" onclick="showError('A impressão de DANFE PDF está sendo implementada.')" title="Imprimir DANFE"><i class="fas fa-file-pdf"></i></button>
+                <button class="btn-icon" onclick="downloadXML(${n.id})" title="Baixar XML"><i class="fas fa-file-code"></i> Baixar XML</button>
+                <button class="btn-icon" onclick="downloadPDF(${n.id})" title="Imprimir DANFE"><i class="fas fa-file-pdf"></i> Imprimir PDF</button>
             </td>`;
         tbody.appendChild(tr);
     });
 }
 
-function downloadXML(id) {
+async function downloadXML(id) {
     const token = localStorage.getItem('token');
-    window.open(`${API_URL}/api/nfe/${id}/xml?token=${token}`, '_blank');
+    try {
+        const res = await fetch(`${API_URL}/api/nfe/${id}/xml`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `NFe_${id}.xml`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (err) {
+        showError("Erro ao baixar XML.");
+    }
 }
 
-// --- BUSCA DE CONTATOS ---
+async function downloadPDF(id) {
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/nfe/${id}/pdf`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `DANFE_${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (err) {
+        showError("Erro ao baixar PDF.");
+    }
+}
+
 function openSearchModal(type) {
     const modal = document.getElementById('modal-search');
-    const list = document.getElementById('search-list');
     const input = document.getElementById('search-input');
     const typeInput = document.getElementById('search-type');
     
-    if (!modal || !list) return;
-    
-    modal.classList.add('active');
-    typeInput.value = type;
-    input.value = '';
-    input.focus();
-    
-    renderSearchList(type);
-    input.onkeyup = () => renderSearchList(type, input.value);
+    if (modal) modal.classList.add('active');
+    if (typeInput) typeInput.value = type;
+    if (input) {
+        input.value = '';
+        input.placeholder = `Buscar ${type}...`;
+        input.focus();
+    }
+    renderSearchList(type, '');
 }
 
-function closeSearchModal() {
-    document.getElementById('modal-search').classList.remove('active');
-}
-
-function renderSearchList(type, filter = '') {
+function renderSearchList(type, filter) {
     const list = document.getElementById('search-list');
+    if (!list) return;
     list.innerHTML = '';
-    const data = type === 'cliente' ? appData.clients : appData.suppliers;
+    const items = type === 'cliente' ? appData.clients : appData.suppliers;
     
-    data.filter(item => item.nome.toLowerCase().includes(filter.toLowerCase())).forEach(item => {
+    items.filter(i => i.nome.toLowerCase().includes(filter.toLowerCase())).forEach(i => {
         const div = document.createElement('div');
         div.className = 'search-item';
-        div.innerHTML = `<strong>${item.nome}</strong><small>${item.documento}</small>`;
+        div.innerHTML = `<strong>${i.nome}</strong><br><small>${i.documento}</small>`;
         div.onclick = () => {
-            const targetId = type === 'cliente' ? 'exit-desc' : 'entry-desc';
-            document.getElementById(targetId).value = item.nome;
-            closeSearchModal();
+            const target = type === 'cliente' ? 'exit-client' : 'entry-supplier';
+            const targetEl = document.getElementById(target);
+            if (targetEl) targetEl.value = i.nome;
+            const modal = document.getElementById('modal-search');
+            if (modal) modal.classList.remove('active');
         };
         list.appendChild(div);
     });
 }
 
-// --- UTILITÁRIOS ---
-function showSuccess(msg) {
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-success show';
-    toast.innerHTML = `<i class="fas fa-check-circle"></i> ${msg}`;
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+function closeSearchModal() { 
+    const modal = document.getElementById('modal-search');
+    if (modal) modal.classList.remove('active'); 
 }
 
-function showError(msg) {
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-error show';
-    toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${msg}`;
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
-}
-
-function checkLogin() { if (!localStorage.getItem('token')) window.location.href = 'login.html'; }
-function logout() { localStorage.removeItem('token'); localStorage.removeItem('mm_user'); window.location.href = 'login.html'; }
-
-// --- DASHBOARD CHARTS ---
-function renderCharts(stockMap) {
-    const ctxStock = document.getElementById('stockChart');
-    if (ctxStock) {
-        if (stockChart) stockChart.destroy();
-        const labels = Object.keys(stockMap);
-        const data = Object.values(stockMap);
-        const hasData = data.some(v => v > 0);
-        
-        if (!hasData) {
-            const container = ctxStock.parentElement;
-            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);flex-direction:column;gap:10px;"><i class="fas fa-box-open fa-2x"></i><span>Sem estoque disponível</span></div>';
-            return;
-        }
-
-        stockChart = new Chart(ctxStock, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{ data: data, backgroundColor: ['#1A5632', '#E89C31', '#2563eb', '#dc2626', '#9333ea', '#0891b2'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-        });
-    }
-    
-    const ctxFinance = document.getElementById('financeChart');
-    if (ctxFinance) {
-        if (financeChart) financeChart.destroy();
-        const monthlyData = calculateMonthlyData();
-        financeChart = new Chart(ctxFinance, {
-            type: 'line',
-            data: {
-                labels: monthlyData.labels,
-                datasets: [
-                    {
-                        label: 'Receita',
-                        data: monthlyData.revenue,
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    },
-                    {
-                        label: 'Despesas',
-                        data: monthlyData.expenses,
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }
-                ]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-    }
-}
-
-function calculateMonthlyData() {
-    const labels = [];
-    const revenue = [];
-    const expenses = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const month = d.toLocaleString('pt-BR', { month: 'short' });
-        labels.push(month);
-        let rev = 0, exp = 0;
-        appData.transactions.forEach(t => {
-            const tDate = new Date(t.data);
-            if (tDate.getMonth() === d.getMonth() && tDate.getFullYear() === d.getFullYear()) {
-                if (t.tipo === 'saida') rev += t.valor;
-                if (t.tipo === 'entrada' || t.tipo === 'despesa') exp += t.valor;
-            }
-        });
-        revenue.push(rev);
-        expenses.push(exp);
-    }
-    return { labels, revenue, expenses };
-}
-
-// --- CONSULTA CNPJ ---
-async function consultarCNPJ() {
-    const cnpj = document.getElementById('edit-doc').value.replace(/\D/g, '');
-    if (cnpj.length !== 14) { showError("CNPJ inválido para consulta."); return; }
-    
-    const btn = event.currentTarget;
-    const oldIcon = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    btn.disabled = true;
-
-    try {
-        const res = await fetchWithAuth(`/api/consulta-cnpj/${cnpj}`);
-        const data = await res.json();
-        if (data.status === 'OK') {
-            document.getElementById('edit-nome').value = data.nome;
-            document.getElementById('edit-email').value = data.email || '';
-            document.getElementById('edit-tel').value = data.telefone || '';
-            document.getElementById('edit-end').value = `${data.logradouro}, ${data.numero} - ${data.bairro}, ${data.municipio} - ${data.uf}`;
-            showSuccess("Dados consultados com sucesso!");
-        } else {
-            showError("CNPJ não encontrado ou erro na consulta.");
-        }
-    } catch (err) {
-        showError("Erro ao conectar com o serviço de consulta.");
-    } finally {
-        btn.innerHTML = oldIcon;
-        btn.disabled = false;
-    }
-}
-
-// --- CONFIGURAÇÕES ---
 async function updateNFeModo(modo) {
     const res = await fetchWithAuth('/api/configs', {
         method: 'POST',
@@ -799,13 +647,12 @@ async function loadConfigData() {
     
     const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
     if (user.role === 'admin') {
-        // Carregar Usuários
         const listUser = document.getElementById('list-usuarios');
         if (listUser) {
             listUser.innerHTML = '';
             appData.users.forEach(u => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${u.label}</td><td>${u.username}</td><td><span class="badge">${u.role.toUpperCase()}</span></td>
+                tr.innerHTML = `<td>${u.label}</td><td>${u.username}</td><td><span class="badge admin">${u.role.toUpperCase()}</span></td>
                     <td style="text-align: right;">
                         <button class="btn-icon" onclick='openUsuarioModal(${JSON.stringify(u)})'><i class="fas fa-edit"></i></button>
                         <button class="btn-icon text-danger" onclick="deleteUsuario(${u.id})"><i class="fas fa-trash"></i></button>
@@ -814,7 +661,6 @@ async function loadConfigData() {
             });
         }
         
-        // Carregar Clientes para Config
         const listCliConfig = document.getElementById('config-list-clientes');
         if (listCliConfig) {
             listCliConfig.innerHTML = '';
@@ -829,7 +675,6 @@ async function loadConfigData() {
             });
         }
         
-        // Carregar Fornecedores para Config
         const listFornConfig = document.getElementById('config-list-fornecedores');
         if (listFornConfig) {
             listFornConfig.innerHTML = '';
@@ -844,7 +689,6 @@ async function loadConfigData() {
             });
         }
         
-        // Carregar Produtos para Config
         const listProdConfig = document.getElementById('config-list-produtos');
         if (listProdConfig) {
             listProdConfig.innerHTML = '';
@@ -864,12 +708,95 @@ async function loadConfigData() {
 }
 
 async function resetSystem() {
-    if (!confirm("ATENÇÃO: Isso apagará todos os dados de movimentações, clientes e fornecedores. Deseja continuar?")) return;
-    if (!confirm("TEM CERTEZA? Esta ação não pode ser desfeita.")) return;
-    
+    if (!confirm("⚠️ ATENÇÃO: Esta ação apagará todos os dados (exceto usuários). Deseja continuar?")) return;
     const res = await fetchWithAuth('/api/reset', { method: 'DELETE' });
-    if (res && res.ok) {
-        showSuccess("Sistema resetado com sucesso!");
-        loadDataFromAPI();
+    if (res && res.ok) { showSuccess("Sistema reiniciado!"); window.location.reload(); }
+}
+
+async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('token');
+    if (!token) { window.location.href = 'login.html'; return; }
+    
+    options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+    if (options.body && !options.headers['Content-Type']) {
+        options.headers['Content-Type'] = 'application/json';
+    }
+
+    try {
+        const res = await fetch(API_URL + url, options);
+        if (res.status === 401 || res.status === 403) { logout(); return; }
+        return res;
+    } catch (err) {
+        showError("Erro de conexão com o servidor.");
+        return null;
+    }
+}
+
+function showSuccess(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast success';
+    toast.innerHTML = `<i class="fas fa-check-circle"></i> ${msg}`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = 'toastIn 0.4s reverse forwards';
+        setTimeout(() => toast.remove(), 400);
+    }, 3000);
+}
+
+function showError(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast error';
+    toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${msg}`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = 'toastIn 0.4s reverse forwards';
+        setTimeout(() => toast.remove(), 400);
+    }, 3000);
+}
+
+function checkLogin() { if (!localStorage.getItem('token')) window.location.href = 'login.html'; }
+function logout() { localStorage.removeItem('token'); localStorage.removeItem('mm_user'); window.location.href = 'login.html'; }
+
+function renderCharts(stockMap) {
+    const ctxStock = document.getElementById('stockChart');
+    if (ctxStock) {
+        if (stockChart) stockChart.destroy();
+        const labels = Object.keys(stockMap);
+        const data = Object.values(stockMap);
+        const hasData = data.some(v => v > 0);
+        
+        if (!hasData) {
+            const container = ctxStock.parentElement;
+            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);flex-direction:column;gap:10px;"><i class="fas fa-box-open fa-2x"></i><span>Sem estoque disponível</span></div>';
+            return;
+        }
+
+        stockChart = new Chart(ctxStock, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{ data: data, backgroundColor: ['#1A5632', '#E89C31', '#2563eb', '#dc2626', '#9333ea', '#0891b2'] }]
+            },
+            options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+}
+
+function renderFinanceChart() {
+    const ctxFin = document.getElementById('financeChart');
+    if (ctxFin) {
+        if (financeChart) financeChart.destroy();
+        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
+        financeChart = new Chart(ctxFin, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    { label: 'Entradas', data: [12000, 19000, 15000, 25000, 22000, 30000], borderColor: '#1A5632', tension: 0.4 },
+                    { label: 'Saídas', data: [8000, 15000, 12000, 18000, 16000, 22000], borderColor: '#E89C31', tension: 0.4 }
+                ]
+            },
+            options: { maintainAspectRatio: false }
+        });
     }
 }
