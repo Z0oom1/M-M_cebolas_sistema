@@ -206,3 +206,24 @@ button:active {
     display: flex; align-items: center; justify-content: center;
     color: var(--primary);
 }
+
+/* --- FEEDBACK DE ERRO --- */
+.error-message {
+    color: #ef4444;
+    background: #fee2e2;
+    padding: 12px;
+    border-radius: 10px;
+    margin-top: 16px;
+    font-size: 0.85rem;
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #fecaca;
+    display: none;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    50% { transform: translateX(8px); }
+    75% { transform: translateX(-8px); }
+}

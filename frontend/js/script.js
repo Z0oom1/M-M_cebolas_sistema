@@ -3,7 +3,8 @@ let appData = {
     transactions: [],
     products: [],
     clients: [],
-    suppliers: []
+    suppliers: [],
+    trucks: []
 };
 
 let currentSectionId = 'dashboard';
@@ -75,17 +76,19 @@ async function fetchWithAuth(url, options = {}) {
 
 async function loadDataFromAPI() {
     try {
-        const [resMov, resProd, resCli, resForn] = await Promise.all([
+        const [resMov, resProd, resCli, resForn, resTruck] = await Promise.all([
             fetchWithAuth('/api/movimentacoes'),
             fetchWithAuth('/api/produtos'),
             fetchWithAuth('/api/clientes'),
-            fetchWithAuth('/api/fornecedores')
+            fetchWithAuth('/api/fornecedores'),
+            fetchWithAuth('/api/caminhoes')
         ]);
 
         if (resMov) appData.transactions = await resMov.json();
         if (resProd) appData.products = await resProd.json();
         if (resCli) appData.clients = await resCli.json();
         if (resForn) appData.suppliers = await resForn.json();
+        if (resTruck) appData.trucks = await resTruck.json();
 
         showSection(currentSectionId);
     } catch (err) {
@@ -109,7 +112,14 @@ function showSection(id) {
 
 function initSection(id) {
     if (id === 'dashboard') renderDashboard();
-    if (id === 'entrada' || id === 'saida') renderProductShowcase(id);
+    if (id === 'entrada') {
+        renderProductShowcase(id);
+        populateTrucks('entry-truck');
+    }
+    if (id === 'saida') {
+        renderProductShowcase(id);
+        populateTrucks('exit-truck');
+    }
     if (id === 'cadastro') loadCadastros();
     if (id === 'financeiro') updateFinanceKPIs();
     if (id === 'estoque') renderStockTable();
@@ -227,8 +237,9 @@ function renderRecentTransactions() {
     tbody.innerHTML = '';
     appData.transactions.slice(0, 5).forEach(t => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
+tr.innerHTML = `
+	            <td style="font-weight: 600;">${new Date(t.data).toLocaleDateString('pt-BR')}</td>
+	            <td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
             <td>${t.produto}</td>
             <td>${t.descricao}</td>
             <td>${t.quantidade}</td>
@@ -326,6 +337,7 @@ function loadCadastros() {
     const listCli = document.getElementById('list-clientes');
     const listForn = document.getElementById('list-fornecedores');
     const listProd = document.getElementById('list-produtos');
+    const listTrucks = document.getElementById('list-trucks');
 
     if (listCli) {
         listCli.innerHTML = '';
@@ -361,6 +373,22 @@ function loadCadastros() {
         });
     }
 
+    if (listTrucks) {
+        listTrucks.innerHTML = '';
+        appData.trucks.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${t.placa}</strong></td>
+                <td>${t.motorista}</td>
+                <td>${t.modelo}</td>
+                <td>
+                    <button class="btn-icon text-danger" onclick="deleteTruck(${t.id})"><i class="fas fa-trash"></i></button>
+                </td>
+            `;
+            listTrucks.appendChild(tr);
+        });
+    }
+
     if (listProd) {
         listProd.innerHTML = '';
         appData.products.forEach(p => {
@@ -377,6 +405,41 @@ function loadCadastros() {
             `;
             listProd.appendChild(tr);
         });
+    }
+}
+
+function openTruckModal() {
+    const modal = document.getElementById('modal-truck');
+    if (modal) modal.classList.add('active');
+}
+
+function closeTruckModal() {
+    const modal = document.getElementById('modal-truck');
+    if (modal) modal.classList.remove('active');
+}
+
+async function saveTruck(event) {
+    event.preventDefault();
+    const data = {
+        placa: document.getElementById('truck-placa').value,
+        motorista: document.getElementById('truck-motorista').value,
+        modelo: document.getElementById('truck-modelo').value
+    };
+
+    const res = await fetchWithAuth('/api/caminhoes', { method: 'POST', body: JSON.stringify(data) });
+    if (res && res.ok) {
+        showSuccess("Caminhão cadastrado!");
+        closeTruckModal();
+        loadDataFromAPI();
+    }
+}
+
+async function deleteTruck(id) {
+    if (!confirm("Deseja excluir este caminhão?")) return;
+    const res = await fetchWithAuth(`/api/caminhoes/${id}`, { method: 'DELETE' });
+    if (res && res.ok) {
+        showSuccess("Caminhão excluído!");
+        loadDataFromAPI();
     }
 }
 
@@ -469,4 +532,150 @@ function logout() {
 
 function checkLogin() {
     if (!localStorage.getItem('token')) window.location.href = 'login.html';
+}
+
+// --- LÓGICA DA BARRA DE CONTROLE (ELECTRON) ---
+if (isElectron) {
+    const { ipcRenderer } = require('electron');
+
+    document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
+    document.getElementById('minBtn')?.addEventListener('click', () => ipcRenderer.send('minimize-app'));
+    document.getElementById('maxBtn')?.addEventListener('click', () => ipcRenderer.send('maximize-app'));
+} else {
+    // Ocultar barra de título se não for Electron
+    const titlebar = document.getElementById('titlebar');
+    if (titlebar) titlebar.style.display = 'none';
+}
+
+// --- GESTÃO DE ESTOQUE ---
+function renderStockTable() {
+    const tbody = document.getElementById('full-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    appData.transactions.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight: 600;">${new Date(t.data).toLocaleDateString('pt-BR')}</td>
+            <td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
+            <td>${t.produto}</td>
+            <td>${t.descricao}</td>
+            <td>${t.quantidade}</td>
+            <td>R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="text-align: right;">
+                <button class="btn-icon text-danger" onclick="deleteMovimentacao(${t.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function deleteMovimentacao(id) {
+    if (!confirm("Deseja realmente excluir esta movimentação?")) return;
+    const res = await fetchWithAuth(`/api/movimentacoes/${id}`, { method: 'DELETE' });
+    if (res && res.ok) {
+        showSuccess("Movimentação excluída!");
+        loadDataFromAPI();
+    }
+}
+
+// --- FINANCEIRO ---
+function updateFinanceKPIs() {
+    const revenueEl = document.getElementById('fin-total-in');
+    const expensesEl = document.getElementById('fin-total-out');
+    const profitEl = document.getElementById('fin-balance');
+    const tbody = document.getElementById('finance-table-body');
+
+    let totalRevenue = 0;
+    let totalExpenses = 0;
+
+    appData.transactions.forEach(t => {
+        if (t.tipo === 'saida') totalRevenue += t.valor;
+        if (t.tipo === 'entrada' || t.tipo === 'despesa') totalExpenses += t.valor;
+    });
+
+    if (revenueEl) revenueEl.innerText = `R$ ${totalRevenue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (expensesEl) expensesEl.innerText = `R$ ${totalExpenses.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (profitEl) profitEl.innerText = `R$ ${(totalRevenue - totalExpenses).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+
+    if (tbody) {
+        tbody.innerHTML = '';
+        appData.transactions.slice(0, 10).forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${new Date(t.data).toLocaleDateString('pt-BR')}</td>
+                <td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
+                <td>${t.descricao}</td>
+                <td style="font-weight: 700; color: ${t.tipo === 'saida' ? '#15803d' : '#b91c1c'}">
+                    R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+// --- FUNÇÕES DE CAMINHÃO ---
+function populateTrucks(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    select.innerHTML = '<option value="">Selecione o Caminhão</option>';
+    appData.trucks.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${t.placa} - ${t.motorista}`;
+        select.appendChild(opt);
+    });
+}
+
+// --- SALVAR ENTRADA / SAÍDA ---
+async function saveEntrada(event) {
+    event.preventDefault();
+    const data = {
+        desc: document.getElementById('entry-desc').value,
+        productType: document.getElementById('entry-product').value,
+        qty: parseInt(document.getElementById('entry-qty').value),
+        value: parseFloat(document.getElementById('entry-value').value),
+        date: document.getElementById('entry-date').value,
+        caminhao_id: document.getElementById('entry-truck').value || null
+    };
+
+    const res = await fetchWithAuth('/api/entrada', { method: 'POST', body: JSON.stringify(data) });
+    if (res && res.ok) {
+        showSuccess("Entrada registrada com sucesso!");
+        loadDataFromAPI();
+    }
+}
+
+async function saveSaida(event) {
+    event.preventDefault();
+    const data = {
+        desc: document.getElementById('exit-desc').value,
+        productType: document.getElementById('exit-product').value,
+        qty: parseInt(document.getElementById('exit-qty').value),
+        value: parseFloat(document.getElementById('exit-value').value),
+        date: document.getElementById('exit-date').value,
+        caminhao_id: document.getElementById('exit-truck').value || null
+    };
+
+    const res = await fetchWithAuth('/api/saida', { method: 'POST', body: JSON.stringify(data) });
+    if (res && res.ok) {
+        const result = await res.json();
+        showSuccess("Saída registrada! Gerando NF-e...");
+        
+        // Simular geração de NF-e
+        await fetchWithAuth('/api/nfe/gerar', {
+            method: 'POST',
+            body: JSON.stringify({
+                venda_id: result.id,
+                destinatario: { nome: data.desc },
+                itens: [{ nome: data.productType, quantidade: data.qty, valor: data.value / data.qty }],
+                caminhao: appData.trucks.find(t => t.id == data.caminhao_id)
+            })
+        });
+        
+        loadDataFromAPI();
+    }
 }

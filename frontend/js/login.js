@@ -44,18 +44,17 @@ function showLoginError(msg) {
     if (!errEl) {
         errEl = document.createElement('div');
         errEl.id = 'login-error';
-        errEl.style.color = '#ef4444';
-        errEl.style.background = '#fee2e2';
-        errEl.style.padding = '10px';
-        errEl.style.borderRadius = '8px';
-        errEl.style.marginTop = '15px';
-        errEl.style.fontSize = '0.85rem';
-        errEl.style.textAlign = 'center';
-        errEl.style.fontWeight = '600';
+        errEl.className = 'error-message';
         document.querySelector('form').after(errEl);
     }
-    errEl.innerText = msg;
+    errEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${msg}`;
     errEl.style.display = 'block';
+    
+    // Shake animation
+    const card = document.querySelector('.login-card');
+    card.style.animation = 'none';
+    card.offsetHeight; // trigger reflow
+    card.style.animation = 'shake 0.5s ease';
 }
 
 window.onload = function() {
@@ -66,4 +65,17 @@ window.onload = function() {
             setTimeout(() => loading.style.display = 'none', 500);
         }, 500);
     }
+}
+
+// --- LÓGICA DA BARRA DE CONTROLE (ELECTRON) ---
+if (isElectron) {
+    const { ipcRenderer } = require('electron');
+
+    document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
+    document.getElementById('minBtn')?.addEventListener('click', () => ipcRenderer.send('minimize-app'));
+    document.getElementById('maxBtn')?.addEventListener('click', () => ipcRenderer.send('maximize-app'));
+} else {
+    // Ocultar barra de título se não for Electron
+    const titlebar = document.getElementById('titlebar');
+    if (titlebar) titlebar.style.display = 'none';
 }
