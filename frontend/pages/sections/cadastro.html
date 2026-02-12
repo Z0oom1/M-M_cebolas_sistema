@@ -1,7 +1,7 @@
 <header class="top-bar">
     <div>
         <h2 class="page-title">Gestão de Cadastros</h2>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Gerencie seus clientes, fornecedores e produtos em um só lugar.</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Gerencie seus clientes, fornecedores, funcionários e produtos.</p>
     </div>
     <div style="display: flex; gap: 12px;">
         <button class="btn-primary" onclick="openEditModal('cliente')">
@@ -9,6 +9,9 @@
         </button>
         <button class="btn-primary" onclick="openEditModal('fornecedor')" style="background: var(--accent); color: var(--primary);">
             <i class="fas fa-truck"></i> Novo Fornecedor
+        </button>
+        <button class="btn-primary" onclick="openUsuarioModal()" style="background: #2563eb;">
+            <i class="fas fa-user-tie"></i> Novo Funcionário
         </button>
     </div>
 </header>
@@ -29,9 +32,7 @@
                         <th style="width: 100px;">Ações</th>
                     </tr>
                 </thead>
-                <tbody id="list-clientes">
-                    <!-- Via JS -->
-                </tbody>
+                <tbody id="list-clientes"></tbody>
             </table>
         </div>
     </div>
@@ -51,81 +52,88 @@
                         <th style="width: 100px;">Ações</th>
                     </tr>
                 </thead>
-                <tbody id="list-fornecedores">
-                    <!-- Via JS -->
-                </tbody>
+                <tbody id="list-fornecedores"></tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div class="panel" style="margin-top: 24px;">
-    <div class="panel-header">
-        <h4 style="font-weight: 700;"><i class="fas fa-box-open" style="color: var(--primary);"></i> Produtos / Variedades</h4>
-        <button class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem;" onclick="openProdutoModal()">
-            <i class="fas fa-plus"></i> Novo Produto
-        </button>
+<div class="cadastro-grid" style="margin-top: 24px;">
+    <!-- LISTA DE PRODUTOS -->
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight: 700;"><i class="fas fa-box-open" style="color: var(--primary);"></i> Produtos / Variedades</h4>
+            <button class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem;" onclick="openProdutoModal()">
+                <i class="fas fa-plus"></i> Novo
+            </button>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Variedade</th>
+                        <th>NCM</th>
+                        <th>Preço Base</th>
+                        <th style="width: 100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="list-produtos"></tbody>
+            </table>
+        </div>
     </div>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Variedade</th>
-                    <th>NCM</th>
-                    <th>Preço Base</th>
-                    <th>Estoque Mín.</th>
-                    <th style="width: 100px;">Ações</th>
-                </tr>
-            </thead>
-            <tbody id="list-produtos">
-                <!-- Via JS -->
-            </tbody>
-        </table>
+
+    <!-- LISTA DE USUÁRIOS/FUNCIONÁRIOS -->
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight: 700;"><i class="fas fa-user-shield" style="color: #2563eb;"></i> Acesso ao Sistema</h4>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome (Rótulo)</th>
+                        <th>Usuário</th>
+                        <th>Nível</th>
+                        <th style="width: 100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="list-usuarios"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<!-- Modal de Cadastro Genérico (Cliente/Fornecedor) -->
-<div id="modal-edit" class="modal-overlay">
-    <div class="edit-modal" style="max-width: 600px;">
-        <div class="panel-header" style="background: var(--primary); color: white; padding: 20px;">
-            <h3 id="modal-title" style="margin: 0;">Novo Cadastro</h3>
-            <button onclick="closeEditModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+<!-- Modal de Usuário/Funcionário -->
+<div id="modal-usuario" class="modal-overlay">
+    <div class="edit-modal" style="max-width: 500px;">
+        <div class="panel-header" style="background: #2563eb; color: white; padding: 20px;">
+            <h3 style="margin: 0;">Gestão de Acesso</h3>
+            <button onclick="closeUsuarioModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
         </div>
-        <form onsubmit="saveCadastro(event)" class="form-grid">
-            <input type="hidden" id="edit-id">
-            <input type="hidden" id="edit-type">
-            <div class="form-group span-2">
-                <label>CPF / CNPJ</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="edit-doc" placeholder="00.000.000/0000-00" style="flex: 1;">
-                    <button type="button" class="btn-primary" style="width: 50px; margin-top: 0;" onclick="consultarCNPJ()">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="form-group span-2">
-                <label>Nome / Razão Social</label>
-                <input type="text" id="edit-nome" required placeholder="Ex: João da Silva ou Empresa LTDA">
+        <form onsubmit="saveUsuario(event)" class="form-grid" style="grid-template-columns: 1fr;">
+            <input type="hidden" id="user-id">
+            <div class="form-group">
+                <label>Nome Completo (Exibição)</label>
+                <input type="text" id="user-label" required placeholder="Ex: João da Silva">
             </div>
             <div class="form-group">
-                <label>Inscrição Estadual</label>
-                <input type="text" id="edit-ie" placeholder="Isento">
+                <label>Nome de Usuário (Login)</label>
+                <input type="text" id="user-username" required placeholder="Ex: joao.silva">
             </div>
             <div class="form-group">
-                <label>E-mail</label>
-                <input type="email" id="edit-email" placeholder="email@exemplo.com">
+                <label>Senha</label>
+                <input type="password" id="user-password" placeholder="Deixe em branco para manter a atual">
             </div>
             <div class="form-group">
-                <label>Telefone</label>
-                <input type="text" id="edit-tel" placeholder="(00) 00000-0000">
+                <label>Nível de Acesso</label>
+                <select id="user-role">
+                    <option value="operador">Operador (Entrada/Saída)</option>
+                    <option value="admin">Administrador (Total)</option>
+                </select>
             </div>
-            <div class="form-group span-2">
-                <label>Endereço Completo</label>
-                <textarea id="edit-end" rows="2" placeholder="Rua, Número, Bairro, Cidade - UF"></textarea>
-            </div>
-            <div class="form-group span-2" style="display: flex; gap: 12px; margin-top: 10px;">
-                <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
-                <button type="submit" class="btn-primary" style="flex: 2;">Salvar Cadastro</button>
+            <div style="display: flex; gap: 12px; margin-top: 10px;">
+                <button type="button" class="btn-danger" onclick="closeUsuarioModal()" style="flex: 1;">Cancelar</button>
+                <button type="submit" class="btn-primary" style="flex: 2; background: #2563eb;">Salvar Acesso</button>
             </div>
         </form>
     </div>

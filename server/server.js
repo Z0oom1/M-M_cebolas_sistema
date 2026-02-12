@@ -111,6 +111,7 @@ function initDb() {
     });
 }
 
+// --- AUTENTICAÇÃO ---
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], async (err, row) => {
@@ -123,6 +124,47 @@ app.post('/api/login', async (req, res) => {
     });
 });
 
+// --- USUÁRIOS (FUNCIONÁRIOS) ---
+app.get('/api/usuarios', authenticateToken, (req, res) => {
+    db.all(`SELECT id, username, role, label FROM usuarios ORDER BY label ASC`, (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/usuarios', authenticateToken, async (req, res) => {
+    const { id, username, password, role, label } = req.body;
+    if (id) {
+        let query = `UPDATE usuarios SET username=?, role=?, label=? WHERE id=?`;
+        let params = [username, role, label, id];
+        if (password) {
+            query = `UPDATE usuarios SET username=?, password=?, role=?, label=? WHERE id=?`;
+            const hashedPassword = await bcrypt.hash(password, 10);
+            params = [username, hashedPassword, role, label, id];
+        }
+        db.run(query, params, function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ updated: true });
+        });
+    } else {
+        const hashedPassword = await bcrypt.hash(password || '123', 10);
+        db.run(`INSERT INTO usuarios (username, password, role, label) VALUES (?, ?, ?, ?)`,
+            [username, hashedPassword, role, label], function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ id: this.lastID });
+            });
+    }
+});
+
+app.delete('/api/usuarios/:id', authenticateToken, (req, res) => {
+    if (req.params.id == 1) return res.status(400).json({ error: "Não é possível excluir o admin principal" });
+    db.run(`DELETE FROM usuarios WHERE id = ?`, req.params.id, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ deleted: true });
+    });
+});
+
+// --- MOVIMENTAÇÕES & FINANCEIRO ---
 app.get('/api/movimentacoes', authenticateToken, (req, res) => {
     db.all(`SELECT * FROM movimentacoes ORDER BY id DESC`, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -148,6 +190,16 @@ app.post('/api/saida', authenticateToken, (req, res) => {
         });
 });
 
+app.post('/api/despesa', authenticateToken, (req, res) => {
+    const { desc, value, date } = req.body;
+    db.run(`INSERT INTO movimentacoes (tipo, descricao, produto, quantidade, valor, data) VALUES (?, ?, ?, ?, ?, ?)`,
+        ['despesa', desc, 'Financeiro', 0, value, date], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID });
+        });
+});
+
+// --- PRODUTOS ---
 app.get('/api/produtos', authenticateToken, (req, res) => {
     db.all(`SELECT * FROM produtos ORDER BY nome ASC`, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -179,6 +231,7 @@ app.delete('/api/produtos/:id', authenticateToken, (req, res) => {
     });
 });
 
+// --- CLIENTES & FORNECEDORES ---
 app.get('/api/clientes', authenticateToken, (req, res) => {
     db.all(`SELECT * FROM clientes ORDER BY nome ASC`, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -241,6 +294,7 @@ app.delete('/api/fornecedores/:id', authenticateToken, (req, res) => {
     });
 });
 
+// --- CONSULTA CNPJ ---
 app.get('/api/consulta-cnpj/:cnpj', authenticateToken, async (req, res) => {
     try {
         const response = await axios.get(`https://receitaws.com.br/v1/cnpj/${req.params.cnpj.replace(/\D/g, '')}`);
@@ -250,12 +304,13 @@ app.get('/api/consulta-cnpj/:cnpj', authenticateToken, async (req, res) => {
     }
 });
 
+// --- NF-e (XML / PDF) ---
 app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
     try {
         const { venda_id, destinatario, itens } = req.body;
         const agora = new Date();
         const chave = agora.getTime().toString().padEnd(44, '0');
-        const xml = `<nfe><chave>${chave}</chave><venda>${venda_id}</venda></nfe>`;
+        const xml = `<nfe><chave>${chave}</chave><venda>${venda_id}</venda><status>autorizada</status></nfe>`;
         db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
             [venda_id, chave, xml, 'autorizada', agora.toISOString()], function(err) {
                 if (err) return res.status(500).json({ error: err.message });
@@ -270,6 +325,15 @@ app.get('/api/nfe', authenticateToken, (req, res) => {
     db.all(`SELECT * FROM nfe ORDER BY id DESC`, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
+    });
+});
+
+app.get('/api/nfe/:id/xml', authenticateToken, (req, res) => {
+    db.get(`SELECT xml_content, chave_acesso FROM nfe WHERE id = ?`, [req.params.id], (err, row) => {
+        if (err || !row) return res.status(404).json({ error: "Nota não encontrada" });
+        res.setHeader('Content-Type', 'application/xml');
+        res.setHeader('Content-Disposition', `attachment; filename=NFe_${row.chave_acesso}.xml`);
+        res.send(row.xml_content);
     });
 });
 

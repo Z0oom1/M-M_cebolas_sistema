@@ -8,34 +8,18 @@
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px;">
     <!-- CARD SALDO ATUAL -->
     <div class="panel" style="padding: 24px; border-left: 6px solid var(--primary);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-            <div style="width: 48px; height: 48px; background: #dcfce7; color: #166534; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
-                <i class="fas fa-wallet"></i>
-            </div>
-            <span class="badge badge-in">Mês Atual</span>
-        </div>
         <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Saldo em Caixa</p>
         <h2 id="fin-balance" style="font-size: 2rem; font-weight: 800; margin-top: 4px;">R$ 0,00</h2>
     </div>
 
     <!-- CARD RECEITAS -->
     <div class="panel" style="padding: 24px; border-left: 6px solid #22c55e;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-            <div style="width: 48px; height: 48px; background: #f0fdf4; color: #15803d; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
-                <i class="fas fa-arrow-trend-up"></i>
-            </div>
-        </div>
         <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Recebido</p>
         <h2 id="fin-total-in" style="font-size: 2rem; font-weight: 800; margin-top: 4px; color: #15803d;">R$ 0,00</h2>
     </div>
 
     <!-- CARD DESPESAS -->
     <div class="panel" style="padding: 24px; border-left: 6px solid #ef4444;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-            <div style="width: 48px; height: 48px; background: #fef2f2; color: #b91c1c; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
-                <i class="fas fa-arrow-trend-down"></i>
-            </div>
-        </div>
         <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Despendido</p>
         <h2 id="fin-total-out" style="font-size: 2rem; font-weight: 800; margin-top: 4px; color: #b91c1c;">R$ 0,00</h2>
     </div>
@@ -50,15 +34,15 @@
         <form onsubmit="saveDespesa(event)" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
             <div class="form-group">
                 <label>Descrição da Despesa</label>
-                <input type="text" id="exp-desc" placeholder="Ex: Pagamento de Energia" required>
+                <input type="text" id="desp-desc" placeholder="Ex: Pagamento de Energia" required>
             </div>
             <div class="form-group">
                 <label>Valor (R$)</label>
-                <input type="number" step="0.01" id="exp-value" placeholder="0.00" required>
+                <input type="number" step="0.01" id="desp-valor" placeholder="0.00" required>
             </div>
             <div class="form-group">
                 <label>Data do Pagamento</label>
-                <input type="date" id="exp-date" required>
+                <input type="date" id="desp-data" required>
             </div>
             <button type="submit" class="btn-primary" style="background: var(--danger); margin-top: 8px;">
                 <i class="fas fa-file-invoice-dollar"></i> REGISTRAR DESPESA
@@ -70,7 +54,6 @@
     <div class="panel">
         <div class="panel-header">
             <h4 style="font-weight: 700;"><i class="fas fa-list-ul" style="color: var(--primary);"></i> Histórico Recente</h4>
-            <button class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem;" onclick="showSection(\'estoque\')">Ver Tudo</button>
         </div>
         <div class="table-container">
             <table>
@@ -82,9 +65,7 @@
                         <th>Valor</th>
                     </tr>
                 </thead>
-                <tbody id="finance-table-body">
-                    <!-- Injetado via JS -->
-                </tbody>
+                <tbody id="finance-table-body"></tbody>
             </table>
         </div>
     </div>
