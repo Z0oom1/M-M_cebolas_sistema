@@ -6,32 +6,36 @@ const { create } = require('xmlbuilder2');
 
 class NFeService {
     constructor(pfxPath, password, isProduction = false) {
-        // ✅ Caminho padrão (Windows) caso não seja passado no constructor
-        const defaultPfxPath = 'C:\\Projetos\\M-M_cebolas_sistema\\certificado\\certificado.pfx';
+        // Caminho padrão caso não seja passado
+        const defaultPfxPath = path.join(__dirname, '../certificado/certificado.pfx');
 
         this.pfxPath = pfxPath || defaultPfxPath;
         this.password = password;
         this.isProduction = isProduction;
 
-        // ✅ Debug opcional (pode remover depois)
-        // console.log('[NFeService] Cert path:', this.pfxPath);
-        // console.log('[NFeService] Exists?', fs.existsSync(this.pfxPath));
-
+        // Tenta carregar. Se falhar, o erro explode AQUI com mensagem clara.
         try {
             this.certInfo = this._loadCert();
         } catch (e) {
-            console.error("[NFeService] Erro ao carregar certificado:", e.message);
-            this.certInfo = null;
+            throw new Error(`Falha ao ler certificado (.pfx). Verifique se a senha está correta. Detalhes: ${e.message}`);
         }
     }
 
     _loadCert() {
         if (!fs.existsSync(this.pfxPath)) {
-            throw new Error(`Arquivo de certificado não encontrado: ${this.pfxPath}`);
+            throw new Error(`Arquivo de certificado não encontrado no caminho: ${this.pfxPath}`);
         }
+        
         const pfxFile = fs.readFileSync(this.pfxPath);
+        
+        if (pfxFile.length === 0) {
+            throw new Error("O arquivo de certificado está vazio (0 bytes).");
+        }
+
         const pfxDer = pfxFile.toString('binary');
         const pfxAsn1 = forge.asn1.fromDer(pfxDer);
+        
+        // É aqui que a senha é validada
         const pfx = forge.pkcs12.pkcs12FromAsn1(pfxAsn1, this.password);
 
         const bags = pfx.getBags({ bagType: forge.pki.oids.certBag });
@@ -139,6 +143,10 @@ class NFeService {
     }
 
     _signXML(xml, tagId) {
+        if (!this.certInfo) {
+            throw new Error("Certificado não carregado. Verifique a senha.");
+        }
+
         const sig = new SignedXml({
             privateKey: this.certInfo.key,
             publicCert: this.certInfo.cert,

@@ -424,13 +424,22 @@ async function saveSaida(event) {
 }
 
 async function emitirNFe(vendaId, cliente, itens) {
-    const res = await fetchWithAuth('/api/nfe/gerar', {
-        method: 'POST',
-        body: JSON.stringify({ venda_id: vendaId, destinatario: cliente, itens })
-    });
-    if (res && res.ok) {
-        showSuccess("NF-e Emitida com Sucesso!");
-        showSection('nfe');
+    try {
+        const res = await fetchWithAuth('/api/nfe/gerar', {
+            method: 'POST',
+            body: JSON.stringify({ venda_id: vendaId, destinatario: cliente, itens })
+        });
+        
+        if (res && res.ok) {
+            showSuccess("NF-e Emitida e Assinada com Sucesso!");
+            showSection('nfe');
+        } else {
+            // Se der erro no servidor, mostramos a mensagem explicativa
+            const err = await res.json();
+            showError("Erro na emissão: " + (err.error || "Erro desconhecido"));
+        }
+    } catch (e) {
+        showError("Erro de comunicação ao emitir NFE.");
     }
 }
 
@@ -611,7 +620,20 @@ async function downloadXML(id) {
         const res = await fetch(`${API_URL}/api/nfe/${id}/xml`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+
+        // VERIFICAÇÃO DE ERRO DO SERVIDOR
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Erro desconhecido no servidor");
+        }
+
         const blob = await res.blob();
+        
+        // Verifica se o arquivo não está vazio
+        if (blob.size === 0) {
+            throw new Error("O arquivo XML está vazio no banco de dados.");
+        }
+
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -619,8 +641,11 @@ async function downloadXML(id) {
         document.body.appendChild(a);
         a.click();
         a.remove();
+        window.URL.revokeObjectURL(url); // Limpa memória
+        
     } catch (err) {
-        showError("Erro ao baixar XML.");
+        console.error(err);
+        showError(`Falha no download: ${err.message}`);
     }
 }
 
@@ -669,7 +694,8 @@ function renderSearchList(type, filter) {
         div.className = 'search-item';
         div.innerHTML = `<strong>${i.nome}</strong><br><small>${i.documento}</small>`;
         div.onclick = () => {
-            const target = type === 'cliente' ? 'exit-client' : 'entry-supplier';
+            // CORRIGIDO: usa 'exit-desc' em vez de 'exit-client'
+            const target = type === 'cliente' ? 'exit-desc' : 'entry-supplier';
             const targetEl = document.getElementById(target);
             if (targetEl) targetEl.value = i.nome;
             const modal = document.getElementById('modal-search');
