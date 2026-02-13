@@ -18,7 +18,11 @@
         </div>
     </div>
 
-    <div class="sidebar">
+    <button id="mobile-menu-btn" class="mobile-menu-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="logo-container">
                 <img src="../Imgs/logo_M&M.jpg" alt="Logo M&M" class="logo-img">
@@ -35,10 +39,10 @@
             <div class="nav-group">
                 <span class="nav-label">OPERACIONAL</span>
                 <button class="nav-item" onclick="showSection('entrada')">
-                    <i class="fas fa-arrow-down"></i> Entrada
+                    <i class="fas fa-shopping-cart"></i> Compra
                 </button>
                 <button class="nav-item" onclick="showSection('saida')">
-                    <i class="fas fa-arrow-up"></i> Saída / Venda
+                    <i class="fas fa-hand-holding-usd"></i> Venda
                 </button>
                 <button class="nav-item" onclick="showSection('estoque')">
                     <i class="fas fa-boxes"></i> Estoque
@@ -143,11 +147,18 @@
             <form onsubmit="saveCadastro(event)" class="form-grid">
                 <input type="hidden" id="edit-id">
                 <input type="hidden" id="edit-type">
-                <div class="form-group span-2">
-                    <label>CPF / CNPJ</label>
+                <div class="form-group">
+                    <label>Tipo de Pessoa</label>
+                    <select id="edit-doc-type" onchange="updateDocMask()">
+                        <option value="CNPJ">Pessoa Jurídica (CNPJ)</option>
+                        <option value="CPF">Pessoa Física (CPF)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label id="label-doc">CNPJ</label>
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="edit-doc" placeholder="00.000.000/0000-00" style="flex: 1;">
-                        <button type="button" class="btn-primary" style="width: 50px; margin-top: 0;" onclick="consultarCNPJ()">
+                        <button type="button" class="btn-primary" style="width: 50px; margin-top: 0;" onclick="consultarDocumento()">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>

@@ -1,6 +1,6 @@
 <header class="top-bar">
     <div>
-        <h2 class="page-title">Registrar Entrada (Compra)</h2>
+        <h2 class="page-title">Registrar Compra</h2>
         <p style="color: var(--text-muted);">Selecione o produto abaixo para preencher rapidamente.</p>
     </div>
 </header>
@@ -14,7 +14,7 @@
 
 <div class="panel">
     <div class="panel-header">
-        <h4 style="font-weight: 700;"><i class="fas fa-truck-loading" style="color: var(--primary);"></i> Dados da Entrada</h4>
+        <h4 style="font-weight: 700;"><i class="fas fa-shopping-cart" style="color: var(--primary);"></i> Dados da Compra</h4>
     </div>
     <form onsubmit="saveEntrada(event)" class="form-grid">
         <div class="form-group span-2">
@@ -37,12 +37,12 @@
             <input type="number" step="0.01" id="entry-value" placeholder="0.00" required>
         </div>
         <div class="form-group">
-            <label>Data da Entrada</label>
+            <label>Data da Compra</label>
             <input type="date" id="entry-date" required>
         </div>
         <div class="form-group span-2" style="margin-top: 10px;">
             <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">
-                <i class="fas fa-plus-circle"></i> REGISTRAR ENTRADA NO ESTOQUE
+                <i class="fas fa-plus-circle"></i> FINALIZAR COMPRA
             </button>
         </div>
     </form>

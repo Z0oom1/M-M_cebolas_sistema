@@ -153,8 +153,8 @@ function calculateStock() {
     const stockMap = {};
     appData.transactions.forEach(t => {
         if (!stockMap[t.produto]) stockMap[t.produto] = 0;
-        if (t.tipo === 'entrada') stockMap[t.produto] += t.quantidade;
-        if (t.tipo === 'saida') stockMap[t.produto] -= t.quantidade;
+if (t.tipo === 'entrada') stockMap[t.produto] += t.quantidade;
+	        if (t.tipo === 'saida') stockMap[t.produto] -= t.quantidade;
     });
     return stockMap;
 }
@@ -197,8 +197,8 @@ function renderRecentTransactions() {
     
     appData.transactions.slice(0, 5).forEach(t => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
+tr.innerHTML = `
+	            <td><span class="badge ${t.tipo}">${t.tipo === 'entrada' ? 'COMPRA' : (t.tipo === 'saida' ? 'VENDA' : t.tipo.toUpperCase())}</span></td>
             <td>${t.produto}</td>
             <td>${t.descricao}</td>
             <td>${t.quantidade}</td>
@@ -226,13 +226,11 @@ function renderProductShowcase(section) {
         const card = document.createElement('div');
         card.className = `product-card ${qty <= 0 && section === 'saida' ? 'disabled' : ''}`;
         card.innerHTML = `
-            <div class="product-icon" style="background: ${p.cor}20; color: ${p.cor}">
+            <div class="product-icon-circle" style="background: ${p.cor}20; color: ${p.cor}">
                 <i class="fas ${p.icone || 'fa-box'}"></i>
             </div>
-            <div class="product-info">
-                <strong>${p.nome}</strong>
-                <span>Estoque: ${qty} Cx</span>
-            </div>
+            <div class="product-name">${p.nome}</div>
+            <div class="product-stock">${qty} Cx</div>
         `;
         if (!(qty <= 0 && section === 'saida')) {
             card.onclick = (event) => selectProduct(p, section, event);
@@ -244,6 +242,13 @@ function renderProductShowcase(section) {
 function selectProduct(p, section, event) {
     const input = document.getElementById(section === 'entrada' ? 'entry-product' : 'exit-product');
     if (input) input.value = p.nome;
+    
+    // Preencher preço sugerido se houver
+    const priceInput = document.getElementById(section === 'entrada' ? 'entry-value' : 'exit-value');
+    if (priceInput && p.preco_venda) {
+        priceInput.value = p.preco_venda;
+    }
+
     document.querySelectorAll('.product-card').forEach(c => c.classList.remove('active'));
     event.currentTarget.classList.add('active');
 }
@@ -390,32 +395,43 @@ async function deleteProduto(id) {
 
 async function saveEntrada(event) {
     event.preventDefault();
+    const prod = document.getElementById('entry-product').value;
+    if (!prod) { showError("Selecione um produto na vitrine!"); return; }
+    
     const data = {
         tipo: 'entrada',
-        produto: document.getElementById('entry-product').value,
+        produto: prod,
         quantidade: parseInt(document.getElementById('entry-qty').value),
         valor: parseFloat(document.getElementById('entry-value').value),
         descricao: document.getElementById('entry-desc').value,
-        data: new Date().toISOString()
+        data: document.getElementById('entry-date').value || new Date().toISOString()
     };
     const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
-    if (res && res.ok) { showSuccess("Entrada registrada!"); loadDataFromAPI(); }
+    if (res && res.ok) { 
+        showSuccess("Compra registrada!"); 
+        event.target.reset();
+        loadDataFromAPI(); 
+    }
 }
 
 async function saveSaida(event) {
     event.preventDefault();
+    const prod = document.getElementById('exit-product').value;
+    if (!prod) { showError("Selecione um produto na vitrine!"); return; }
+
     const data = {
         tipo: 'saida',
-        produto: document.getElementById('exit-product').value,
+        produto: prod,
         quantidade: parseInt(document.getElementById('exit-qty').value),
         valor: parseFloat(document.getElementById('exit-value').value),
         descricao: document.getElementById('exit-desc').value,
-        data: new Date().toISOString()
+        data: document.getElementById('exit-date').value || new Date().toISOString()
     };
     const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
     if (res && res.ok) {
         const result = await res.json();
-        showSuccess("Venda realizada!");
+        showSuccess("Venda registrada!");
+        event.target.reset();
         if (confirm("Deseja emitir a NF-e agora?")) {
             emitirNFe(result.id, data.descricao, [{ produto: data.produto, qtd: data.quantidade, valor: data.valor }]);
         }
@@ -539,9 +555,9 @@ function renderFinanceTable() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${new Date(t.data).toLocaleDateString('pt-BR')}</td>
-            <td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
-            <td>${t.descricao}</td>
-            <td style="color: ${t.tipo === 'saida' ? 'var(--primary)' : 'var(--danger)'}">R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+<td><span class="badge ${t.tipo}">${t.tipo === 'entrada' ? 'COMPRA' : (t.tipo === 'saida' ? 'VENDA' : t.tipo.toUpperCase())}</span></td>
+	            <td>${t.descricao}</td>
+	            <td style="color: ${t.tipo === 'saida' ? 'var(--primary)' : 'var(--danger)'}">R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -561,8 +577,8 @@ function renderStockTable() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${new Date(t.data).toLocaleDateString('pt-BR')}</td>
-            <td><span class="badge ${t.tipo}">${t.tipo.toUpperCase()}</span></td>
-            <td>${t.produto}</td>
+<td><span class="badge ${t.tipo}">${t.tipo === 'entrada' ? 'COMPRA' : (t.tipo === 'saida' ? 'VENDA' : t.tipo.toUpperCase())}</span></td>
+	            <td>${t.produto}</td>
             <td>${t.descricao}</td>
             <td>${t.quantidade}</td>
             <td>R$ ${t.valor.toLocaleString('pt-BR')}</td>
@@ -694,8 +710,7 @@ function renderSearchList(type, filter) {
         div.className = 'search-item';
         div.innerHTML = `<strong>${i.nome}</strong><br><small>${i.documento}</small>`;
         div.onclick = () => {
-            // CORRIGIDO: usa 'exit-desc' em vez de 'exit-client'
-            const target = type === 'cliente' ? 'exit-desc' : 'entry-supplier';
+            const target = type === 'cliente' ? 'exit-desc' : 'entry-desc';
             const targetEl = document.getElementById(target);
             if (targetEl) targetEl.value = i.nome;
             const modal = document.getElementById('modal-search');
@@ -912,3 +927,100 @@ function selectColor(el, color) {
     el.style.borderColor = 'var(--primary)';
     document.getElementById('prod-cor').value = color;
 }
+
+// --- CONSULTA DE DOCUMENTOS (CNPJ/CPF) ---
+function updateDocMask() {
+    const type = document.getElementById('edit-doc-type').value;
+    const docInput = document.getElementById('edit-doc');
+    const labelDoc = document.getElementById('label-doc');
+    
+    if (type === 'CNPJ') {
+        docInput.placeholder = "00.000.000/0000-00";
+        labelDoc.innerText = "CNPJ";
+    } else {
+        docInput.placeholder = "000.000.000-00";
+        labelDoc.innerText = "CPF";
+    }
+}
+
+async function consultarDocumento() {
+    const doc = document.getElementById('edit-doc').value.replace(/\D/g, '');
+    const type = document.getElementById('edit-doc-type').value;
+    
+    if (!doc) {
+        showError("Insira um documento para buscar.");
+        return;
+    }
+
+    const btn = event.currentTarget;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+
+    try {
+        if (type === 'CNPJ') {
+            if (doc.length !== 14) throw new Error("CNPJ inválido. Deve ter 14 dígitos.");
+            
+            const response = await fetch(`https://publica.cnpj.ws/cnpj/${doc}`);
+            if (!response.ok) throw new Error("CNPJ não encontrado ou erro na busca.");
+            
+            const data = await response.json();
+            
+            document.getElementById('edit-nome').value = data.razao_social || '';
+            document.getElementById('edit-ie').value = data.estabelecimento.inscricoes_estaduais?.[0]?.inscricao_estadual || 'ISENTO';
+            document.getElementById('edit-email').value = data.estabelecimento.email || '';
+            document.getElementById('edit-tel').value = (data.estabelecimento.ddd1 && data.estabelecimento.telefone1) ? `(${data.estabelecimento.ddd1}) ${data.estabelecimento.telefone1}` : '';
+            
+            const end = data.estabelecimento;
+            const enderecoCompleto = `${end.tipo_logradouro} ${end.logradouro}, ${end.numero}${end.complemento ? ' - ' + end.complemento : ''}, ${end.bairro}, ${end.cidade.nome} - ${end.estado.sigla}, CEP: ${end.cep}`;
+            document.getElementById('edit-end').value = enderecoCompleto;
+            
+            showSuccess("Dados do CNPJ carregados!");
+        } else {
+            // Para CPF, como não há API pública gratuita e legalizada para consulta direta de dados pessoais por segurança/LGPD,
+            // simularemos ou informaremos que a busca de CPF requer integração específica.
+            // No entanto, para atender o pedido do usuário da melhor forma possível:
+            showInfo("Busca de CPF iniciada... (Simulação: Dados de CPF protegidos por LGPD)");
+            // Em um cenário real, aqui usaria uma API paga como Serasa ou similar.
+            // Vou deixar o campo pronto para preenchimento manual ou integração futura.
+        }
+    } catch (err) {
+        showError(err.message);
+    } finally {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    }
+}
+
+function showInfo(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast info';
+    toast.style.background = 'var(--info)';
+    toast.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// --- RESPONSIVIDADE ---
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('active');
+    
+    const btn = document.getElementById('mobile-menu-btn');
+    const icon = btn.querySelector('i');
+    if (sidebar.classList.contains('active')) {
+        icon.className = 'fas fa-times';
+    } else {
+        icon.className = 'fas fa-bars';
+    }
+}
+
+// Fechar sidebar ao clicar em um item no mobile
+document.addEventListener('click', (e) => {
+    if (window.innerWidth <= 1024) {
+        if (e.target.closest('.nav-item')) {
+            document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('mobile-menu-btn').querySelector('i').className = 'fas fa-bars';
+        }
+    }
+});

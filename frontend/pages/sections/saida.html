@@ -1,6 +1,6 @@
 <header class="top-bar">
     <div>
-        <h2 class="page-title">Registrar Saída (Venda)</h2>
+        <h2 class="page-title">Registrar Venda</h2>
         <p style="color: var(--text-muted);">Selecione o produto abaixo para preencher rapidamente.</p>
     </div>
 </header>
@@ -14,7 +14,7 @@
 
 <div class="panel">
     <div class="panel-header">
-        <h4 style="font-weight: 700;"><i class="fas fa-file-invoice-dollar" style="color: var(--primary);"></i> Dados da Venda</h4>
+        <h4 style="font-weight: 700;"><i class="fas fa-hand-holding-usd" style="color: var(--primary);"></i> Dados da Venda</h4>
     </div>
     <form onsubmit="saveSaida(event)" class="form-grid">
         <div class="form-group span-2">
@@ -37,12 +37,12 @@
             <input type="number" step="0.01" id="exit-value" placeholder="0.00" required>
         </div>
         <div class="form-group">
-            <label>Data da Saída</label>
+            <label>Data da Venda</label>
             <input type="date" id="exit-date" required>
         </div>
         <div class="form-group span-2" style="margin-top: 10px;">
             <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">
-                <i class="fas fa-check-circle"></i> FINALIZAR VENDA E GERAR NOTA
+                <i class="fas fa-check-circle"></i> FINALIZAR VENDA
             </button>
         </div>
     </form>
