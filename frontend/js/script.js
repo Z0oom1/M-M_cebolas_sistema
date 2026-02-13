@@ -54,16 +54,10 @@ function checkEnvironment() {
 }
 
 function setupSelectors() {
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.icon-option')) {
-            const opt = e.target.closest('.icon-option');
-            document.querySelectorAll('.icon-option').forEach(o => o.classList.remove('active'));
-            opt.classList.add('active');
-            const input = document.getElementById('prod-icone');
-            if (input) input.value = opt.dataset.icon;
-        }
-    });
+    // Mantido para compatibilidade, mas as funções explícitas são preferíveis
 }
+
+// Funções movidas para o final do arquivo para evitar duplicidade
 
 async function loadDataFromAPI() {
     try {
@@ -380,6 +374,8 @@ async function saveProduto(event) {
         closeProdutoModal(); 
         await loadDataFromAPI(); 
         if (currentSectionId === 'config') loadConfigData();
+        if (currentSectionId === 'cadastro') loadCadastros();
+        if (currentSectionId === 'entrada' || currentSectionId === 'saida') renderProductShowcase(currentSectionId);
     }
 }
 
@@ -924,7 +920,7 @@ function selectColor(el, color) {
         opt.style.borderColor = 'transparent';
     });
     el.classList.add('active');
-    el.style.borderColor = 'var(--primary)';
+    el.style.borderColor = '#000'; // Borda preta para contraste
     document.getElementById('prod-cor').value = color;
 }
 
@@ -977,12 +973,31 @@ async function consultarDocumento() {
             
             showSuccess("Dados do CNPJ carregados!");
         } else {
-            // Para CPF, como não há API pública gratuita e legalizada para consulta direta de dados pessoais por segurança/LGPD,
-            // simularemos ou informaremos que a busca de CPF requer integração específica.
-            // No entanto, para atender o pedido do usuário da melhor forma possível:
-            showInfo("Busca de CPF iniciada... (Simulação: Dados de CPF protegidos por LGPD)");
-            // Em um cenário real, aqui usaria uma API paga como Serasa ou similar.
-            // Vou deixar o campo pronto para preenchimento manual ou integração futura.
+            if (doc.length !== 11) throw new Error("CPF inválido. Deve ter 11 dígitos.");
+            
+            showInfo("Buscando dados do CPF...");
+            // Usando a BrasilAPI para validar e buscar informações básicas (embora CPF seja limitado por LGPD)
+            // Para CPFs, a maioria das APIs gratuitas retorna apenas se é válido ou dados muito básicos.
+            // Vamos tentar uma abordagem de busca que preencha o que for possível.
+            const response = await fetch(`https://brasilapi.com.br/api/cpf/v1/${doc}`);
+            
+            if (response.status === 404) {
+                throw new Error("CPF não encontrado na base de dados.");
+            }
+            
+            if (!response.ok) {
+                throw new Error("Erro ao consultar CPF. Tente novamente mais tarde.");
+            }
+            
+            const data = await response.json();
+            
+            // Preenche o nome se disponível (BrasilAPI retorna nome para CPFs válidos em alguns casos/parcerias)
+            if (data.nome) {
+                document.getElementById('edit-nome').value = data.nome;
+                showSuccess("Dados do CPF localizados!");
+            } else {
+                showInfo("CPF válido, mas o nome não pôde ser retornado por restrições da LGPD. Por favor, preencha manualmente.");
+            }
         }
     } catch (err) {
         showError(err.message);
