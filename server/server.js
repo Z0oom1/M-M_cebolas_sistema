@@ -285,6 +285,8 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
 
     // Buscar configurações para o NFeService
     db.all('SELECT * FROM configs', [], async (err, rows) => {
+        if (err) return res.status(500).json({ error: "Erro ao ler configurações: " + err.message });
+
         const configs = {};
         rows?.forEach(r => configs[r.chave] = r.valor);
         
@@ -294,30 +296,52 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
 
         // Se não houver senha, não podemos usar o NFeService real
         if (!certPass) {
-            // Fallback para simulação se não houver certificado configurado
+            console.warn("AVISO: Senha do certificado não configurada. A gerar nota simulada.");
             const chave = Array.from({length: 44}, () => Math.floor(Math.random() * 10)).join('');
-            const xml = `<nfe><infNFe><ide><nNF>${venda_id}</nNF></ide><dest><xNome>${destinatario}</xNome></dest></infNFe></nfe>`;
-            db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
-                [venda_id, chave, xml, 'autorizada', new Date().toISOString()], function(err) {
+            const xml = `<nfe><infNFe><ide><nNF>${venda_id}</nNF></ide><dest><xNome>${destinatario} (SIMULAÇÃO)</xNome></dest></infNFe></nfe>`;
+            
+            return db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
+                [venda_id, chave, xml, 'simulada', new Date().toISOString()], function(err) {
                     if (err) return res.status(500).json({ error: err.message });
-                    res.json({ id: this.lastID, chave, warning: "Certificado não configurado. Nota simulada." });
+                    res.json({ id: this.lastID, chave, warning: "Certificado não configurado. Nota simulada interna apenas." });
                 });
-            return;
         }
 
         try {
             const nfeService = new NFeService(pfxPath, certPass, isProduction);
             
             // Dados básicos para a chave de acesso
+            const emitente = {
+                cnpj: (configs.emit_cnpj || '').replace(/\D/g, ''),
+                xNome: configs.emit_nome || 'M&M CEBOLAS LTDA',
+                xFant: configs.emit_fant || 'M&M CEBOLAS',
+                ie: (configs.emit_ie || '').replace(/\D/g, ''),
+                crt: configs.emit_crt || '1', // 1=Simples Nacional, 3=Regime Normal
+                enderEmit: {
+                    xLgr: configs.emit_lgr || 'Rua Desconhecida',
+                    nro: configs.emit_nro || 'S/N',
+                    xBairro: configs.emit_bairro || 'Centro',
+                    cMun: configs.emit_cmun || '3550308', // Código IBGE obrigatório
+                    xMun: configs.emit_xmun || 'SAO PAULO',
+                    UF: configs.emit_uf || 'SP',
+                    CEP: (configs.emit_cep || '00000000').replace(/\D/g, '')
+                }
+            };
+
+            if (!emitente.cnpj || emitente.cnpj === '00000000000000') {
+                throw new Error("CNPJ do emitente não configurado nas opções do sistema.");
+            }
+
+            
             const paramsChave = {
-                cUF: '35', // SP por exemplo
+                cUF: configs.emit_uf_cod || '35', // Código numérico da UF (Ex: 35 para SP)
                 year: new Date().getFullYear().toString().slice(-2),
                 month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
-                cnpj: '00000000000000', // CNPJ da empresa (deveria vir das configs)
+                cnpj: emitente.cnpj,
                 mod: '55',
-                serie: 1,
-                nNF: venda_id,
-                tpEmis: '1',
+                serie: parseInt(configs.nfe_serie || '1'),
+                nNF: parseInt(configs.nfe_prox_numero || venda_id), // Idealmente deve ter um contador sequencial
+                tpEmis: '1', // 1 = Normal
                 cNF: Math.floor(Math.random() * 100000000)
             };
             
@@ -325,26 +349,66 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
             
             // Estrutura mínima para o XML assinado
             const dadosNFe = {
-                ide: { ...paramsChave, chaveAcesso, natOp: 'VENDA', dhEmi: new Date().toISOString(), tpNF: '1', idDest: '1', cMunFG: '3550308', tpImp: '1', finNFe: '1', indFinal: '1', indPres: '1' },
-                emit: { cnpj: paramsChave.cnpj, xNome: 'M&M CEBOLAS LTDA', xFant: 'M&M CEBOLAS', enderEmit: { xLgr: 'Rua Teste', nro: '123', xBairro: 'Centro', cMun: '3550308', xMun: 'SAO PAULO', UF: 'SP', CEP: '01001000' }, ie: '123456789', crt: '1' },
-                dest: { xNome: destinatario, enderDest: { xLgr: 'Endereco Destino', nro: 'S/N', xBairro: 'Bairro', cMun: '3550308', xMun: 'Cidade', UF: 'SP', CEP: '00000000' }, indIEDest: '9' },
-                det: itens.map(i => ({ prod: { cProd: '001', xProd: i.produto, NCM: '07031019', CFOP: '5102', uCom: 'CX', qCom: i.qtd, vUnCom: (i.valor / i.qtd).toFixed(2), vProd: i.valor.toFixed(2) }, imposto: { vTotTrib: '0.00' } })),
-                total: { icmsTot: { vBC: '0.00', vICMS: '0.00', vProd: itens.reduce((a, b) => a + b.valor, 0).toFixed(2), vNF: itens.reduce((a, b) => a + b.valor, 0).toFixed(2) } },
-                transp: { modFrete: '9' },
+                ide: { 
+                    ...paramsChave, 
+                    chaveAcesso, 
+                    natOp: 'VENDA DE MERCADORIA', 
+                    dhEmi: new Date().toISOString(), 
+                    tpNF: '1', // 1=Saída
+                    idDest: '1', 
+                    cMunFG: emitente.enderEmit.cMun, 
+                    tpImp: '1', 
+                    finNFe: '1', // 1=Normal
+                    indFinal: '1', 
+                    indPres: '1' 
+                },
+                emit: emitente,
+                dest: { 
+                    xNome: isProduction ? destinatario : 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL', 
+                    enderDest: { 
+                        xLgr: 'Rua Cliente', nro: '123', xBairro: 'Bairro', 
+                        cMun: '3550308', xMun: 'Cidade', UF: 'SP', CEP: '01001000' 
+                    }, 
+                    indIEDest: '9' // 9=Não Contribuinte (ajustar conforme lógica de cliente real)
+                },
+                det: itens.map((item, index) => ({ 
+                    prod: { 
+                        cProd: item.produto_id || '001', 
+                        xProd: item.produto, 
+                        NCM: item.ncm || '07031019', // NCM da Cebola padrão se não tiver
+                        CFOP: configs.nfe_cfop || '5102', 
+                        uCom: 'CX', 
+                        qCom: item.qtd, 
+                        vUnCom: (item.valor / item.qtd).toFixed(2), 
+                        vProd: item.valor.toFixed(2) 
+                    }, 
+                    imposto: { vTotTrib: '0.00' } 
+                })),
+                total: { 
+                    icmsTot: { 
+                        vBC: '0.00', vICMS: '0.00', 
+                        vProd: itens.reduce((a, b) => a + b.valor, 0).toFixed(2), 
+                        vNF: itens.reduce((a, b) => a + b.valor, 0).toFixed(2) 
+                    } 
+                },
+                transp: { modFrete: '9' }, // 9=Sem Frete
                 infAdic: { infCpl: 'NF-e gerada pelo sistema M&M Cebolas' }
             };
 
             const xmlAssinado = nfeService.createNFeXML(dadosNFe);
             
             db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
-                [venda_id, chaveAcesso, xmlAssinado, 'autorizada', new Date().toISOString()], function(err) {
+                [venda_id, chaveAcesso, xmlAssinado, 'assinada', new Date().toISOString()], function(err) {
                     if (err) return res.status(500).json({ error: err.message });
-                    res.json({ id: this.lastID, chave: chaveAcesso });
+                    if (isProduction) {
+                        db.run("UPDATE configs SET valor = ? WHERE chave = 'nfe_prox_numero'", [paramsChave.nNF + 1]);
+                    }
+                    res.json({ id: this.lastID, chave: chaveAcesso, modo: isProduction ? 'PRODUCAO' : 'HOMOLOGACAO' });
                 });
-        } catch (nfeErr) {
-            console.error("Erro NFeService:", nfeErr);
-            res.status(500).json({ error: "Erro ao gerar NF-e real: " + nfeErr.message });
-        }
+            } catch (nfeErr) {
+                console.error("Erro NFeService:", nfeErr);
+                res.status(500).json({ error: "Erro crítico na geração da NF-e: " + nfeErr.message });
+            }
     });
 });
 
