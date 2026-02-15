@@ -143,7 +143,7 @@
         <h1>M&M <span>CEBOLAS</span></h1>
         <p>Sistema de Gestão Integrado</p>
         
-        <form class="login-form" onsubmit="fazerLogin(event)">
+        <form class="login-form" id="formLogin">
             <input type="text" id="loginUser" placeholder="Usuário" required autocomplete="username">
             <input type="password" id="loginPass" placeholder="Senha" required autocomplete="current-password">
             <button type="submit">ENTRAR NO SISTEMA</button>
@@ -155,5 +155,6 @@
     </div>
 
     <script src="../js/login.js"></script>
+    <script type="module" src="../js/login.js"></script>
 </body>
 </html>

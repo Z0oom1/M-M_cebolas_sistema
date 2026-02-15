@@ -54,8 +54,10 @@ db.serialize(() => {
 
 // CORS: domínio oficial, localhost, Electron (origin null ou mesmo domínio) e IP da VPS
 const CORS_ORIGINS = [
-    'https://portalmmcebolas.com.br',
-    'http://portalmmcebolas.com.br',
+    'https://portalmmcebolas.com',
+    'https://www.portalmmcebolas.com',
+    'http://portalmmcebolas.com',
+    'http://www.portalmmcebolas.com',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost',
@@ -65,10 +67,15 @@ const CORS_ORIGINS = [
 ];
 app.use(cors({
     origin: function(origin, callback) {
-        if (!origin) return callback(null, true); // Electron / Postman / requisições sem origin
-        if (CORS_ORIGINS.indexOf(origin) !== -1) return callback(null, true);
-        console.warn('[CORS] Origem não permitida:', origin);
-        callback(null, false);
+        // Electron / Postman / requisições sem origin
+        if (!origin) return callback(null, true); 
+        
+        if (CORS_ORIGINS.indexOf(origin) !== -1) {
+            return callback(null, true);
+        } else {
+            console.warn('[CORS] Origem não permitida:', origin);
+            return callback(null, false);
+        }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

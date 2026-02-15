@@ -16,8 +16,11 @@ let stockChart = null;
 // API base: localhost/127.0.0.1 → porta 3000; caso contrário → domínio oficial (Web + Electron)
 const API_URL = (function() {
     const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000';
-    return 'https://portalmmcebolas.com.br';
+    if (host === 'localhost' || host === '127.0.0.1') {
+        return 'http://localhost:3000/api';
+    }
+    // Verifique se NÃO tem o ".br" e se tem o "/api" no final
+    return 'https://portalmmcebolas.com/api'; 
 })();
 
 window.onload = function() {
@@ -1008,3 +1011,15 @@ async function resetSystem() {
         window.location.reload();
     }
 }
+
+// No final do seu script.js
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector('form'); // ou o ID do seu formulário de login
+    if (form) {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            // Aqui deve vir o nome da sua função de login, por exemplo:
+            // login(); 
+        });
+    }
+});
