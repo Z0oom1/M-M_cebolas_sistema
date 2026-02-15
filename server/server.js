@@ -65,31 +65,65 @@ app.post('/api/login', (req, res) => {
 app.get('/api/movimentacoes', authenticateToken, (req, res) => db.all('SELECT * FROM movimentacoes ORDER BY data DESC', [], (err, rows) => res.json(rows || [])));
 app.post('/api/movimentacoes', authenticateToken, (req, res) => {
     const { tipo, produto, quantidade, valor, descricao, data } = req.body;
-    db.run(`INSERT INTO movimentacoes (tipo, produto, quantidade, valor, descricao, data) VALUES (?, ?, ?, ?, ?, ?)`, [tipo, produto, quantidade, valor, descricao, data], function(err) { res.json({ id: this.lastID }); });
+    db.run(`INSERT INTO movimentacoes (tipo, produto, quantidade, valor, descricao, data) VALUES (?, ?, ?, ?, ?, ?)`, [tipo, produto, quantidade, valor, descricao, data], function(err) { 
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID }); 
+    });
 });
 app.delete('/api/movimentacoes/:id', authenticateToken, (req, res) => db.run('DELETE FROM movimentacoes WHERE id = ?', [req.params.id], () => res.json({ success: true })));
 app.get('/api/produtos', authenticateToken, (req, res) => db.all('SELECT * FROM produtos', [], (err, rows) => res.json(rows || [])));
 app.post('/api/produtos', authenticateToken, (req, res) => {
     const { id, nome, ncm, preco_venda, cor, icone } = req.body;
-    if (id) db.run(`UPDATE produtos SET nome = ?, ncm = ?, preco_venda = ?, cor = ?, icone = ? WHERE id = ?`, [nome, ncm, preco_venda, cor, icone, id], () => res.json({ success: true }));
-    else db.run(`INSERT INTO produtos (nome, ncm, preco_venda, cor, icone) VALUES (?, ?, ?, ?, ?)`, [nome, ncm, preco_venda, cor, icone], function() { res.json({ id: this.lastID }); });
+    if (id) db.run(`UPDATE produtos SET nome = ?, ncm = ?, preco_venda = ?, cor = ?, icone = ? WHERE id = ?`, [nome, ncm, preco_venda, cor, icone, id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+    else db.run(`INSERT INTO produtos (nome, ncm, preco_venda, cor, icone) VALUES (?, ?, ?, ?, ?)`, [nome, ncm, preco_venda, cor, icone], function(err) { 
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID }); 
+    });
 });
 app.delete('/api/produtos/:id', authenticateToken, (req, res) => db.run('DELETE FROM produtos WHERE id = ?', [req.params.id], () => res.json({ success: true })));
+app.get('/api/usuarios', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    db.all('SELECT id, label, username, role FROM usuarios', [], (err, rows) => res.json(rows || []));
+});
 app.get('/api/clientes', authenticateToken, (req, res) => db.all('SELECT * FROM clientes', [], (err, rows) => res.json(rows || [])));
 app.post('/api/clientes', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;
-    if (id) db.run(`UPDATE clientes SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], () => res.json({ success: true }));
-    else db.run(`INSERT INTO clientes (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function() { res.json({ id: this.lastID }); });
+    if (id) db.run(`UPDATE clientes SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+    else db.run(`INSERT INTO clientes (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function(err) { 
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID }); 
+    });
 });
 app.get('/api/fornecedores', authenticateToken, (req, res) => db.all('SELECT * FROM fornecedores', [], (err, rows) => res.json(rows || [])));
 app.post('/api/fornecedores', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;
-    if (id) db.run(`UPDATE fornecedores SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], () => res.json({ success: true }));
-    else db.run(`INSERT INTO fornecedores (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function() { res.json({ id: this.lastID }); });
+    if (id) db.run(`UPDATE fornecedores SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+    else db.run(`INSERT INTO fornecedores (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function(err) { 
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID }); 
+    });
 });
 app.delete('/api/cadastros/:type/:id', authenticateToken, (req, res) => {
     const { type, id } = req.params;
-    db.run(`DELETE FROM ${type === 'cliente' ? 'clientes' : 'fornecedores'} WHERE id = ?`, [id], () => res.json({ success: true }));
+    let table = '';
+    if (type === 'cliente') table = 'clientes';
+    else if (type === 'fornecedor') table = 'fornecedores';
+    else if (type === 'produto') table = 'produtos';
+    else return res.status(400).json({ error: "Tipo inválido" });
+
+    db.run(`DELETE FROM ${table} WHERE id = ?`, [id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
 });
 
 // --- ROTA DE GERAÇÃO NF-E ---
