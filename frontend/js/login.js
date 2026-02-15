@@ -3,10 +3,15 @@
 // os dados não aparecem em https://portalmmcebolas.com. Use sempre o mesmo URL para login e Home.
 const isElectron = window.location.protocol === 'file:';
 
-// Padronização da URL com /api no final (igual ao script.js)
-const API_URL = isElectron
-    ? 'http://localhost:3000/api'
-    : 'https://portalmmcebolas.com/api';
+// Web e Electron usam o mesmo servidor (portalmmcebolas.com) para um único banco de dados.
+const API_URL = 'https://portalmmcebolas.com/api';
+
+/** Na Web, a Home fica em /pages/home.html; no Electron, na mesma pasta que login (pages/). */
+function getHomeUrl() {
+    if (window.location.protocol === 'file:') return 'home.html';
+    if (window.location.pathname.includes('/pages/')) return 'home.html';
+    return '/pages/home.html';
+}
 
 async function fazerLogin(e) {
     e.preventDefault();
@@ -29,14 +34,13 @@ async function fazerLogin(e) {
         const data = await response.json();
 
         if (response.ok) {
-            const data = await response.json();
             localStorage.setItem('token', data.token);
-            localStorage.setItem('mm_user', JSON.stringify(data));
-            
-            // Troque o redirecionamento direto por este com timeout:
+            localStorage.setItem('mm_user', JSON.stringify({ user: data.user, role: data.role }));
             setTimeout(() => {
-                window.location.href = 'home.html';
-            }, 100); 
+                // Web (portalmmcebolas.com): / ou /login.html → /pages/home.html; Electron: mesmo pasta → home.html
+                const homeUrl = getHomeUrl();
+                window.location.replace(homeUrl);
+            }, 150);
         } else {
             showLoginError(data.error || "Usuário ou senha incorretos.");
             btn.disabled = false;

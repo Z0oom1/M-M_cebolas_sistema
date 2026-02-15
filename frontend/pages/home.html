@@ -3,15 +3,16 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>M&M Cebolas - Gestão</title>
+    <link rel="icon" href="../Imgs/logo_M&M.jpg" type="image/jpeg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/estilo_geral.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-    <div id="titlebar" style="display: none;">
+    <div id="titlebar">
         <div class="window-title">M&M CEBOLAS - SISTEMA DE GESTÃO</div>
         <div class="window-controls">
             <button id="minBtn" class="control-btn minimize" title="Minimizar"></button>
@@ -77,7 +78,9 @@
     </div>
 
     <main class="main-content" id="main-content">
-        <!-- Conteúdo injetado via JS -->
+        <div class="main-content-placeholder" id="main-placeholder">
+            <img src="../Imgs/logo_M&M.jpg" alt="M&M Cebolas" class="placeholder-logo">
+        </div>
     </main>
 
     <!-- Modal de Produto -->

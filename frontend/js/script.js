@@ -13,30 +13,44 @@ let currentSectionId = 'dashboard';
 let financeChart = null;
 let stockChart = null;
 
-// API base: igual ao login.js (com /api no final)
+// API base: Web e Electron usam o mesmo servidor (portalmmcebolas.com) para dados partilhados.
+// Só localhost no browser usa :3000 para desenvolvimento local.
 const API_URL = (function() {
     const host = window.location.hostname;
-    const isElectron = window.location.protocol === 'file:';
-    if (isElectron || host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000/api';
+    const isElectron = window.location.protocol === 'file:' ||
+        (typeof process !== 'undefined' && process.versions && process.versions.electron);
+    if (isElectron) return 'https://portalmmcebolas.com/api'; // Electron ligado ao mesmo servidor que o site
+    if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000/api';
     return 'https://portalmmcebolas.com/api';
 })();
 
+/** Redirecionamento para login: na Web com path na raiz usar /pages/login.html; Electron mesma pasta. */
+function getLoginUrl() {
+    if (window.location.protocol === 'file:') return 'login.html';
+    if (window.location.pathname.includes('/pages/')) return 'login.html';
+    return '/pages/login.html';
+}
+
 window.onload = function() {
-    checkLogin();       // primeira coisa: validar sessão antes de qualquer outra lógica
+    checkLogin();
     checkEnvironment();
     loadDataFromAPI();
+    showSection('dashboard');   // carrega o dashboard na abertura (substitui o placeholder com logo)
     setupSelectors();
 };
 
 function checkEnvironment() {
-    // Detecção: Electron (file: ou process.versions.electron) → mostrar titlebar; navegador → esconder
     const isElectron = window.location.protocol === 'file:' ||
         (typeof process !== 'undefined' && process.versions && process.versions.electron);
     const titlebar = document.getElementById('titlebar');
+    const windowControls = document.querySelector('.window-controls');
+
+    // Barra superior sempre visível: mostra o nome do sistema
+    if (titlebar) titlebar.style.display = 'flex';
 
     if (isElectron) {
-        if (titlebar) titlebar.style.display = 'flex';
-
+        // Electron: mostrar botões de controle (minimizar, maximizar, fechar)
+        if (windowControls) windowControls.style.display = 'flex';
         try {
             const { ipcRenderer } = require('electron');
             document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
@@ -46,19 +60,9 @@ function checkEnvironment() {
             console.warn("Electron IPC não disponível:", e);
         }
     } else {
-        if (titlebar) titlebar.style.display = 'none';
-
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) {
-            sidebar.style.top = '0';
-            sidebar.style.height = '100vh';
-        }
-
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.style.marginTop = '0';
-            mainContent.style.height = '100vh';
-        }
+        // Web: esconder apenas os botões de controle (mantém a barra com o nome do sistema)
+        if (windowControls) windowControls.style.display = 'none';
+        // Layout sidebar/mainContent já está no CSS (top/marginTop 38px) quando a titlebar está visível
     }
 }
 
@@ -782,7 +786,7 @@ async function loadConfigData() {
 async function fetchWithAuth(url, options = {}) {
     const token = localStorage.getItem('token');
     const mmUser = localStorage.getItem('mm_user');
-    if (!token || !mmUser) { window.location.href = 'login.html'; return; }
+    if (!token || !mmUser) { window.location.href = getLoginUrl(); return; }
     
     options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
     if (options.body && !options.headers['Content-Type']) {
@@ -801,32 +805,29 @@ async function fetchWithAuth(url, options = {}) {
 
 function checkLogin() {
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('mm_user');
-    
-    // Se não houver token ou dados, redireciona
-    if (!token || !userData) {
-        window.location.href = 'login.html';
+    const userDataRaw = localStorage.getItem('mm_user');
+
+    if (!token || !userDataRaw) {
+        console.warn("Sessão não encontrada, redirecionando...");
+        window.location.href = getLoginUrl();
         return;
     }
 
     try {
-        const user = JSON.parse(userData);
-        // Verifica se o objeto tem a estrutura correta (vinda da sua API)
-        const role = user.role || (user.user ? user.user.role : null);
-        
-        if (!role) {
-            console.error("Estrutura de usuário inválida");
-            logout();
+        const userData = JSON.parse(userDataRaw);
+        // Verifica se o objeto foi lido corretamente antes de prosseguir
+        if (!userData || typeof userData !== 'object') {
+            throw new Error("Dados de sessão corrompidos");
         }
     } catch (e) {
-        console.error("Erro ao processar sessão");
+        console.error("Erro na validação:", e);
         logout();
     }
 }
 
 function logout() {
     localStorage.clear();
-    window.location.href = 'login.html';
+    window.location.href = getLoginUrl();
 }
 
 function showSuccess(msg) {

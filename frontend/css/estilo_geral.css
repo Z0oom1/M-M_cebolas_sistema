@@ -37,11 +37,12 @@ body {
 
 /* --- TITLEBAR ESTILO APPLE --- */
 #titlebar {
-    display: flex; /* SEMPRE EXIBIR */
+    display: flex;
     align-items: center;
     background-color: #202020;
-    height: 38px;
+    min-height: 38px;
     padding: 0 15px;
+    padding-top: env(safe-area-inset-top, 0);
     -webkit-app-region: drag;
     position: fixed;
     top: 0;
@@ -50,9 +51,12 @@ body {
     z-index: 9999;
 }
 
-/* Ajuste para o conteúdo não ficar sob a barra */
-.sidebar { top: 38px !important; height: calc(100vh - 38px) !important; }
-.main-content { margin-top: 38px !important; height: calc(100vh - 38px) !important; }
+/* Ajuste para o conteúdo não ficar sob a barra (inclui safe-area no mobile) */
+:root {
+    --titlebar-height: calc(38px + env(safe-area-inset-top, 0px));
+}
+.sidebar { top: var(--titlebar-height) !important; height: calc(100vh - var(--titlebar-height)) !important; }
+.main-content { margin-top: var(--titlebar-height) !important; height: calc(100vh - var(--titlebar-height)) !important; }
 
 .window-controls { display: flex; gap: 8px; -webkit-app-region: no-drag; }
 .control-btn { width: 12px; height: 12px; border-radius: 50%; border: none; cursor: pointer; }
@@ -60,6 +64,25 @@ body {
 .control-btn.minimize { background: #ffbd2e; }
 .control-btn.maximize { background: #27c93f; }
 .window-title { flex: 1; text-align: center; color: #888; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
+
+/* Placeholder inicial: logo centralizado na área do main-content */
+.main-content-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: 280px;
+    background: var(--bg-body);
+}
+.placeholder-logo {
+    max-width: 180px;
+    max-height: 180px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    opacity: 0.9;
+}
 
 /* --- SIDEBAR --- */
 .sidebar {
@@ -359,54 +382,99 @@ input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px
 }
 .btn-danger:hover { background: #fecaca; color: #b91c1c; }
 
-/* --- RESPONSIVIDADE --- */
+/* --- RESPONSIVIDADE MOBILE (compatível com todos os celulares, incluindo iPhone) --- */
 .mobile-menu-toggle {
     display: none;
     position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 1001;
+    /* Sempre abaixo da barra: usa mesma altura da titlebar + safe-area (iPhone notch) + margem */
+    top: calc(var(--titlebar-height) + 8px);
+    left: 12px;
+    z-index: 1000;
     background: var(--primary);
     color: white;
     border: none;
-    width: 45px;
-    height: 45px;
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     cursor: pointer;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 12px rgba(26, 86, 50, 0.35);
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    -webkit-tap-highlight-color: transparent;
 }
+.mobile-menu-toggle:hover { background: var(--primary-light); transform: scale(1.02); }
+.mobile-menu-toggle:active { transform: scale(0.98); }
 
+/* Tablet e mobile */
 @media (max-width: 1024px) {
-    .sidebar { width: 240px; left: -240px; }
-    .sidebar.active { left: 0; }
-    .main-content { margin-left: 0; padding: 20px; padding-top: 80px; }
-    .mobile-menu-toggle { display: flex; align-items: center; justify-content: center; }
+    .sidebar { width: 260px; left: -260px; top: var(--titlebar-height) !important; height: calc(100vh - var(--titlebar-height)) !important; }
+    .sidebar.active { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.25); }
+    .main-content { margin-left: 0; padding: 16px; padding-top: calc(var(--titlebar-height) + 58px); padding-bottom: env(safe-area-inset-bottom, 0); }
+    .mobile-menu-toggle { display: flex; }
     
-    .cadastro-grid { grid-template-columns: 1fr; }
-    .top-bar { flex-direction: column; align-items: flex-start; gap: 15px; }
+    .cadastro-grid { grid-template-columns: 1fr; gap: 20px; }
+    .top-bar { flex-direction: column; align-items: stretch; gap: 16px; }
+    .page-title { font-size: 1.4rem; }
 }
 
+/* Mobile: layout limpo e agradável */
 @media (max-width: 768px) {
-    .main-content { padding: 15px; padding-top: 75px; }
-    .form-grid { grid-template-columns: 1fr; gap: 15px; padding: 15px; }
+    .main-content {
+        padding: 14px 16px;
+        padding-top: calc(var(--titlebar-height) + 58px);
+        padding-bottom: max(14px, env(safe-area-inset-bottom));
+        min-height: calc(100vh - var(--titlebar-height));
+    }
+    .main-content > div[style*="2fr 1fr"] { grid-template-columns: 1fr !important; gap: 16px !important; }
+    .form-grid { grid-template-columns: 1fr; gap: 18px; padding: 18px; }
     .span-2 { grid-column: span 1; }
     
-    .panel-header { flex-direction: column; align-items: flex-start; gap: 10px; }
-    .btn-primary { width: 100%; }
+    .panel { margin-bottom: 18px; border-radius: 16px; box-shadow: var(--shadow-sm); }
+    .panel-header { padding: 18px 20px; flex-direction: column; align-items: stretch; gap: 12px; }
+    .btn-primary { width: 100%; min-height: 48px; font-size: 1rem; border-radius: 12px; }
+    .btn-danger { min-height: 48px; border-radius: 12px; }
     
-    .product-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-    .product-card { padding: 15px; }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+    .product-card { padding: 18px 14px; min-height: 100px; border-radius: 14px; }
+    .product-name { font-size: 0.9rem; }
     
-    .page-title { font-size: 1.5rem; }
+    .page-title { font-size: 1.35rem; margin-bottom: 20px; }
     
-    /* Ajuste para tabelas em mobile */
-    .table-container { margin: 0 -15px; width: calc(100% + 30px); }
-    th, td { padding: 12px 15px; font-size: 0.85rem; }
+    .table-container { margin: 0 -16px; width: calc(100% + 32px); overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+    .table-container table { min-width: 520px; }
+    th, td { padding: 14px 12px; font-size: 0.85rem; }
+    
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .kpi-card { padding: 16px; }
+    .edit-modal { margin: 16px; max-width: calc(100% - 32px); max-height: calc(100vh - 100px); overflow-y: auto; border-radius: 20px; }
 }
 
+/* Celulares pequenos + iPhone: botão sempre abaixo da barra com safe-area */
 @media (max-width: 480px) {
-    .product-grid { grid-template-columns: 1fr 1fr; }
+    .mobile-menu-toggle {
+        top: calc(var(--titlebar-height) + 8px);
+        left: 10px;
+        width: 46px;
+        height: 46px;
+        font-size: 1.15rem;
+    }
+    .main-content { padding: 12px 14px; padding-top: calc(var(--titlebar-height) + 56px); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    
+    .kpi-grid { grid-template-columns: 1fr; gap: 12px; }
+    .product-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .product-card { padding: 14px 10px; border-radius: 12px; }
+    
+    .panel-header { padding: 16px 18px; }
+    .page-title { font-size: 1.2rem; }
+}
+
+/* Apenas quando há safe-area (ex.: iPhone com notch) - garante botão visível */
+@supports (padding: env(safe-area-inset-top)) {
+    @media (max-width: 1024px) {
+        .mobile-menu-toggle { top: calc(var(--titlebar-height) + 10px); }
+    }
 }
 
 /* --- TABELAS --- */
