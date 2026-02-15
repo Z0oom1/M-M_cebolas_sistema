@@ -129,23 +129,19 @@ function initSection(id) {
     
     if (id === 'config') {
         loadConfigData();
-        if (!isAdmin) {
+        if (isAdmin) {
+            loadLogs();
+        } else {
             const adminSelectors = [
                 '#admin-users-panel', 
+                '#admin-logs-panel',
                 '#admin-entities-panel', 
                 '#admin-products-panel', 
-                '.panel:has(.btn-danger)'
+                '#admin-danger-panel'
             ];
             adminSelectors.forEach(selector => {
                 const elements = document.querySelectorAll(selector);
                 elements.forEach(el => el.style.display = 'none');
-            });
-            
-            const panels = document.querySelectorAll('.panel');
-            panels.forEach(p => {
-                if (p.textContent.includes('Zona de Perigo') || p.textContent.includes('Usuários e Acessos')) {
-                    p.style.display = 'none';
-                }
             });
         }
     }
@@ -678,7 +674,11 @@ async function loadConfigData() {
             listUser.innerHTML = '';
             appData.users.forEach(u => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${u.label}</td><td>${u.username}</td><td><span class="badge admin">${u.role.toUpperCase()}</span></td>`;
+                tr.innerHTML = `<td>${u.label}</td><td>${u.username}</td><td><span class="badge ${u.role}">${u.role.toUpperCase()}</span></td>
+                    <td style="text-align: right;">
+                        <button class="btn-icon" onclick='openUsuarioModal(${JSON.stringify(u)})'><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon text-danger" onclick="deleteUsuario(${u.id})"><i class="fas fa-trash"></i></button>
+                    </td>`;
                 listUser.appendChild(tr);
             });
         }
@@ -743,7 +743,18 @@ async function fetchWithAuth(url, options = {}) {
 }
 
 function checkLogin() {
-    if (!localStorage.getItem('token')) window.location.href = 'login.html';
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    // Restringir acesso ao menu de configurações apenas para Admin
+    const configBtn = document.querySelector('.nav-item[onclick*="config"]');
+    if (configBtn && user.role !== 'admin') {
+        configBtn.style.display = 'none';
+    }
 }
 
 function logout() {
@@ -794,4 +805,77 @@ function renderFinanceChart() {
 
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('active');
+}
+
+function openUsuarioModal(data = null) {
+    const modal = document.getElementById('modal-usuario');
+    if (!modal) return;
+    modal.classList.add('active');
+    document.getElementById('user-modal-title').innerText = data ? "Editar Usuário" : "Novo Usuário";
+    
+    if (data) {
+        document.getElementById('user-id').value = data.id;
+        document.getElementById('user-label').value = data.label;
+        document.getElementById('user-username').value = data.username;
+        document.getElementById('user-role').value = data.role;
+        document.getElementById('user-password').value = '';
+    } else {
+        document.getElementById('user-id').value = '';
+        document.querySelector('#modal-usuario form').reset();
+    }
+}
+
+function closeUsuarioModal() {
+    const modal = document.getElementById('modal-usuario');
+    if (modal) modal.classList.remove('active');
+}
+
+async function saveUsuario(event) {
+    event.preventDefault();
+    const id = document.getElementById('user-id').value;
+    const data = {
+        id: id || null,
+        label: document.getElementById('user-label').value,
+        username: document.getElementById('user-username').value,
+        password: document.getElementById('user-password').value || null,
+        role: document.getElementById('user-role').value
+    };
+
+    const res = await fetchWithAuth('/api/usuarios', { method: 'POST', body: JSON.stringify(data) });
+    if (res && res.ok) {
+        showSuccess("Usuário salvo!");
+        closeUsuarioModal();
+        await loadDataFromAPI();
+        loadConfigData();
+    } else {
+        const err = await res.json();
+        showError("Erro ao salvar usuário: " + (err.error || "Erro desconhecido"));
+    }
+}
+
+async function deleteUsuario(id) {
+    if (!confirm("Excluir este usuário permanentemente?")) return;
+    const res = await fetchWithAuth(`/api/usuarios/${id}`, { method: 'DELETE' });
+    if (res && res.ok) {
+        showSuccess("Usuário excluído!");
+        await loadDataFromAPI();
+        loadConfigData();
+    }
+}
+
+async function loadLogs() {
+    const listLogs = document.getElementById('list-logs');
+    if (!listLogs) return;
+    
+    const res = await fetchWithAuth('/api/logs');
+    if (res && res.ok) {
+        const logs = await res.json();
+        listLogs.innerHTML = '';
+        logs.forEach(l => {
+            const tr = document.createElement('tr');
+            const date = new Date(l.data).toLocaleString('pt-BR');
+            tr.innerHTML = `<td>${date}</td><td><strong>${l.username}</strong></td><td><span class="badge">${l.acao}</span></td><td>${l.detalhes}</td>`;
+            listLogs.appendChild(tr);
+        });
+    }
 }

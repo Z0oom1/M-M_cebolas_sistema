@@ -65,6 +65,29 @@
     </div>
 </div>
 
+<!-- LOGS DO SISTEMA (ADMIN APENAS) -->
+<div id="admin-logs-panel" class="panel" style="margin-top: 24px;">
+    <div class="panel-header">
+        <h4 style="font-weight: 700;"><i class="fas fa-history"></i> Log de Atividades do Sistema</h4>
+        <button class="btn-icon" onclick="loadLogs()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+    </div>
+    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+        <table class="table-compact">
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Usuário</th>
+                    <th>Ação</th>
+                    <th>Detalhes</th>
+                </tr>
+            </thead>
+            <tbody id="list-logs">
+                <!-- JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <!-- GESTÃO DE ENTIDADES (ADMIN APENAS) -->
 <div id="admin-entities-panel" style="margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
     <div class="panel">
@@ -129,7 +152,7 @@
     </div>
 </div>
 
-<div class="panel" style="margin-top: 24px; border-color: #fee2e2;">
+<div id="admin-danger-panel" class="panel" style="margin-top: 24px; border-color: #fee2e2;">
     <div class="panel-header" style="background: #fff1f2;">
         <h4 style="color: #991b1b; font-weight: 700;">Zona de Perigo</h4>
     </div>
@@ -146,7 +169,7 @@
 <div id="modal-usuario" class="modal-overlay">
     <div class="edit-modal" style="max-width: 500px;">
         <div class="panel-header" style="background: #2563eb; color: white; padding: 20px;">
-            <h3 style="margin: 0;">Gestão de Acesso</h3>
+            <h3 id="user-modal-title" style="margin: 0;">Gestão de Acesso</h3>
             <button onclick="closeUsuarioModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
         </div>
         <form onsubmit="saveUsuario(event)" class="form-grid" style="grid-template-columns: 1fr;">
@@ -166,8 +189,9 @@
             <div class="form-group">
                 <label>Nível de Acesso</label>
                 <select id="user-role">
-                    <option value="operador">Operador (Entrada/Saída)</option>
-                    <option value="admin">Administrador (Total)</option>
+                    <option value="funcionario">Funcionário (Operacional)</option>
+                    <option value="chefe">Chefe (Acesso Total)</option>
+                    <option value="admin">Administrador (Gestão de Sistema)</option>
                 </select>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 10px;">

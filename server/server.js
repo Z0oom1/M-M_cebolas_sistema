@@ -27,11 +27,24 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS movimentacoes (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, produto TEXT, quantidade INTEGER, valor REAL, descricao TEXT, data TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS nfe (id INTEGER PRIMARY KEY AUTOINCREMENT, venda_id INTEGER, chave_acesso TEXT, xml_content TEXT, status TEXT, data_emissao TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS configs (chave TEXT PRIMARY KEY, valor TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, username TEXT, acao TEXT, detalhes TEXT, data TEXT)`);
 
     db.get("SELECT * FROM usuarios WHERE username = 'admin'", async (err, row) => {
         const hash = await bcrypt.hash('123', 10);
         if (!row) db.run("INSERT INTO usuarios (label, username, password, role) VALUES ('Administrador', 'admin', ?, 'admin')", [hash]);
         else db.run("UPDATE usuarios SET password = ? WHERE username = 'admin'", [hash]);
+    });
+
+    // Criar conta Vinicius (Chefe)
+    db.get("SELECT * FROM usuarios WHERE username = 'vinicius'", async (err, row) => {
+        const hash = await bcrypt.hash('123', 10);
+        if (!row) db.run("INSERT INTO usuarios (label, username, password, role) VALUES ('Vinicius', 'vinicius', ?, 'chefe')", [hash]);
+    });
+
+    // Criar conta Funcionario
+    db.get("SELECT * FROM usuarios WHERE username = 'funcionario'", async (err, row) => {
+        const hash = await bcrypt.hash('123', 10);
+        if (!row) db.run("INSERT INTO usuarios (label, username, password, role) VALUES ('Funcionario', 'funcionario', ?, 'funcionario')", [hash]);
     });
 });
 
@@ -51,6 +64,14 @@ function authenticateToken(req, res, next) {
     });
 }
 
+function registrarLog(req, acao, detalhes) {
+    const usuarioId = req.user ? req.user.id : null;
+    const username = req.user ? req.user.username : 'sistema';
+    const data = new Date().toISOString();
+    db.run(`INSERT INTO logs (usuario_id, username, acao, detalhes, data) VALUES (?, ?, ?, ?, ?)`, 
+        [usuarioId, username, acao, detalhes, data]);
+}
+
 // --- ROTAS DE CADASTRO E LOGIN (Resumidas) ---
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
@@ -59,6 +80,12 @@ app.post('/api/login', (req, res) => {
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return res.status(401).json({ error: "Senha incorreta" });
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, SECRET);
+        
+        // Log de login
+        const data = new Date().toISOString();
+        db.run(`INSERT INTO logs (usuario_id, username, acao, detalhes, data) VALUES (?, ?, ?, ?, ?)`, 
+            [user.id, user.username, 'LOGIN', 'Usuário realizou login no sistema', data]);
+            
         res.json({ token, user: { id: user.id, label: user.label, role: user.role } });
     });
 });
@@ -67,6 +94,7 @@ app.post('/api/movimentacoes', authenticateToken, (req, res) => {
     const { tipo, produto, quantidade, valor, descricao, data } = req.body;
     db.run(`INSERT INTO movimentacoes (tipo, produto, quantidade, valor, descricao, data) VALUES (?, ?, ?, ?, ?, ?)`, [tipo, produto, quantidade, valor, descricao, data], function(err) { 
         if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'MOVIMENTACAO', `${tipo.toUpperCase()}: ${quantidade}x ${produto} - R$ ${valor}`);
         res.json({ id: this.lastID }); 
     });
 });
@@ -76,10 +104,12 @@ app.post('/api/produtos', authenticateToken, (req, res) => {
     const { id, nome, ncm, preco_venda, cor, icone } = req.body;
     if (id) db.run(`UPDATE produtos SET nome = ?, ncm = ?, preco_venda = ?, cor = ?, icone = ? WHERE id = ?`, [nome, ncm, preco_venda, cor, icone, id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'PRODUTO_EDIT', `Editou produto: ${nome}`);
         res.json({ success: true });
     });
     else db.run(`INSERT INTO produtos (nome, ncm, preco_venda, cor, icone) VALUES (?, ?, ?, ?, ?)`, [nome, ncm, preco_venda, cor, icone], function(err) { 
         if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'PRODUTO_ADD', `Adicionou produto: ${nome}`);
         res.json({ id: this.lastID }); 
     });
 });
@@ -87,6 +117,48 @@ app.delete('/api/produtos/:id', authenticateToken, (req, res) => db.run('DELETE 
 app.get('/api/usuarios', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.sendStatus(403);
     db.all('SELECT id, label, username, role FROM usuarios', [], (err, rows) => res.json(rows || []));
+});
+
+app.post('/api/usuarios', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    const { id, label, username, password, role } = req.body;
+    const hash = password ? await bcrypt.hash(password, 10) : null;
+
+    if (id) {
+        if (hash) {
+            db.run(`UPDATE usuarios SET label = ?, username = ?, password = ?, role = ? WHERE id = ?`, [label, username, hash, role, id], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                registrarLog(req, 'USER_EDIT', `Editou usuário: ${username}`);
+                res.json({ success: true });
+            });
+        } else {
+            db.run(`UPDATE usuarios SET label = ?, username = ?, role = ? WHERE id = ?`, [label, username, role, id], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                registrarLog(req, 'USER_EDIT', `Editou usuário: ${username}`);
+                res.json({ success: true });
+            });
+        }
+    } else {
+        db.run(`INSERT INTO usuarios (label, username, password, role) VALUES (?, ?, ?, ?)`, [label, username, hash, role], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            registrarLog(req, 'USER_ADD', `Adicionou usuário: ${username}`);
+            res.json({ id: this.lastID });
+        });
+    }
+});
+
+app.delete('/api/usuarios/:id', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    db.run(`DELETE FROM usuarios WHERE id = ?`, [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'USER_DELETE', `Excluiu usuário ID: ${req.params.id}`);
+        res.json({ success: true });
+    });
+});
+
+app.get('/api/logs', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    db.all('SELECT * FROM logs ORDER BY data DESC LIMIT 500', [], (err, rows) => res.json(rows || []));
 });
 app.get('/api/clientes', authenticateToken, (req, res) => db.all('SELECT * FROM clientes', [], (err, rows) => res.json(rows || [])));
 app.post('/api/clientes', authenticateToken, (req, res) => {
