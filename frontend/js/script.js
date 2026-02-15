@@ -13,7 +13,7 @@ let currentSectionId = 'dashboard';
 let financeChart = null;
 let stockChart = null;
 
-// API base: idêntico ao login.js — Electron (file:) ou localhost → :3000/api; Web → portalmmcebolas.com/api
+// API base: igual ao login.js (com /api no final)
 const API_URL = (function() {
     const host = window.location.hostname;
     const isElectron = window.location.protocol === 'file:';
@@ -801,13 +801,15 @@ async function fetchWithAuth(url, options = {}) {
 
 function checkLogin() {
     const token = localStorage.getItem('token');
-    const mmUser = localStorage.getItem('mm_user');
-    if (!token || !mmUser) {
+    const userData = localStorage.getItem('mm_user');
+
+    if (!token || !userData) {
         window.location.href = 'login.html';
         return;
     }
-    const userData = JSON.parse(mmUser);
-    const userRole = userData.role || (userData.user ? userData.user.role : null);
+
+    const userDataObj = JSON.parse(userData);
+    const userRole = userDataObj.role || (userDataObj.user ? userDataObj.user.role : null);
 
     // Restringir acesso ao menu de configurações apenas para Admin
     const configBtn = document.querySelector('.nav-item[onclick*="config"]');

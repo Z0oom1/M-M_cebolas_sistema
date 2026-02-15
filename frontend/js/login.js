@@ -1,6 +1,7 @@
-// --- CONFIGURAÇÃO DE REDE (igual ao script.js) ---
-// Electron (file:) → localhost; Web → domínio oficial. Base já inclui /api.
+// --- CONFIGURAÇÃO DE REDE ---
 const isElectron = window.location.protocol === 'file:';
+
+// Padronização da URL com /api no final (igual ao script.js)
 const API_URL = isElectron
     ? 'http://localhost:3000/api'
     : 'https://portalmmcebolas.com/api';
@@ -26,8 +27,9 @@ async function fazerLogin(e) {
         const data = await response.json();
 
         if (response.ok) {
+            // Chaves que o script.js espera encontrar
             localStorage.setItem('token', data.token);
-            localStorage.setItem('mm_user', JSON.stringify({ user: data.user, role: data.role }));
+            localStorage.setItem('mm_user', JSON.stringify(data));
             setTimeout(() => {
                 window.location.href = 'home.html';
             }, 100);
@@ -37,7 +39,7 @@ async function fazerLogin(e) {
             btn.innerHTML = oldText;
         }
     } catch (error) {
-        showLoginError("Erro de conexão. Verifique se o servidor está online.");
+        showLoginError("Erro de conexão com o servidor.");
         btn.disabled = false;
         btn.innerHTML = oldText;
     }
