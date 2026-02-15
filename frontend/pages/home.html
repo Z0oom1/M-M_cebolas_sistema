@@ -258,16 +258,7 @@
         </div>
     </div>
 
-    <script>
-        if (window.location.protocol === 'file:') {
-            document.getElementById('titlebar').style.display = 'flex';
-        } else {
-            document.querySelector('.sidebar').style.top = '0';
-            document.querySelector('.sidebar').style.height = '100vh';
-            document.querySelector('.main-content').style.marginTop = '0';
-            document.querySelector('.main-content').style.height = '100vh';
-        }
-    </script>
+    <!-- Ordem importante: script.js carrega após o DOM; no onload a primeira ação é checkLogin() -->
     <script src="../js/script.js"></script>
 </body>
 

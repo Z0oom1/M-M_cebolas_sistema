@@ -22,8 +22,8 @@ const API_URL = (function() {
 })();
 
 window.onload = function() {
+    checkLogin();       // primeira coisa: validar sessão antes de qualquer outra lógica
     checkEnvironment();
-    checkLogin();
     loadDataFromAPI();
     setupSelectors();
 };
@@ -801,9 +801,10 @@ async function fetchWithAuth(url, options = {}) {
 
 function checkLogin() {
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('mm_user');
+    const userData = localStorage.getItem('mm_user'); // mesma chave que login.js grava
 
     if (!token || !userData) {
+        console.warn("Sessão não encontrada, redirecionando...");
         window.location.href = 'login.html';
         return;
     }

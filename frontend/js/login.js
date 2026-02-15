@@ -1,4 +1,6 @@
 // --- CONFIGURAÇÃO DE REDE ---
+// Nota: localStorage é sensível ao protocolo e domínio. Se logar em http://72.60.8.186,
+// os dados não aparecem em https://portalmmcebolas.com. Use sempre o mesmo URL para login e Home.
 const isElectron = window.location.protocol === 'file:';
 
 // Padronização da URL com /api no final (igual ao script.js)
