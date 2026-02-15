@@ -59,8 +59,9 @@ function setupSelectors() {
 
 async function loadDataFromAPI() {
     try {
-        const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
-        const isAdmin = user.role === 'admin';
+        const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+        const userRole = userData.role || (userData.user ? userData.user.role : null);
+        const isAdmin = userRole === 'admin';
 
         const promises = [
             fetchWithAuth('/api/movimentacoes').then(r => r && r.ok ? r.json() : []),
@@ -104,8 +105,9 @@ function showSection(id) {
 }
 
 function initSection(id) {
-    const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
-    const isAdmin = user.role === 'admin';
+    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userRole = userData.role || (userData.user ? userData.user.role : null);
+    const isAdmin = userRole === 'admin';
 
     if (id === 'dashboard') {
         const stockMap = calculateStock();
@@ -251,8 +253,9 @@ function selectProduct(p, section, event) {
 }
 
 function loadCadastros() {
-    const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
-    const isAdmin = user.role === 'admin';
+    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userRole = userData.role || (userData.user ? userData.user.role : null);
+    const isAdmin = userRole === 'admin';
     const listCli = document.getElementById('list-clientes'), listForn = document.getElementById('list-fornecedores'), listProd = document.getElementById('list-produtos');
     
     if (listCli) {
@@ -667,8 +670,9 @@ async function loadConfigData() {
         }
     }
     
-    const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
-    if (user.role === 'admin') {
+    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userRole = userData.role || (userData.user ? userData.user.role : null);
+    if (userRole === 'admin') {
         const listUser = document.getElementById('list-usuarios');
         if (listUser) {
             listUser.innerHTML = '';
@@ -749,10 +753,12 @@ function checkLogin() {
         return;
     }
     
-    const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userRole = userData.role || (userData.user ? userData.user.role : null);
+    
     // Restringir acesso ao menu de configurações apenas para Admin
     const configBtn = document.querySelector('.nav-item[onclick*="config"]');
-    if (configBtn && user.role !== 'admin') {
+    if (configBtn && userRole !== 'admin') {
         configBtn.style.display = 'none';
     }
 }

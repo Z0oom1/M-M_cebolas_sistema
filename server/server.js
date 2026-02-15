@@ -86,7 +86,7 @@ app.post('/api/login', (req, res) => {
         db.run(`INSERT INTO logs (usuario_id, username, acao, detalhes, data) VALUES (?, ?, ?, ?, ?)`, 
             [user.id, user.username, 'LOGIN', 'Usuário realizou login no sistema', data]);
             
-        res.json({ token, user: { id: user.id, label: user.label, role: user.role } });
+        res.json({ token, user: { id: user.id, label: user.label, role: user.role }, role: user.role });
     });
 });
 app.get('/api/movimentacoes', authenticateToken, (req, res) => db.all('SELECT * FROM movimentacoes ORDER BY data DESC', [], (err, rows) => res.json(rows || [])));
