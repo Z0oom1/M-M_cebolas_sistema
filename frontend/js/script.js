@@ -1,4 +1,6 @@
 // M&M Cebolas - Core Script
+
+
 let appData = {
     transactions: [],
     products: [],
@@ -11,23 +13,29 @@ let currentSectionId = 'dashboard';
 let financeChart = null;
 let stockChart = null;
 
-const isElectron = window.location.protocol === 'file:';
-const API_URL = isElectron ? 'http://localhost:3000' : '';
+// API base: localhost/127.0.0.1 → porta 3000; caso contrário → domínio oficial (Web + Electron)
+const API_URL = (function() {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000';
+    return 'https://portalmmcebolas.com.br';
+})();
 
 window.onload = function() {
+    checkEnvironment();
     checkLogin();
     loadDataFromAPI();
     setupSelectors();
-    checkEnvironment();
 };
 
 function checkEnvironment() {
-    const isElectron = window.location.protocol === 'file:';
+    // Detecção: Electron (file: ou process.versions.electron) → mostrar titlebar; navegador → esconder
+    const isElectron = window.location.protocol === 'file:' ||
+        (typeof process !== 'undefined' && process.versions && process.versions.electron);
     const titlebar = document.getElementById('titlebar');
-    
+
     if (isElectron) {
         if (titlebar) titlebar.style.display = 'flex';
-        
+
         try {
             const { ipcRenderer } = require('electron');
             document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
@@ -38,13 +46,13 @@ function checkEnvironment() {
         }
     } else {
         if (titlebar) titlebar.style.display = 'none';
-        
+
         const sidebar = document.querySelector('.sidebar');
         if (sidebar) {
             sidebar.style.top = '0';
             sidebar.style.height = '100vh';
         }
-        
+
         const mainContent = document.querySelector('.main-content');
         if (mainContent) {
             mainContent.style.marginTop = '0';

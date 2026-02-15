@@ -52,16 +52,43 @@ db.serialize(() => {
     }
 });
 
-app.use(cors());
+// CORS: domínio oficial, localhost, Electron (origin null ou mesmo domínio) e IP da VPS
+const CORS_ORIGINS = [
+    'https://portalmmcebolas.com.br',
+    'http://portalmmcebolas.com.br',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://72.60.8.186',
+    'https://72.60.8.186'
+];
+app.use(cors({
+    origin: function(origin, callback) {
+        if (!origin) return callback(null, true); // Electron / Postman / requisições sem origin
+        if (CORS_ORIGINS.indexOf(origin) !== -1) return callback(null, true);
+        console.warn('[CORS] Origem não permitida:', origin);
+        callback(null, false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.sendStatus(401);
+    if (!token) {
+        console.warn('[Auth] Requisição sem token em', req.method, req.path);
+        return res.sendStatus(401);
+    }
     jwt.verify(token, SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
+        if (err) {
+            console.warn('[Auth] Token inválido ou expirado em', req.method, req.path, err.message);
+            return res.sendStatus(403);
+        }
         req.user = user;
         next();
     });
@@ -229,17 +256,28 @@ app.get('/api/nfe', authenticateToken, (req, res) => db.all('SELECT * FROM nfe O
 app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
     const { venda_id, destinatario, itens } = req.body;
     db.all('SELECT * FROM configs', [], async (err, rows) => {
-        if (err) return res.status(500).json({ error: "Erro configs: " + err.message });
+        if (err) {
+            console.error('[NFe] Erro ao ler configs do banco:', err.message);
+            return res.status(500).json({ error: "Erro configs: " + err.message });
+        }
         const configs = {};
         rows?.forEach(r => configs[r.chave] = r.valor);
-        const isProduction = configs.nfe_modo === 'producao';
-        const certPass = configs.cert_password || '';
-        const pfxPath = path.join(__dirname, '../certificado', 'certificado.pfx');
+        // Modo produção: .env NFE_MODO=producao ou config no banco; certificado em server/certificado/
+        const nfeModoEnv = (process.env.NFE_MODO || '').toLowerCase();
+        const isProduction = configs.nfe_modo === 'producao' || nfeModoEnv === 'producao';
+        const certPass = configs.cert_password || process.env.CERT_PASSWORD || '';
+        const pfxPath = path.join(__dirname, 'certificado', 'certificado.pfx');
 
         if (!certPass) {
+            console.warn('[NFe] Certificado sem senha configurada; emitindo em modo simulação.');
             const chave = Array.from({length: 44}, () => Math.floor(Math.random() * 10)).join('');
             const xml = `<nfe><infNFe><ide><nNF>${venda_id}</nNF></ide><dest><xNome>${destinatario} (SIMULAÇÃO)</xNome></dest></infNFe></nfe>`;
             return db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`, [venda_id, chave, xml, 'simulada', new Date().toISOString()], function() { res.json({ id: this.lastID, chave, warning: "Modo Simulação" }); });
+        }
+
+        if (!fs.existsSync(pfxPath)) {
+            console.error('[NFe] Certificado não encontrado em:', pfxPath);
+            return res.status(500).json({ error: 'Certificado PFX não encontrado em server/certificado/certificado.pfx. Verifique o arquivo na VPS.' });
         }
 
         try {
@@ -283,7 +321,8 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
                     res.json({ id: this.lastID, chave: chaveAcesso, status: resultadoSefaz.status, mensagem: resultadoSefaz.message });
                 });
         } catch (nfeErr) {
-            console.error("Erro NFe:", nfeErr);
+            console.error("[NFe] Erro ao gerar/transmitir NF-e:", nfeErr.message);
+            console.error("[NFe] Stack:", nfeErr.stack);
             res.status(500).json({ error: nfeErr.message });
         }
     });
@@ -330,4 +369,8 @@ app.post('/api/configs', authenticateToken, (req, res) => { const { chave, valor
 app.delete('/api/reset', authenticateToken, (req, res) => { if(req.user.role!=='admin') return res.sendStatus(403); db.serialize(() => { ['movimentacoes','nfe','clientes','fornecedores','produtos'].forEach(t => db.run(`DELETE FROM ${t}`)); res.json({ success: true }); }); });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor M&M Cebolas rodando na porta ${PORT}`);
+    console.log(`   NFE_MODO (env): ${process.env.NFE_MODO || '(não definido)'}`);
+    console.log(`   Certificado: ${path.join(__dirname, 'certificado', 'certificado.pfx')}`);
+});

@@ -1,24 +1,23 @@
-// Adicionamos 'ipcMain' para receber os comandos dos botões
+// Electron: app desktop consome a API da VPS (https://portalmmcebolas.com.br) quando não for localhost.
+// O frontend em script.js define API_URL dinamicamente (file:// → produção; localhost → :3000).
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
 function createWindow() {
-    // Cria a janela do navegador.
     const win = new BrowserWindow({
         width: 1200,
         height: 800,
-        frame: false, // REMOVE a moldura/barra padrão do Windows
-        autoHideMenuBar: true, // Garante que nenhum menu antigo apareça
-        backgroundColor: '#000000', // Evita o "piscar" branco ao abrir
+        frame: false,
+        autoHideMenuBar: true,
+        backgroundColor: '#000000',
+        title: 'M&M Cebolas',
         icon: path.join(__dirname, 'Imgs', 'Logo_M&M_Cebolas.png'),
         webPreferences: {
-            // Suas configurações originais (mantendo compatibilidade com seu código)
             nodeIntegration: true,
             contextIsolation: false
         }
     });
 
-    // CARREGA A PÁGINA INICIAL
     win.loadFile(path.join(__dirname, 'pages', 'login.html'));
 
     // --- LÓGICA DOS BOTÕES PERSONALIZADOS ---
