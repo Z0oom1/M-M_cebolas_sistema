@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
@@ -12,7 +13,7 @@ const bwipjs = require('bwip-js');
 const app = express();
 const dbPath = path.join(__dirname, 'database.sqlite');
 const db = new sqlite3.Database(dbPath);
-const SECRET = 'mm_cebolas_secret_2024';
+const SECRET = process.env.JWT_SECRET || 'mm_cebolas_secret_2024';
 
 // --- CONFIGURAÇÃO VISUAL ---
 // Verde Escuro Profissional (RGB)
@@ -22,30 +23,38 @@ const COR_DESTAQUE = [0, 80, 0];
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT, username TEXT UNIQUE, password TEXT, role TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, ncm TEXT, preco_venda REAL, cor TEXT, icone TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, documento TEXT, telefone TEXT, ie TEXT, email TEXT, endereco TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS fornecedores (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, documento TEXT, telefone TEXT, ie TEXT, email TEXT, endereco TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, documento TEXT UNIQUE, telefone TEXT, ie TEXT, email TEXT, endereco TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS fornecedores (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, documento TEXT UNIQUE, telefone TEXT, ie TEXT, email TEXT, endereco TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS movimentacoes (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, produto TEXT, quantidade INTEGER, valor REAL, descricao TEXT, data TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS nfe (id INTEGER PRIMARY KEY AUTOINCREMENT, venda_id INTEGER, chave_acesso TEXT, xml_content TEXT, status TEXT, data_emissao TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS configs (chave TEXT PRIMARY KEY, valor TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, username TEXT, acao TEXT, detalhes TEXT, data TEXT)`);
 
-    db.get("SELECT * FROM usuarios WHERE username = 'admin'", async (err, row) => {
-        const hash = await bcrypt.hash('123', 10);
-        if (!row) db.run("INSERT INTO usuarios (label, username, password, role) VALUES ('Administrador', 'admin', ?, 'admin')", [hash]);
-        else db.run("UPDATE usuarios SET password = ? WHERE username = 'admin'", [hash]);
-    });
+    // Função auxiliar para criar/atualizar usuário com senha do .env
+    const upsertUser = async (label, username, envPassword, role) => {
+        const password = process.env[envPassword] || '123';
+        const hash = await bcrypt.hash(password, 10);
+        db.get("SELECT * FROM usuarios WHERE username = ?", [username], (err, row) => {
+            if (!row) {
+                db.run("INSERT INTO usuarios (label, username, password, role) VALUES (?, ?, ?, ?)", [label, username, hash, role]);
+            } else if (process.env[envPassword]) {
+                // Só atualiza a senha se ela foi definida no .env
+                db.run("UPDATE usuarios SET password = ? WHERE username = ?", [hash, username]);
+            }
+        });
+    };
 
-    // Criar conta Vinicius (Chefe)
-    db.get("SELECT * FROM usuarios WHERE username = 'vinicius'", async (err, row) => {
-        const hash = await bcrypt.hash('123', 10);
-        if (!row) db.run("INSERT INTO usuarios (label, username, password, role) VALUES ('Vinicius', 'vinicius', ?, 'chefe')", [hash]);
-    });
-
-    // Criar conta Funcionario
-    db.get("SELECT * FROM usuarios WHERE username = 'funcionario'", async (err, row) => {
-        const hash = await bcrypt.hash('123', 10);
-        if (!row) db.run("INSERT INTO usuarios (label, username, password, role) VALUES ('Funcionario', 'funcionario', ?, 'funcionario')", [hash]);
-    });
+    upsertUser('Administrador', 'admin', 'ADMIN_PASSWORD', 'admin');
+    upsertUser('Vinicius', 'vinicius', 'VINICIUS_PASSWORD', 'chefe');
+    upsertUser('Funcionario', 'funcionario', 'FUNCIONARIO_PASSWORD', 'funcionario');
+    
+    // Atualizar configurações se definido no .env
+    if (process.env.NFE_MODO) {
+        db.run("INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)", ['nfe_modo', process.env.NFE_MODO]);
+    }
+    if (process.env.CERT_PASSWORD) {
+        db.run("INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)", ['cert_password', process.env.CERT_PASSWORD]);
+    }
 });
 
 app.use(cors());
@@ -72,7 +81,7 @@ function registrarLog(req, acao, detalhes) {
         [usuarioId, username, acao, detalhes, data]);
 }
 
-// --- ROTAS DE CADASTRO E LOGIN (Resumidas) ---
+// --- ROTAS DE CADASTRO E LOGIN ---
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     db.get('SELECT * FROM usuarios WHERE username = ?', [username], async (err, user) => {
@@ -89,6 +98,7 @@ app.post('/api/login', (req, res) => {
         res.json({ token, user: { id: user.id, label: user.label, role: user.role }, role: user.role });
     });
 });
+
 app.get('/api/movimentacoes', authenticateToken, (req, res) => db.all('SELECT * FROM movimentacoes ORDER BY data DESC', [], (err, rows) => res.json(rows || [])));
 app.post('/api/movimentacoes', authenticateToken, (req, res) => {
     const { tipo, produto, quantidade, valor, descricao, data } = req.body;
@@ -99,6 +109,7 @@ app.post('/api/movimentacoes', authenticateToken, (req, res) => {
     });
 });
 app.delete('/api/movimentacoes/:id', authenticateToken, (req, res) => db.run('DELETE FROM movimentacoes WHERE id = ?', [req.params.id], () => res.json({ success: true })));
+
 app.get('/api/produtos', authenticateToken, (req, res) => db.all('SELECT * FROM produtos', [], (err, rows) => res.json(rows || [])));
 app.post('/api/produtos', authenticateToken, (req, res) => {
     const { id, nome, ncm, preco_venda, cor, icone } = req.body;
@@ -114,6 +125,7 @@ app.post('/api/produtos', authenticateToken, (req, res) => {
     });
 });
 app.delete('/api/produtos/:id', authenticateToken, (req, res) => db.run('DELETE FROM produtos WHERE id = ?', [req.params.id], () => res.json({ success: true })));
+
 app.get('/api/usuarios', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.sendStatus(403);
     db.all('SELECT id, label, username, role FROM usuarios', [], (err, rows) => res.json(rows || []));
@@ -172,8 +184,6 @@ app.get('/api/consultar/:type/:doc', authenticateToken, async (req, res) => {
             if (data.status === 'ERROR') return res.status(400).json({ error: data.message });
             res.json(data);
         } else if (type === 'CPF') {
-            // Nota: Consultas de CPF públicas e gratuitas são raras/inexistentes sem captcha.
-            // Usaremos uma simulação ou informaremos a limitação.
             res.status(400).json({ error: "Consulta de CPF requer API paga ou não disponível gratuitamente." });
         } else {
             res.status(400).json({ error: "Tipo inválido" });
@@ -182,30 +192,47 @@ app.get('/api/consultar/:type/:doc', authenticateToken, async (req, res) => {
         res.status(500).json({ error: "Erro ao consultar API externa" });
     }
 });
+
 app.get('/api/clientes', authenticateToken, (req, res) => db.all('SELECT * FROM clientes', [], (err, rows) => res.json(rows || [])));
 app.post('/api/clientes', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;
-    if (id) db.run(`UPDATE clientes SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true });
-    });
-    else db.run(`INSERT INTO clientes (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function(err) { 
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID }); 
+    const cleanDoc = documento.replace(/\D/g, '');
+    
+    // Verificação de duplicidade
+    db.get('SELECT id FROM clientes WHERE (REPLACE(REPLACE(REPLACE(documento, ".", ""), "-", ""), "/", "") = ? OR documento = ?) AND id != ?', [cleanDoc, documento, id || 0], (err, row) => {
+        if (row) return res.status(400).json({ error: "Já existe um cliente cadastrado com este documento (CPF/CNPJ)." });
+
+        if (id) db.run(`UPDATE clientes SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true });
+        });
+        else db.run(`INSERT INTO clientes (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function(err) { 
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID }); 
+        });
     });
 });
+
 app.get('/api/fornecedores', authenticateToken, (req, res) => db.all('SELECT * FROM fornecedores', [], (err, rows) => res.json(rows || [])));
 app.post('/api/fornecedores', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;
-    if (id) db.run(`UPDATE fornecedores SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true });
-    });
-    else db.run(`INSERT INTO fornecedores (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function(err) { 
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID }); 
+    const cleanDoc = documento.replace(/\D/g, '');
+
+    // Verificação de duplicidade
+    db.get('SELECT id FROM fornecedores WHERE (REPLACE(REPLACE(REPLACE(documento, ".", ""), "-", ""), "/", "") = ? OR documento = ?) AND id != ?', [cleanDoc, documento, id || 0], (err, row) => {
+        if (row) return res.status(400).json({ error: "Já existe um fornecedor cadastrado com este documento (CPF/CNPJ)." });
+
+        if (id) db.run(`UPDATE fornecedores SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true });
+        });
+        else db.run(`INSERT INTO fornecedores (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function(err) { 
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID }); 
+        });
     });
 });
+
 app.delete('/api/cadastros/:type/:id', authenticateToken, (req, res) => {
     const { type, id } = req.params;
     let table = '';
@@ -300,7 +327,7 @@ app.get('/api/nfe/:id/xml', authenticateToken, (req, res) => {
     });
 });
 
-// --- ROTA PDF DANFE (DESIGN DEFINITIVO) ---
+// --- ROTA PDF DANFE ---
 app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
     db.get(`SELECT n.*, m.valor, m.produto, m.quantidade, m.descricao as cliente_nome, 
             c.documento as cliente_doc, c.endereco as cliente_end, c.nome as cliente_razao,
@@ -350,7 +377,6 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
                 doc.setTextColor(0); 
                 
                 const safeValue = value ? String(value) : '';
-                // Centralização vertical matemática (Y + Metade da Altura + Pequeno ajuste para a base da fonte)
                 const yPos = y + (h / 2) + 1.5; 
 
                 if (align === 'center') {
@@ -365,19 +391,14 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             };
 
             // --- LAYOUT DANFE ---
-            
             // CANHOTO
             doc.setLineDash([1, 1], 0); doc.line(10, 26, 200, 26); doc.setLineDash([]);
             box(10, 8, 160, 15, "RECEBEMOS DE M&M CEBOLAS OS PRODUTOS CONSTANTES NA NOTA FISCAL INDICADA AO LADO");
-            
-            // CORREÇÃO DA ASSINATURA: Linha sobe um pouco, texto desce
             doc.setLineWidth(0.1);
-            doc.line(45, 20, 155, 20); // Linha movida para Y=20
+            doc.line(45, 20, 155, 20); 
             doc.setFontSize(5); doc.setFont("helvetica", "normal");
             doc.text("DATA DE RECEBIMENTO", 12, 18); 
-            doc.text("IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR", 100, 22.5, {align:'center'}); // Texto movido para Y=22.5
-            
-            // Box lateral do Canhoto
+            doc.text("IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR", 100, 22.5, {align:'center'}); 
             box(170, 8, 30, 15, "NF-e", true);
             doc.setFontSize(10); doc.setFont("helvetica", "bold");
             doc.text(`Nº ${row.venda_id}`, 185, 15, {align:'center'});
@@ -385,17 +406,12 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
 
             // CABEÇALHO PRINCIPAL
             const Y_EMIT = 30;
-            
-            // Box Logo/Empresa
             box(10, Y_EMIT, 80, 32);
             if (logoData) {
                 doc.addImage(logoData, 'PNG', 12, Y_EMIT + 2, 28, 24); 
-                
-                // NOME DA EMPRESA EM VERDE ESCURO
                 doc.setTextColor(COR_DESTAQUE[0], COR_DESTAQUE[1], COR_DESTAQUE[2]);
                 doc.setFontSize(14); doc.setFont("helvetica", "bold");
                 doc.text("M&M CEBOLAS", 44, Y_EMIT + 10);
-                
                 doc.setTextColor(0);
                 doc.setFontSize(7); doc.setFont("helvetica", "normal");
                 doc.text("Rua Manoel Cruz, 36", 44, Y_EMIT + 16);
@@ -408,76 +424,58 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
                 doc.setTextColor(0);
             }
 
-            // Bloco DANFE
             box(90, Y_EMIT, 30, 32);
             doc.setTextColor(COR_DESTAQUE[0], COR_DESTAQUE[1], COR_DESTAQUE[2]);
             doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text("DANFE", 105, Y_EMIT + 7, {align:'center'});
-            doc.setTextColor(0);
-            
             doc.setFontSize(6); doc.setFont("helvetica", "normal");
             doc.text("Documento Auxiliar\nda Nota Fiscal\nEletrônica", 105, Y_EMIT + 12, {align:'center'});
             doc.text("0 - Entrada", 95, Y_EMIT + 20);
             doc.text("1 - Saída", 95, Y_EMIT + 23);
-            
             doc.rect(112, Y_EMIT + 19, 6, 6);
             doc.setFontSize(10); doc.setFont("helvetica", "bold");
             doc.text("1", 115, Y_EMIT + 23.5, {align:'center'});
-            
             doc.setFontSize(8);
             doc.text(`Nº ${row.venda_id}`, 105, Y_EMIT + 28, {align:'center'});
             doc.text(`SÉRIE 1`, 105, Y_EMIT + 31, {align:'center'});
 
-            // Bloco Chave e Barcode
             box(120, Y_EMIT, 80, 32, "CHAVE DE ACESSO");
             if (barcodePng) {
                 doc.addImage(barcodePng, 'PNG', 123, Y_EMIT + 4, 74, 11);
             }
-            
-            // CORREÇÃO: Fonte reduzida para 6.5 para caber os 44 números sem vazar
             doc.setFont("courier", "bold"); 
             doc.setFontSize(6.5); 
             const chaveFmt = row.chave_acesso ? row.chave_acesso.match(/.{1,4}/g).join(' ') : '';
             doc.text(chaveFmt, 160, Y_EMIT + 19, {align:'center'});
-            
             doc.setFont("helvetica", "normal"); doc.setFontSize(7);
             doc.text("Consulta de autenticidade no portal nacional da NF-e", 160, Y_EMIT + 24, {align:'center'});
             doc.text("www.nfe.fazenda.gov.br/portal ou no site da Sefaz", 160, Y_EMIT + 28, {align:'center'});
 
-            // LINHA 2
             const Y_NAT = 64;
             field(10, Y_NAT, 110, 8, "NATUREZA DA OPERAÇÃO", "VENDA DE MERCADORIA", 'left', 8, true);
             field(120, Y_NAT, 80, 8, "PROTOCOLO DE AUTORIZAÇÃO DE USO", row.status === 'autorizada' ? "135240001234567 - AUTORIZADA" : "EMITIDA EM HOMOLOGAÇÃO - SEM VALOR", 'center');
-
             field(10, Y_NAT+8, 60, 8, "INSCRIÇÃO ESTADUAL", "562.696.411.110");
             field(70, Y_NAT+8, 60, 8, "INSC. ESTADUAL SUBST. TRIB.", "");
             field(130, Y_NAT+8, 70, 8, "CNPJ", "56.421.395/0001-50");
 
-            // DESTINATÁRIO
             const Y_DEST = 83;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_DEST, 190, 5, 'F');
             doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("DESTINATÁRIO / REMETENTE", 12, Y_DEST + 3.5);
-            
             const Y_DEST_D = Y_DEST + 5;
             field(10, Y_DEST_D, 110, 8, "NOME / RAZÃO SOCIAL", row.cliente_nome || row.cliente_razao || "CONSUMIDOR FINAL");
             field(120, Y_DEST_D, 40, 8, "CNPJ / CPF", row.cliente_doc || "", 'center');
             field(160, Y_DEST_D, 40, 8, "DATA DA EMISSÃO", new Date(row.data_emissao).toLocaleDateString('pt-BR'), 'center');
-
             field(10, Y_DEST_D+8, 90, 8, "ENDEREÇO", row.cliente_end || "");
             field(100, Y_DEST_D+8, 40, 8, "BAIRRO / DISTRITO", "Centro");
             field(140, Y_DEST_D+8, 20, 8, "CEP", "19000-000");
             field(160, Y_DEST_D+8, 40, 8, "DATA SAÍDA/ENTRADA", new Date(row.data_emissao).toLocaleDateString('pt-BR'), 'center');
-
             field(10, Y_DEST_D+16, 60, 8, "MUNICÍPIO", "PRESIDENTE PRUDENTE");
             field(70, Y_DEST_D+16, 10, 8, "UF", "SP");
             field(80, Y_DEST_D+16, 40, 8, "FONE / FAX", row.cliente_tel || "");
             field(120, Y_DEST_D+16, 80, 8, "INSCRIÇÃO ESTADUAL", "");
 
-            // IMPOSTOS
             const Y_IMP = 114;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_IMP, 190, 5, 'F');
             doc.text("CÁLCULO DO IMPOSTO", 12, Y_IMP + 3.5);
-
             const Y_IMP_D = Y_IMP + 5;
             const wBox = 190 / 5;
             field(10, Y_IMP_D, wBox, 8, "BASE DE CÁLCULO DO ICMS", "0,00", 'right');
@@ -485,18 +483,15 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             field(10+wBox*2, Y_IMP_D, wBox, 8, "BASE CÁLC. ICMS S.T.", "0,00", 'right');
             field(10+wBox*3, Y_IMP_D, wBox, 8, "VALOR DO ICMS S.T.", "0,00", 'right');
             field(10+wBox*4, Y_IMP_D, wBox, 8, "VALOR TOTAL PRODUTOS", row.valor.toFixed(2), 'right');
-
             field(10, Y_IMP_D+8, wBox, 8, "VALOR DO FRETE", "0,00", 'right');
             field(10+wBox, Y_IMP_D+8, wBox, 8, "VALOR DO SEGURO", "0,00", 'right');
             field(10+wBox*2, Y_IMP_D+8, wBox, 8, "DESCONTO", "0,00", 'right');
             field(10+wBox*3, Y_IMP_D+8, wBox, 8, "OUTRAS DESP. ACESS.", "0,00", 'right');
             field(10+wBox*4, Y_IMP_D+8, wBox, 8, "VALOR TOTAL DA NOTA", row.valor.toFixed(2), 'right');
 
-            // TRANSPORTADOR
             const Y_TRANS = 138;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_TRANS, 190, 5, 'F');
             doc.text("TRANSPORTADOR / VOLUMES TRANSPORTADOS", 12, Y_TRANS + 3.5);
-            
             const Y_TRANS_D = Y_TRANS + 5;
             field(10, Y_TRANS_D, 90, 8, "RAZÃO SOCIAL", "O MESMO");
             field(100, Y_TRANS_D, 20, 8, "FRETE", "9-Sem Frete");
@@ -505,11 +500,9 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             field(160, Y_TRANS_D, 10, 8, "UF", "");
             field(170, Y_TRANS_D, 30, 8, "CNPJ/CPF", "");
 
-            // PRODUTOS
             const Y_PROD = 155;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_PROD, 190, 5, 'F');
             doc.text("DADOS DO PRODUTO / SERVIÇO", 12, Y_PROD + 3.5);
-
             const yHead = Y_PROD + 5;
             box(10, yHead, 20, 5, "CÓDIGO");
             box(30, yHead, 70, 5, "DESCRIÇÃO");
@@ -520,11 +513,9 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             box(145, yHead, 15, 5, "QTD");
             box(160, yHead, 20, 5, "V.UNIT");
             box(180, yHead, 20, 5, "V.TOTAL");
-
             const yItem = yHead + 5;
             doc.setFont("helvetica", "normal"); doc.setFontSize(7);
             doc.setFillColor(252, 252, 252); doc.rect(10, yItem, 190, 6, 'F');
-            
             box(10, yItem, 20, 6); doc.text("001", 12, yItem+4);
             box(30, yItem, 70, 6); doc.text(row.produto, 32, yItem+4);
             box(100, yItem, 15, 6); doc.text("07031019", 107.5, yItem+4, {align:'center'});
@@ -535,11 +526,9 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             box(160, yItem, 20, 6); doc.text((row.valor/row.quantidade).toFixed(2), 178, yItem+4, {align:'right'});
             box(180, yItem, 20, 6); doc.text(row.valor.toFixed(2), 198, yItem+4, {align:'right'});
 
-            // RODAPÉ
             const Y_ADIC = 200;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_ADIC, 190, 5, 'F');
             doc.text("DADOS ADICIONAIS", 12, Y_ADIC + 3.5);
-            
             const Y_ADIC_D = Y_ADIC + 5;
             field(10, Y_ADIC_D, 130, 25, "INFORMAÇÕES COMPLEMENTARES", "Documento emitido por ME ou EPP optante pelo Simples Nacional. Não gera direito a crédito fiscal de IPI.");
             field(140, Y_ADIC_D, 60, 25, "RESERVADO AO FISCO", "");
@@ -548,7 +537,6 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename=DANFE_${row.chave_acesso}.pdf`);
             res.send(Buffer.from(pdfOutput));
-
         } catch (pdfErr) {
             console.error('Erro PDF:', pdfErr);
             res.status(500).send('Erro ao gerar PDF: ' + pdfErr.message);
@@ -561,4 +549,4 @@ app.post('/api/configs', authenticateToken, (req, res) => { const { chave, valor
 app.delete('/api/reset', authenticateToken, (req, res) => { if(req.user.role!=='admin') return res.sendStatus(403); db.serialize(() => { ['movimentacoes','nfe','clientes','fornecedores','produtos'].forEach(t => db.run(`DELETE FROM ${t}`)); res.json({ success: true }); }); });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
