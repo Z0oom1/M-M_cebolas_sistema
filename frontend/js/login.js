@@ -1,54 +1,47 @@
-// --- CONFIGURAÇÃO DE REDE ---
+// --- CONFIGURAÇÃO DE REDE (igual ao script.js) ---
+// Electron (file:) → localhost; Web → domínio oficial. Base já inclui /api.
 const isElectron = window.location.protocol === 'file:';
-const API_URL = isElectron 
-    ? 'http://localhost:3000' 
-    : 'https://portalmmcebolas.com';
+const API_URL = isElectron
+    ? 'http://localhost:3000/api'
+    : 'https://portalmmcebolas.com/api';
 
-    
-    async function fazerLogin(e) {
-        e.preventDefault();
-        const btn = e.target.querySelector('button[type="submit"]');
-        const oldText = btn.innerHTML;
-        
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> AUTENTICANDO...';
-    
-        const username = document.getElementById('loginUser').value;
-        const password = document.getElementById('loginPass').value;
-    
-        console.log("Tentando conectar em:", `${API_URL}/api/login`);
-    
-        try {
-            const response = await fetch(`${API_URL}/api/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-    
-            const data = await response.json();
-    
-            if (response.ok) {
-                console.log("Login bem-sucedido, salvando dados...");
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('mm_user', JSON.stringify(data));
-                
-                // Pequeno delay para garantir que o localStorage gravou antes de mudar de página
-                setTimeout(() => {
-                    window.location.href = 'home.html';
-                }, 100);
-            } else {
-                console.error("Erro retornado pela API:", data.error);
-                showLoginError(data.error || "Usuário ou senha incorretos.");
-                btn.disabled = false;
-                btn.innerHTML = oldText;
-            }
-        } catch (error) {
-            console.error("Erro catastrófico no fetch:", error);
-            showLoginError("Erro de conexão. Verifique se o servidor está online.");
+async function fazerLogin(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const oldText = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> AUTENTICANDO...';
+
+    const username = document.getElementById('loginUser').value;
+    const password = document.getElementById('loginPass').value;
+
+    try {
+        const response = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('mm_user', JSON.stringify({ user: data.user, role: data.role }));
+            setTimeout(() => {
+                window.location.href = 'home.html';
+            }, 100);
+        } else {
+            showLoginError(data.error || "Usuário ou senha incorretos.");
             btn.disabled = false;
             btn.innerHTML = oldText;
         }
+    } catch (error) {
+        showLoginError("Erro de conexão. Verifique se o servidor está online.");
+        btn.disabled = false;
+        btn.innerHTML = oldText;
     }
+}
 
 function showLoginError(msg) {
     let errEl = document.getElementById('login-error');

@@ -13,14 +13,12 @@ let currentSectionId = 'dashboard';
 let financeChart = null;
 let stockChart = null;
 
-// API base: localhost/127.0.0.1 → porta 3000; caso contrário → domínio oficial (Web + Electron)
+// API base: idêntico ao login.js — Electron (file:) ou localhost → :3000/api; Web → portalmmcebolas.com/api
 const API_URL = (function() {
     const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1') {
-        return 'http://localhost:3000/api';
-    }
-    // Verifique se NÃO tem o ".br" e se tem o "/api" no final
-    return 'https://portalmmcebolas.com/api'; 
+    const isElectron = window.location.protocol === 'file:';
+    if (isElectron || host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000/api';
+    return 'https://portalmmcebolas.com/api';
 })();
 
 window.onload = function() {
@@ -75,14 +73,14 @@ async function loadDataFromAPI() {
         const isAdmin = userRole === 'admin';
 
         const promises = [
-            fetchWithAuth('/api/movimentacoes').then(r => r && r.ok ? r.json() : []),
-            fetchWithAuth('/api/produtos').then(r => r && r.ok ? r.json() : []),
-            fetchWithAuth('/api/clientes').then(r => r && r.ok ? r.json() : []),
-            fetchWithAuth('/api/fornecedores').then(r => r && r.ok ? r.json() : [])
+            fetchWithAuth('/movimentacoes').then(r => r && r.ok ? r.json() : []),
+            fetchWithAuth('/produtos').then(r => r && r.ok ? r.json() : []),
+            fetchWithAuth('/clientes').then(r => r && r.ok ? r.json() : []),
+            fetchWithAuth('/fornecedores').then(r => r && r.ok ? r.json() : [])
         ];
 
         if (isAdmin) {
-            promises.push(fetchWithAuth('/api/usuarios').then(r => r && r.ok ? r.json() : []));
+            promises.push(fetchWithAuth('/usuarios').then(r => r && r.ok ? r.json() : []));
         } else {
             promises.push(Promise.resolve([]));
         }
@@ -366,7 +364,7 @@ async function saveCadastro(event) {
         endereco: document.getElementById('edit-end').value
     };
 
-    const endpoint = type === 'cliente' ? '/api/clientes' : '/api/fornecedores';
+    const endpoint = type === 'cliente' ? '/clientes' : '/fornecedores';
     try {
         const res = await fetchWithAuth(endpoint, {
             method: 'POST',
@@ -389,7 +387,7 @@ async function saveCadastro(event) {
 
 async function deleteCadastro(type, id) {
     if (!confirm(`Excluir este ${type} permanentemente?`)) return;
-    const res = await fetchWithAuth(`/api/cadastros/${type}/${id}`, { method: 'DELETE' });
+    const res = await fetchWithAuth(`/cadastros/${type}/${id}`, { method: 'DELETE' });
     if (res && res.ok) { 
         showSuccess("Cadastro removido!"); 
         await loadDataFromAPI(); 
@@ -452,7 +450,7 @@ async function saveProduto(event) {
     };
 
     try {
-        const res = await fetchWithAuth('/api/produtos', {
+        const res = await fetchWithAuth('/produtos', {
             method: 'POST',
             body: JSON.stringify(data)
         });
@@ -486,7 +484,7 @@ async function saveMovimentacao(type, event) {
         data: document.getElementById(`${prefix}-date`).value || new Date().toISOString()
     };
 
-    const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
+    const res = await fetchWithAuth('/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
     if (res && res.ok) {
         showSuccess("Movimentação registrada!");
         await loadDataFromAPI();
@@ -503,7 +501,7 @@ async function saveMovimentacao(type, event) {
 
 async function gerarNFe(vendaId, destinatario, itens) {
     showSuccess("Gerando NF-e...");
-    const res = await fetchWithAuth('/api/nfe/gerar', {
+    const res = await fetchWithAuth('/nfe/gerar', {
         method: 'POST',
         body: JSON.stringify({ venda_id: vendaId, destinatario, itens })
     });
@@ -540,9 +538,9 @@ async function saveDespesa(event) {
         descricao: document.getElementById('desp-desc').value,
         data: document.getElementById('desp-data').value || new Date().toISOString()
     };
-    const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
-    if (res && res.ok) { 
-        showSuccess("Despesa lançada!"); 
+const res = await fetchWithAuth('/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
+    if (res && res.ok) {
+        showSuccess("Despesa lançada!");
         await loadDataFromAPI(); 
         event.target.reset();
     }
@@ -599,7 +597,7 @@ function renderStockTable() {
 
 async function deleteMovimentacao(id) {
     if (!confirm("Excluir este registro permanentemente?")) return;
-    const res = await fetchWithAuth(`/api/movimentacoes/${id}`, { method: 'DELETE' });
+    const res = await fetchWithAuth(`/movimentacoes/${id}`, { method: 'DELETE' });
     if (res && res.ok) { 
         showSuccess("Registro excluído!"); 
         await loadDataFromAPI(); 
@@ -611,7 +609,7 @@ async function deleteMovimentacao(id) {
 async function loadNFeTable() {
     const tbody = document.getElementById('nfe-table-body');
     if (!tbody) return;
-    const res = await fetchWithAuth('/api/nfe');
+    const res = await fetchWithAuth('/nfe');
     if (!res) return;
     const data = await res.json();
     tbody.innerHTML = '';
@@ -637,7 +635,7 @@ async function loadNFeTable() {
 async function downloadXML(id) {
     const token = localStorage.getItem('token');
     try {
-        const res = await fetch(`${API_URL}/api/nfe/${id}/xml`, {
+        const res = await fetch(`${API_URL}/nfe/${id}/xml`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) throw new Error("Erro ao baixar XML");
@@ -655,7 +653,7 @@ async function downloadXML(id) {
 async function downloadPDF(id) {
     const token = localStorage.getItem('token');
     try {
-        const res = await fetch(`${API_URL}/api/nfe/${id}/pdf`, {
+        const res = await fetch(`${API_URL}/nfe/${id}/pdf`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) throw new Error("Erro ao baixar PDF");
@@ -711,7 +709,7 @@ function closeSearchModal() {
 }
 
 async function loadConfigData() {
-    const res = await fetchWithAuth('/api/configs');
+    const res = await fetchWithAuth('/configs');
     if (res && res.ok) {
         const configs = await res.json();
         if (configs.nfe_modo) {
@@ -783,7 +781,8 @@ async function loadConfigData() {
 
 async function fetchWithAuth(url, options = {}) {
     const token = localStorage.getItem('token');
-    if (!token) { window.location.href = 'login.html'; return; }
+    const mmUser = localStorage.getItem('mm_user');
+    if (!token || !mmUser) { window.location.href = 'login.html'; return; }
     
     options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
     if (options.body && !options.headers['Content-Type']) {
@@ -802,14 +801,14 @@ async function fetchWithAuth(url, options = {}) {
 
 function checkLogin() {
     const token = localStorage.getItem('token');
-    if (!token) {
+    const mmUser = localStorage.getItem('mm_user');
+    if (!token || !mmUser) {
         window.location.href = 'login.html';
         return;
     }
-    
-    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userData = JSON.parse(mmUser);
     const userRole = userData.role || (userData.user ? userData.user.role : null);
-    
+
     // Restringir acesso ao menu de configurações apenas para Admin
     const configBtn = document.querySelector('.nav-item[onclick*="config"]');
     if (configBtn && userRole !== 'admin') {
@@ -901,7 +900,7 @@ async function saveUsuario(event) {
         role: document.getElementById('user-role').value
     };
 
-    const res = await fetchWithAuth('/api/usuarios', { method: 'POST', body: JSON.stringify(data) });
+    const res = await fetchWithAuth('/usuarios', { method: 'POST', body: JSON.stringify(data) });
     if (res && res.ok) {
         showSuccess("Usuário salvo!");
         closeUsuarioModal();
@@ -915,7 +914,7 @@ async function saveUsuario(event) {
 
 async function deleteUsuario(id) {
     if (!confirm("Excluir este usuário permanentemente?")) return;
-    const res = await fetchWithAuth(`/api/usuarios/${id}`, { method: 'DELETE' });
+    const res = await fetchWithAuth(`/usuarios/${id}`, { method: 'DELETE' });
     if (res && res.ok) {
         showSuccess("Usuário excluído!");
         await loadDataFromAPI();
@@ -927,7 +926,7 @@ async function loadLogs() {
     const listLogs = document.getElementById('list-logs');
     if (!listLogs) return;
     
-    const res = await fetchWithAuth('/api/logs');
+    const res = await fetchWithAuth('/logs');
     if (res && res.ok) {
         const logs = await res.json();
         listLogs.innerHTML = '';
@@ -965,7 +964,7 @@ async function consultarDocumento() {
     showSuccess("Consultando documento...");
     
     try {
-        const res = await fetchWithAuth(`/api/consultar/${type}/${doc}`);
+        const res = await fetchWithAuth(`/consultar/${type}/${doc}`);
         if (res && res.ok) {
             const data = await res.json();
             if (type === 'CNPJ') {
@@ -987,7 +986,7 @@ async function consultarDocumento() {
 }
 
 async function updateNFeModo(modo) {
-    const res = await fetchWithAuth('/api/configs', {
+    const res = await fetchWithAuth('/configs', {
         method: 'POST',
         body: JSON.stringify({ chave: 'nfe_modo', valor: modo })
     });
@@ -996,7 +995,7 @@ async function updateNFeModo(modo) {
 
 async function saveCertPassword() {
     const password = document.getElementById('cert-password').value;
-    const res = await fetchWithAuth('/api/configs', {
+    const res = await fetchWithAuth('/configs', {
         method: 'POST',
         body: JSON.stringify({ chave: 'cert_password', valor: password })
     });
@@ -1005,21 +1004,9 @@ async function saveCertPassword() {
 
 async function resetSystem() {
     if (!confirm("TEM CERTEZA? Esta ação é irreversível e apagará todos os dados de movimentações, clientes e fornecedores.")) return;
-    const res = await fetchWithAuth('/api/reset', { method: 'DELETE' });
+    const res = await fetchWithAuth('/reset', { method: 'DELETE' });
     if (res && res.ok) {
         showSuccess("Sistema resetado com sucesso!");
         window.location.reload();
     }
 }
-
-// No final do seu script.js
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector('form'); // ou o ID do seu formulário de login
-    if (form) {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            // Aqui deve vir o nome da sua função de login, por exemplo:
-            // login(); 
-        });
-    }
-});
