@@ -160,6 +160,28 @@ app.get('/api/logs', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.sendStatus(403);
     db.all('SELECT * FROM logs ORDER BY data DESC LIMIT 500', [], (err, rows) => res.json(rows || []));
 });
+
+app.get('/api/consultar/:type/:doc', authenticateToken, async (req, res) => {
+    const { type, doc } = req.params;
+    const cleanDoc = doc.replace(/\D/g, '');
+
+    try {
+        if (type === 'CNPJ') {
+            const response = await fetch(`https://receitaws.com.br/v1/cnpj/${cleanDoc}`);
+            const data = await response.json();
+            if (data.status === 'ERROR') return res.status(400).json({ error: data.message });
+            res.json(data);
+        } else if (type === 'CPF') {
+            // Nota: Consultas de CPF públicas e gratuitas são raras/inexistentes sem captcha.
+            // Usaremos uma simulação ou informaremos a limitação.
+            res.status(400).json({ error: "Consulta de CPF requer API paga ou não disponível gratuitamente." });
+        } else {
+            res.status(400).json({ error: "Tipo inválido" });
+        }
+    } catch (err) {
+        res.status(500).json({ error: "Erro ao consultar API externa" });
+    }
+});
 app.get('/api/clientes', authenticateToken, (req, res) => db.all('SELECT * FROM clientes', [], (err, rows) => res.json(rows || [])));
 app.post('/api/clientes', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;

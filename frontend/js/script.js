@@ -885,3 +885,49 @@ async function loadLogs() {
         });
     }
 }
+
+function updateDocMask() {
+    const type = document.getElementById('edit-doc-type').value;
+    const input = document.getElementById('edit-doc');
+    const label = document.getElementById('label-doc');
+    if (type === 'CNPJ') {
+        label.innerText = 'CNPJ';
+        input.placeholder = '00.000.000/0000-00';
+    } else {
+        label.innerText = 'CPF';
+        input.placeholder = '000.000.000-00';
+    }
+}
+
+async function consultarDocumento() {
+    const doc = document.getElementById('edit-doc').value.replace(/\D/g, '');
+    const type = document.getElementById('edit-doc-type').value;
+    
+    if (!doc) {
+        showError("Digite um documento para consultar.");
+        return;
+    }
+
+    showSuccess("Consultando documento...");
+    
+    try {
+        const res = await fetchWithAuth(`/api/consultar/${type}/${doc}`);
+        if (res && res.ok) {
+            const data = await res.json();
+            if (type === 'CNPJ') {
+                document.getElementById('edit-nome').value = data.razao_social || data.nome || '';
+                document.getElementById('edit-end').value = `${data.logradouro}, ${data.numero}, ${data.bairro}, ${data.municipio} - ${data.uf}`;
+                document.getElementById('edit-email').value = data.email || '';
+                document.getElementById('edit-tel').value = data.telefone || '';
+            } else {
+                document.getElementById('edit-nome').value = data.nome || '';
+            }
+            showSuccess("Dados preenchidos!");
+        } else {
+            const err = await res.json();
+            showError("Erro na consulta: " + (err.error || "Documento não encontrado"));
+        }
+    } catch (err) {
+        showError("Erro ao conectar com o serviço de consulta.");
+    }
+}
