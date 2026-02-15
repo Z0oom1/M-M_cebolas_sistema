@@ -29,12 +29,14 @@ async function fazerLogin(e) {
         const data = await response.json();
 
         if (response.ok) {
-            // Chaves que o script.js espera encontrar
+            const data = await response.json();
             localStorage.setItem('token', data.token);
             localStorage.setItem('mm_user', JSON.stringify(data));
+            
+            // Troque o redirecionamento direto por este com timeout:
             setTimeout(() => {
                 window.location.href = 'home.html';
-            }, 100);
+            }, 100); 
         } else {
             showLoginError(data.error || "Usuário ou senha incorretos.");
             btn.disabled = false;
@@ -87,12 +89,15 @@ window.onload = function() {
     }
 }
 
+// No final do login.js
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('formLogin');
     if (form) {
-        form.addEventListener('submit', fazerLogin);
+        // Removemos o atributo onsubmit do HTML e controlamos tudo por aqui
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Trava o recarregamento da página imediatamente
+            await fazerLogin(e); // Chama a sua função de login
+        });
         console.log("Formulário de login vinculado com sucesso!");
-    } else {
-        console.error("Não encontrei o formulário com ID 'formLogin'");
     }
 });

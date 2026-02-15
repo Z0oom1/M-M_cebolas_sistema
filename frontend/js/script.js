@@ -801,21 +801,26 @@ async function fetchWithAuth(url, options = {}) {
 
 function checkLogin() {
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('mm_user'); // mesma chave que login.js grava
-
+    const userData = localStorage.getItem('mm_user');
+    
+    // Se não houver token ou dados, redireciona
     if (!token || !userData) {
-        console.warn("Sessão não encontrada, redirecionando...");
         window.location.href = 'login.html';
         return;
     }
 
-    const userDataObj = JSON.parse(userData);
-    const userRole = userDataObj.role || (userDataObj.user ? userDataObj.user.role : null);
-
-    // Restringir acesso ao menu de configurações apenas para Admin
-    const configBtn = document.querySelector('.nav-item[onclick*="config"]');
-    if (configBtn && userRole !== 'admin') {
-        configBtn.style.display = 'none';
+    try {
+        const user = JSON.parse(userData);
+        // Verifica se o objeto tem a estrutura correta (vinda da sua API)
+        const role = user.role || (user.user ? user.user.role : null);
+        
+        if (!role) {
+            console.error("Estrutura de usuário inválida");
+            logout();
+        }
+    } catch (e) {
+        console.error("Erro ao processar sessão");
+        logout();
     }
 }
 
