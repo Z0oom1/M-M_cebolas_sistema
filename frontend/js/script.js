@@ -423,6 +423,9 @@ async function saveProduto(event) {
     }
 }
 
+async function saveEntrada(event) { await saveMovimentacao('entrada', event); }
+async function saveSaida(event) { await saveMovimentacao('saida', event); }
+
 async function saveMovimentacao(type, event) {
     event.preventDefault();
     const prefix = type === 'entrada' ? 'entry' : 'exit';
@@ -432,7 +435,7 @@ async function saveMovimentacao(type, event) {
         quantidade: parseInt(document.getElementById(`${prefix}-qty`).value),
         valor: parseFloat(document.getElementById(`${prefix}-value`).value),
         descricao: document.getElementById(`${prefix}-desc`).value,
-        data: document.getElementById(`${prefix}-data`).value || new Date().toISOString()
+        data: document.getElementById(`${prefix}-date`).value || new Date().toISOString()
     };
 
     const res = await fetchWithAuth('/api/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
@@ -444,6 +447,9 @@ async function saveMovimentacao(type, event) {
             const result = await res.json();
             gerarNFe(result.id, data.descricao, [{ produto: data.produto, qtd: data.quantidade, valor: data.valor }]);
         }
+    } else {
+        const err = await res.json();
+        showError("Erro ao salvar: " + (err.error || "Erro desconhecido"));
     }
 }
 
@@ -929,5 +935,31 @@ async function consultarDocumento() {
         }
     } catch (err) {
         showError("Erro ao conectar com o serviço de consulta.");
+    }
+}
+
+async function updateNFeModo(modo) {
+    const res = await fetchWithAuth('/api/configs', {
+        method: 'POST',
+        body: JSON.stringify({ chave: 'nfe_modo', valor: modo })
+    });
+    if (res && res.ok) showSuccess(`Modo NF-e alterado para ${modo.toUpperCase()}`);
+}
+
+async function saveCertPassword() {
+    const password = document.getElementById('cert-password').value;
+    const res = await fetchWithAuth('/api/configs', {
+        method: 'POST',
+        body: JSON.stringify({ chave: 'cert_password', valor: password })
+    });
+    if (res && res.ok) showSuccess("Senha do certificado salva!");
+}
+
+async function resetSystem() {
+    if (!confirm("TEM CERTEZA? Esta ação é irreversível e apagará todos os dados de movimentações, clientes e fornecedores.")) return;
+    const res = await fetchWithAuth('/api/reset', { method: 'DELETE' });
+    if (res && res.ok) {
+        showSuccess("Sistema resetado com sucesso!");
+        window.location.reload();
     }
 }
