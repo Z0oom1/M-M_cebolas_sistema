@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="../css/estilo_geral.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <div id="titlebar" style="display: none;">
         <div class="window-title">M&M CEBOLAS - SISTEMA DE GESTÃO</div>
@@ -83,7 +85,8 @@
         <div class="edit-modal" style="max-width: 600px; padding: 0; overflow: hidden; border-radius: 20px;">
             <div class="panel-header" style="background: var(--primary); color: white; padding: 20px;">
                 <h3 id="produto-modal-title" style="margin: 0;">Gestão de Produto</h3>
-                <button onclick="closeProdutoModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+                <button onclick="closeProdutoModal()"
+                    style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
             </div>
             <form onsubmit="saveProduto(event)" style="padding: 24px;">
                 <input type="hidden" id="prod-id">
@@ -102,25 +105,65 @@
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label>Escolha um Ícone</label>
-                        <div id="icon-selector" class="icon-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 10px;">
-                            <div class="icon-option active" onclick="selectIcon(this, 'fa-circle')" data-icon="fa-circle" title="Cebola Amarela"><i class="fas fa-circle" style="color: #E89C31;"></i></div>
-                            <div class="icon-option" onclick="selectIcon(this, 'fa-circle')" data-icon="fa-circle" title="Cebola Roxa"><i class="fas fa-circle" style="color: #9333ea;"></i></div>
-                            <div class="icon-option" onclick="selectIcon(this, 'fa-circle')" data-icon="fa-circle" title="Cebola Branca"><i class="fas fa-circle" style="color: #f1f5f9; border: 1px solid #ccc; border-radius: 50%;"></i></div>
-                            <div class="icon-option" onclick="selectIcon(this, 'fa-seedling')" data-icon="fa-seedling" title="Cebola Nova"><i class="fas fa-seedling"></i></div>
-                            <div class="icon-option" onclick="selectIcon(this, 'fa-leaf')" data-icon="fa-leaf" title="Cebolinha"><i class="fas fa-leaf"></i></div>
-                            <div class="icon-option" onclick="selectIcon(this, 'fa-box')" data-icon="fa-box" title="Caixa de Cebolas"><i class="fas fa-box"></i></div>
+                        <div id="icon-selector" class="icon-grid"
+                            style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 10px;">
+
+                            <!-- Cebola -->
+                            <div class="icon-option" onclick="selectIcon(this, 'onion')" data-icon="onion"
+                                title="Cebola">
+
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 32 32"
+                                    fill="currentColor">
+
+                                    <path
+                                        d="M12.74 2.458c0-1.333 1.658-1.981 2.553-.959l1.182 1.354L17.657 1.5c.895-1.023 2.553-.375 2.553.958v1.83c0 .738.44 1.405 1.136 1.712c4.464 1.892 7.604 6.325 7.604 11.488c0 6.076-4.349 11.146-10.11 12.25v.01c0 .69-.56 1.25-1.25 1.25h-2.16c-.69 0-1.25-.56-1.25-1.25v-.005C8.458 28.632 4 23.438 4 17.478c0-5.166 3.143-9.589 7.608-11.48a1.86 1.86 0 0 0 1.132-1.7v-1.84Zm2 1.449v.39a3.86 3.86 0 0 1-2.346 3.54l-.004.002c-.184.077-.364.16-.542.248c-1.96 2.085-3.118 5.341-3.118 8.84c0 5.31 2.645 9.753 6.153 10.805c-1.346-2.014-2.063-6.514-2.063-10.814c0-3.76.5-7.21 1.37-9.44l.75.29c-.82 2.11-1.31 5.53-1.31 9.15c0 3.03.33 5.88.94 8.02c.552 1.949 1.2 2.82 1.69 3.022c.147.003.295.003.441 0c.489-.203 1.137-1.074 1.689-3.022c.6-2.14.94-4.98.94-8.02c0-3.61-.49-7.03-1.31-9.15l.75-.29c.87 2.24 1.37 5.68 1.37 9.44c-.007 4.3-.72 8.801-2.064 10.814c3.508-1.05 6.154-5.494 6.154-10.804c0-3.495-1.155-6.746-3.109-8.832a10.358 10.358 0 0 0-.56-.257l-.012-.005a3.874 3.874 0 0 1-2.339-3.546v-.381l-.635.726a1.456 1.456 0 0 1-2.186.016l-.006-.007l-.643-.735ZM9.67 9.52A10.437 10.437 0 0 0 6 17.478c0 3.797 2.18 7.24 5.335 9.08c-.365-.372-.71-.786-1.035-1.24c-1.61-2.25-2.49-5.23-2.49-8.39c0-2.728.67-5.326 1.86-7.407Zm11.817 17.167a10.474 10.474 0 0 0 5.463-9.2c0-3.176-1.416-6.025-3.649-7.947c1.184 2.078 1.849 4.668 1.849 7.387c0 3.16-.88 6.14-2.49 8.39a10.42 10.42 0 0 1-1.173 1.37Z" />
+
+                                </svg>
+
+                            </div>
+
+                            <!-- Cebola Nova -->
+                            <div class="icon-option" onclick="selectIcon(this, 'fa-seedling')" data-icon="fa-seedling"
+                                title="Cebola Nova">
+                                <i class="fas fa-seedling"></i>
+                            </div>
+
+                            <!-- Cebolinha -->
+                            <div class="icon-option" onclick="selectIcon(this, 'fa-leaf')" data-icon="fa-leaf"
+                                title="Cebolinha">
+                                <i class="fas fa-leaf"></i>
+                            </div>
+
+                            <!-- Caixa -->
+                            <div class="icon-option" onclick="selectIcon(this, 'fa-box')" data-icon="fa-box"
+                                title="Caixa de Cebolas">
+                                <i class="fas fa-box"></i>
+                            </div>
+
                         </div>
                         <input type="hidden" id="prod-icone" value="fa-box">
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label>Cor de Destaque</label>
                         <div id="color-selector" style="display: flex; gap: 12px; margin-top: 10px;">
-                            <div class="color-option active" onclick="selectColor(this, '#1A5632')" data-color="#1A5632" style="background: #1A5632; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
-                            <div class="color-option" onclick="selectColor(this, '#E89C31')" data-color="#E89C31" style="background: #E89C31; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
-                            <div class="color-option" onclick="selectColor(this, '#2563eb')" data-color="#2563eb" style="background: #2563eb; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
-                            <div class="color-option" onclick="selectColor(this, '#dc2626')" data-color="#dc2626" style="background: #dc2626; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
-                            <div class="color-option" onclick="selectColor(this, '#9333ea')" data-color="#9333ea" style="background: #9333ea; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
-                            <div class="color-option" onclick="selectColor(this, '#0891b2')" data-color="#0891b2" style="background: #0891b2; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;"></div>
+                            <div class="color-option active" onclick="selectColor(this, '#1A5632')" data-color="#1A5632"
+                                style="background: #1A5632; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;">
+                            </div>
+                            <div class="color-option" onclick="selectColor(this, '#E89C31')" data-color="#E89C31"
+                                style="background: #E89C31; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;">
+                            </div>
+                            <div class="color-option" onclick="selectColor(this, '#2563eb')" data-color="#2563eb"
+                                style="background: #2563eb; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;">
+                            </div>
+                            <div class="color-option" onclick="selectColor(this, '#dc2626')" data-color="#dc2626"
+                                style="background: #dc2626; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;">
+                            </div>
+                            <div class="color-option" onclick="selectColor(this, '#9333ea')" data-color="#9333ea"
+                                style="background: #9333ea; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;">
+                            </div>
+                            <div class="color-option" onclick="selectColor(this, '#0891b2')" data-color="#0891b2"
+                                style="background: #0891b2; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;">
+                            </div>
                         </div>
                         <input type="hidden" id="prod-cor" value="#1A5632">
                     </div>
@@ -130,7 +173,8 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px; margin-top: 32px;">
-                    <button type="button" class="btn-danger" onclick="closeProdutoModal()" style="flex: 1; padding: 12px;">Cancelar</button>
+                    <button type="button" class="btn-danger" onclick="closeProdutoModal()"
+                        style="flex: 1; padding: 12px;">Cancelar</button>
                     <button type="submit" class="btn-primary" style="flex: 2; padding: 12px;">Salvar Alterações</button>
                 </div>
             </form>
@@ -142,7 +186,8 @@
         <div class="edit-modal" style="max-width: 600px;">
             <div class="panel-header" style="background: var(--primary); color: white; padding: 20px;">
                 <h3 id="modal-title" style="margin: 0;">Novo Cadastro</h3>
-                <button onclick="closeEditModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+                <button onclick="closeEditModal()"
+                    style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
             </div>
             <form onsubmit="saveCadastro(event)" class="form-grid">
                 <input type="hidden" id="edit-id">
@@ -158,7 +203,8 @@
                     <label id="label-doc">CNPJ</label>
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="edit-doc" placeholder="00.000.000/0000-00" style="flex: 1;">
-                        <button type="button" class="btn-primary" style="width: 50px; margin-top: 0;" onclick="consultarDocumento()">
+                        <button type="button" class="btn-primary" style="width: 50px; margin-top: 0;"
+                            onclick="consultarDocumento()">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
@@ -184,7 +230,8 @@
                     <textarea id="edit-end" rows="2" placeholder="Rua, Número, Bairro, Cidade - UF"></textarea>
                 </div>
                 <div class="form-group span-2" style="display: flex; gap: 12px; margin-top: 10px;">
-                    <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
+                    <button type="button" class="btn-danger" onclick="closeEditModal()"
+                        style="flex: 1;">Cancelar</button>
                     <button type="submit" class="btn-primary" style="flex: 2;">Salvar Cadastro</button>
                 </div>
             </form>
@@ -196,12 +243,15 @@
         <div class="edit-modal" style="max-width: 500px;">
             <div class="panel-header" style="background: var(--primary); color: white; padding: 20px;">
                 <h3 style="margin: 0;">Selecionar Contato</h3>
-                <button onclick="closeSearchModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+                <button onclick="closeSearchModal()"
+                    style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
             </div>
             <div style="padding: 20px;">
                 <input type="hidden" id="search-type">
-                <input type="text" id="search-input" placeholder="Digite para filtrar..." style="width: 100%; margin-bottom: 15px; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                <div id="search-list" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <input type="text" id="search-input" placeholder="Digite para filtrar..."
+                    style="width: 100%; margin-bottom: 15px; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                <div id="search-list"
+                    style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
                     <!-- Injetado via JS -->
                 </div>
             </div>
@@ -220,4 +270,5 @@
     </script>
     <script src="../js/script.js"></script>
 </body>
+
 </html>

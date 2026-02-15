@@ -225,13 +225,26 @@ function renderProductShowcase(section) {
         const qty = stockMap[p.nome] || 0;
         const card = document.createElement('div');
         card.className = `product-card ${qty <= 0 && section === 'saida' ? 'disabled' : ''}`;
+        
+        // Lógica para alternar entre SVG personalizado e ícone FontAwesome
+        let iconHTML = '';
+        if (p.icone === 'onion') {
+            iconHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="currentColor">
+                    <path d="M12.74 2.458c0-1.333 1.658-1.981 2.553-.959l1.182 1.354L17.657 1.5c.895-1.023 2.553-.375 2.553.958v1.83c0 .738.44 1.405 1.136 1.712c4.464 1.892 7.604 6.325 7.604 11.488c0 6.076-4.349 11.146-10.11 12.25v.01c0 .69-.56 1.25-1.25 1.25h-2.16c-.69 0-1.25-.56-1.25-1.25v-.005C8.458 28.632 4 23.438 4 17.478c0-5.166 3.143-9.589 7.608-11.48a1.86 1.86 0 0 0 1.132-1.7v-1.84Zm2 1.449v.39a3.86 3.86 0 0 1-2.346 3.54l-.004.002c-.184.077-.364.16-.542.248c-1.96 2.085-3.118 5.341-3.118 8.84c0 5.31 2.645 9.753 6.153 10.805c-1.346-2.014-2.063-6.514-2.063-10.814c0-3.76.5-7.21 1.37-9.44l.75.29c-.82 2.11-1.31 5.53-1.31 9.15c0 3.03.33 5.88.94 8.02c.552 1.949 1.2 2.82 1.69 3.022c.147.003.295.003.441 0c.489-.203 1.137-1.074 1.689-3.022c.6-2.14.94-4.98.94-8.02c0-3.61-.49-7.03-1.31-9.15l.75-.29c.87 2.24 1.37 5.68 1.37 9.44c-.007 4.3-.72 8.801-2.064 10.814c3.508-1.05 6.154-5.494 6.154-10.804c0-3.495-1.155-6.746-3.109-8.832a10.358 10.358 0 0 0-.56-.257l-.012-.005a3.874 3.874 0 0 1-2.339-3.546v-.381l-.635.726a1.456 1.456 0 0 1-2.186.016l-.006-.007l-.643-.735ZM9.67 9.52A10.437 10.437 0 0 0 6 17.478c0 3.797 2.18 7.24 5.335 9.08c-.365-.372-.71-.786-1.035-1.24c-1.61-2.25-2.49-5.23-2.49-8.39c0-2.728.67-5.326 1.86-7.407Zm11.817 17.167a10.474 10.474 0 0 0 5.463-9.2c0-3.176-1.416-6.025-3.649-7.947c1.184 2.078 1.849 4.668 1.849 7.387c0 3.16-.88 6.14-2.49 8.39a10.42 10.42 0 0 1-1.173 1.37Z" />
+                </svg>`;
+        } else {
+            iconHTML = `<i class="fas ${p.icone || 'fa-box'}"></i>`;
+        }
+    
         card.innerHTML = `
             <div class="product-icon-circle" style="background: ${p.cor}20; color: ${p.cor}">
-                <i class="fas ${p.icone || 'fa-box'}"></i>
+                ${iconHTML}
             </div>
             <div class="product-name">${p.nome}</div>
             <div class="product-stock">${qty} Cx</div>
         `;
+        
         if (!(qty <= 0 && section === 'saida')) {
             card.onclick = (event) => selectProduct(p, section, event);
         }
@@ -250,6 +263,16 @@ function selectProduct(p, section, event) {
 
     document.querySelectorAll('.product-card').forEach(c => c.classList.remove('active'));
     event.currentTarget.classList.add('active');
+}
+function selectColor(el, color) {
+    document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('prod-cor').value = color;
+}
+function selectIcon(el, icon) {
+    document.querySelectorAll('.icon-option').forEach(opt => opt.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('prod-icone').value = icon;
 }
 
 function loadCadastros() {
@@ -380,9 +403,23 @@ function openProdutoModal(data = null) {
         document.getElementById('prod-preco').value = data.preco_venda;
         document.getElementById('prod-icone').value = data.icone;
         document.getElementById('prod-cor').value = data.cor;
+        
+        // Atualiza a interface visual das opções
+        document.querySelectorAll('.icon-option').forEach(opt => {
+            opt.classList.toggle('active', opt.getAttribute('onclick').includes(`'${data.icone}'`));
+        });
+        document.querySelectorAll('.color-option').forEach(opt => {
+            opt.classList.toggle('active', opt.getAttribute('onclick').includes(`'${data.cor}'`));
+        });
     } else {
         document.getElementById('prod-id').value = '';
         document.querySelector('#modal-produto form').reset();
+        
+        // Define padrões para novo produto
+        const firstIcon = document.querySelector('.icon-option');
+        const firstColor = document.querySelector('.color-option');
+        if (firstIcon) selectIcon(firstIcon, 'fa-circle');
+        if (firstColor) selectColor(firstColor, '#1A5632');
     }
 }
 

@@ -277,13 +277,38 @@ body {
 
 /* --- ICON & COLOR SELECTORS --- */
 .icon-option, .color-option {
-    width: 40px; height: 40px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; border: 2px solid transparent; transition: var(--transition);
+    width: 45px; /* Ajustado para acompanhar a altura */
+    height: 45px; 
+    border-radius: 8px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    cursor: pointer; 
+    border: 2px solid transparent; 
+    transition: all 0.2s ease-in-out;
 }
-.icon-option { background: #f1f5f9; color: var(--text-muted); }
-.icon-option.active { background: var(--primary); color: white; border-color: var(--accent); }
-.color-option.active { border-color: #000; transform: scale(1.1); }
+
+.icon-option { 
+    background: #f1f5f9; 
+    color: var(--text-muted); 
+    font-size: 1.2rem;
+}
+
+.icon-option:hover, .color-option:hover {
+    transform: scale(1.1);
+    filter: brightness(0.9);
+}
+
+.icon-option.active {
+    background: var(--primary) !important;
+    color: white !important;
+    border: 2px solid var(--accent) !important;
+}
+
+.color-option.active {
+    border: 3px solid #000 !important;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
 
 /* --- FORMULÁRIOS --- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 24px; }
