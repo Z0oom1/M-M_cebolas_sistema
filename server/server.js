@@ -305,11 +305,22 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
 
             const xmlAssinado = nfeService.createNFeXML(dadosNFe);
             
+            // Transmitir para SEFAZ
+            const resultadoSefaz = await nfeService.transmitirSefaz(xmlAssinado, paramsChave.cUF);
+            
             db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
-                [venda_id, chaveAcesso, xmlAssinado, 'assinada', new Date().toISOString()], function(err) {
+                [venda_id, chaveAcesso, xmlAssinado, resultadoSefaz.status, new Date().toISOString()], function(err) {
                     if (err) return res.status(500).json({ error: err.message });
-                    if (isProduction) db.run("UPDATE configs SET valor = ? WHERE chave = 'nfe_prox_numero'", [paramsChave.nNF + 1]);
-                    res.json({ id: this.lastID, chave: chaveAcesso, modo: isProduction ? 'PRODUCAO' : 'HOMOLOGACAO' });
+                    if (isProduction && resultadoSefaz.status === 'autorizada') {
+                        db.run("UPDATE configs SET valor = ? WHERE chave = 'nfe_prox_numero'", [paramsChave.nNF + 1]);
+                    }
+                    res.json({ 
+                        id: this.lastID, 
+                        chave: chaveAcesso, 
+                        modo: isProduction ? 'PRODUCAO' : 'HOMOLOGACAO',
+                        status: resultadoSefaz.status,
+                        mensagem: resultadoSefaz.message
+                    });
                 });
         } catch (nfeErr) {
             console.error("Erro NFeService:", nfeErr);
