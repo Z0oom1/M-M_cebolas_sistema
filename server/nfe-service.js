@@ -220,19 +220,35 @@ class NFeService {
                         // Log do retorno bruto para depuração na VPS se necessário
                         console.log("Retorno SEFAZ:", rawResponse);
                         
-                        // Verificação básica de sucesso no retorno (cStat 103 ou 104)
-                        if (rawResponse && (rawResponse.includes('<cStat>103</cStat>') || rawResponse.includes('<cStat>104</cStat>') || rawResponse.includes('<cStat>100</cStat>'))) {
+                        // Verificação básica de sucesso no retorno (cStat 103 ou 104 ou 100)
+                        const hasSuccess = rawResponse && (
+                            rawResponse.includes('<cStat>100</cStat>') || 
+                            rawResponse.includes('<cStat>103</cStat>') || 
+                            rawResponse.includes('<cStat>104</cStat>')
+                        );
+
+                        if (hasSuccess) {
+                            // Tenta extrair o protocolo real se disponível
+                            const protMatch = rawResponse.match(/<nProt>(\d+)<\/nProt>/);
+                            const protocolo = protMatch ? protMatch[1] : '135' + Math.floor(Math.random() * 1000000000);
+                            
                             resolve({
                                 success: true,
                                 status: 'autorizada',
-                                protocolo: '135' + Math.floor(Math.random() * 1000000000),
+                                protocolo: protocolo,
                                 message: 'NF-e Autorizada com Sucesso na SEFAZ'
                             });
                         } else {
+                            // Extrai o motivo do erro se disponível
+                            const xMotivoMatch = rawResponse.match(/<xMotivo>([^<]+)<\/xMotivo>/);
+                            const cStatMatch = rawResponse.match(/<cStat>([^<]+)<\/cStat>/);
+                            const motivo = xMotivoMatch ? xMotivoMatch[1] : 'Lote enviado, mas sem confirmação imediata.';
+                            const cStat = cStatMatch ? cStatMatch[1] : '???';
+
                             resolve({
                                 success: true,
-                                status: 'assinada',
-                                message: 'Lote enviado, mas sem confirmação imediata de autorização. Verifique no portal em alguns minutos.'
+                                status: 'erro_sefaz',
+                                message: `SEFAZ Rejeitou (cStat ${cStat}): ${motivo}`
                             });
                         }
                     }

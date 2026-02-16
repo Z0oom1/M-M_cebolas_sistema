@@ -297,6 +297,7 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
         rows?.forEach(r => configs[r.chave] = r.valor);
         const nfeModoEnv = (process.env.NFE_MODO || '').toLowerCase();
         const isProduction = (configs.nfe_modo === 'producao') || (nfeModoEnv === 'producao');
+        console.log(`[NFe] Modo: ${isProduction ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO'} (Config: ${configs.nfe_modo}, Env: ${nfeModoEnv})`);
         const certPass = configs.cert_password || process.env.CERT_PASSWORD || '';
         const pfxPath = path.join(__dirname, '../certificado/certificado.pfx');
 
