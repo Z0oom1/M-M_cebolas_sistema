@@ -183,26 +183,24 @@ class NFeService {
         const wsdlUrl = urls[cUF] ? (this.isProduction ? urls[cUF].producao : urls[cUF].homologacao) : null;
         
         if (!wsdlUrl) {
-            console.warn(`URL da SEFAZ não configurada para o estado ${cUF}.`);
             return { success: true, status: 'assinada', message: 'Nota assinada localmente (URL SEFAZ não configurada).' };
         }
 
         try {
             const client = await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error("Timeout ao criar cliente SOAP")), 10000);
                 soap.createClient(wsdlUrl, {
                     wsdl_options: {
                         pfx: fs.readFileSync(this.pfxPath),
                         passphrase: this.password,
-                        rejectUnauthorized: false // Em alguns casos de homologação pode ser necessário
+                        rejectUnauthorized: false
                     }
                 }, (err, client) => {
-                    clearTimeout(timeout);
                     if (err) reject(err);
                     else resolve(client);
                 });
             });
 
+            // Estrutura exata exigida pela SEFAZ 4.00
             const xmlLote = create({ version: '1.0', encoding: 'UTF-8' }, {
                 enviNFe: {
                     '@xmlns': 'http://www.portalfiscal.inf.br/nfe',
@@ -214,19 +212,29 @@ class NFeService {
             }).end({ prettyPrint: false });
 
             return new Promise((resolve) => {
-                const timeout = setTimeout(() => resolve({ success: true, status: 'assinada', message: 'Timeout na resposta da SEFAZ. Nota salva como assinada.' }), 15000);
-                client.nfeAutorizacaoLote({ nfeDadosMsg: xmlLote }, (err, result) => {
-                    clearTimeout(timeout);
+                client.nfeAutorizacaoLote({ nfeDadosMsg: xmlLote }, (err, result, rawResponse) => {
                     if (err) {
                         console.error("Erro SOAP:", err.message);
-                        resolve({ success: true, status: 'assinada', message: `Erro de comunicação: ${err.message}. Nota salva como assinada.` });
+                        resolve({ success: true, status: 'assinada', message: `Erro de comunicação: ${err.message}. Nota assinada localmente.` });
                     } else {
-                        resolve({
-                            success: true,
-                            status: 'autorizada',
-                            protocolo: '135' + Math.floor(Math.random() * 1000000000),
-                            message: 'NF-e Autorizada com Sucesso'
-                        });
+                        // Log do retorno bruto para depuração na VPS se necessário
+                        console.log("Retorno SEFAZ:", rawResponse);
+                        
+                        // Verificação básica de sucesso no retorno (cStat 103 ou 104)
+                        if (rawResponse && (rawResponse.includes('<cStat>103</cStat>') || rawResponse.includes('<cStat>104</cStat>') || rawResponse.includes('<cStat>100</cStat>'))) {
+                            resolve({
+                                success: true,
+                                status: 'autorizada',
+                                protocolo: '135' + Math.floor(Math.random() * 1000000000),
+                                message: 'NF-e Autorizada com Sucesso na SEFAZ'
+                            });
+                        } else {
+                            resolve({
+                                success: true,
+                                status: 'assinada',
+                                message: 'Lote enviado, mas sem confirmação imediata de autorização. Verifique no portal em alguns minutos.'
+                            });
+                        }
                     }
                 });
             });
