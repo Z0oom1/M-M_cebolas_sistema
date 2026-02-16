@@ -60,10 +60,7 @@ const CORS_ORIGINS = [
     'http://www.portalmmcebolas.com',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'http://localhost',
-    'http://127.0.0.1',
-    'http://72.60.8.186',
-    'https://72.60.8.186'
+    'http://72.60.8.186'
 ];
 app.use(cors({
     origin: function(origin, callback) {
@@ -80,7 +77,7 @@ app.use(cors({
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
-}));
+})); 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
@@ -273,7 +270,7 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
         const nfeModoEnv = (process.env.NFE_MODO || '').toLowerCase();
         const isProduction = configs.nfe_modo === 'producao' || nfeModoEnv === 'producao';
         const certPass = configs.cert_password || process.env.CERT_PASSWORD || '';
-        const pfxPath = path.join(__dirname, 'certificado', 'certificado.pfx');
+        const pfxPath = '/var/www/mm_cebolas/certificado/certificado.pfx';
 
         if (!certPass) {
             console.warn('[NFe] Certificado sem senha configurada; emitindo em modo simulação.');

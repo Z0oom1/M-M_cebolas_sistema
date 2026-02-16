@@ -16,7 +16,7 @@ const CONFIGS = {
     
     // --- 2. AMBIENTE ---
     // 'producao' = Nota vale de verdade. 'homologacao' = Teste.
-    'nfe_modo': 'homologacao',
+    'nfe_modo': 'producao',
 
     // --- 3. IDENTIFICAÇÃO DA EMPRESA ---
     'emit_cnpj': '56421395000150',

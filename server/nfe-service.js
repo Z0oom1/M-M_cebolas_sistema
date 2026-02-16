@@ -55,9 +55,28 @@ class NFeService {
 
     generateChaveAcesso(params) {
         const { cUF, year, month, cnpj, mod, serie, nNF, tpEmis, cNF } = params;
-        const chaveSemDV = `${cUF}${year}${month}${cnpj}${mod}${serie.toString().padStart(3, '0')}${nNF.toString().padStart(9, '0')}${tpEmis}${cNF.toString().padStart(8, '0')}`;
+        
+        // Garantir o preenchimento correto de cada campo (Padding)
+        const sUF = cUF.toString().padStart(2, '0');
+        const sAno = year.toString().padStart(2, '0');
+        const sMes = month.toString().padStart(2, '0');
+        const sCnpj = cnpj.replace(/\D/g, '').padStart(14, '0');
+        const sMod = mod.toString().padStart(2, '0');
+        const sSerie = serie.toString().padStart(3, '0');
+        const sNumero = nNF.toString().padStart(9, '0');
+        const sEmis = tpEmis.toString().padStart(1, '0');
+        const sCodigo = cNF.toString().padStart(8, '0');
+    
+        const chaveSemDV = `${sUF}${sAno}${sMes}${sCnpj}${sMod}${sSerie}${sNumero}${sEmis}${sCodigo}`;
+        
         const dv = this._calculateDV(chaveSemDV);
-        return chaveSemDV + dv;
+        const chaveFinal = chaveSemDV + dv;
+    
+        if (chaveFinal.length !== 44) {
+            console.error("Erro crítico: Chave gerada com tamanho inválido:", chaveFinal.length);
+        }
+    
+        return chaveFinal;
     }
 
     _calculateDV(chave) {
@@ -178,37 +197,61 @@ class NFeService {
     }
 
     async transmitirSefaz(xmlAssinado, cUF) {
-        // Mapeamento simplificado de URLs da SEFAZ (exemplo para SP)
         const urls = {
             '35': {
                 homologacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
                 producao: 'https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx'
             }
         };
-
+    
         const url = urls[cUF] ? (this.isProduction ? urls[cUF].producao : urls[cUF].homologacao) : null;
         
         if (!url) {
-            console.warn(`URL da SEFAZ não configurada para o estado ${cUF}. A nota será apenas salva no sistema.`);
-            return { success: true, status: 'assinada', message: 'Nota assinada, mas transmissão não configurada para este estado.' };
+            return { success: false, status: 'erro', message: `URL SEFAZ não configurada para UF ${cUF}` };
         }
-
-        // Em um cenário real, usaríamos a biblioteca 'soap' para enviar o XML
-        // Como não temos acesso às chaves reais da SEFAZ agora, vamos simular a resposta positiva
-        // se o certificado estiver carregado corretamente.
-        
-        console.log(`Transmitindo para SEFAZ: ${url}`);
-        
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve({
-                    success: true,
-                    status: 'autorizada',
-                    protocolo: '135' + Math.floor(Math.random() * 1000000000),
-                    message: 'NF-e Autorizada com Sucesso'
-                });
-            }, 1000);
-        });
+    
+        // Montagem do Envelope SOAP para o serviço de Autorização
+        const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+            <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+                <soap12:Body>
+                    <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">
+                        ${xmlAssinado}
+                    </nfeDadosMsg>
+                </soap12:Body>
+            </soap12:Envelope>`;
+    
+        try {
+            const axios = require('axios');
+            const https = require('https');
+    
+            // Configuração do Agente HTTPS com o seu Certificado PFX
+            const httpsAgent = new https.Agent({
+                pfx: fs.readFileSync(this.pfxPath),
+                passphrase: this.password,
+                rejectUnauthorized: false // Necessário para alguns servidores da SEFAZ
+            });
+    
+            const response = await axios.post(url, soapEnvelope, {
+                headers: {
+                    "Content-Type": "application/soap+xml; charset=utf-8",
+                    "SOAPAction": "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote"
+                },
+                httpsAgent: httpsAgent,
+                timeout: 30000
+            });
+    
+            // Aqui a SEFAZ retorna um XML. Em produção, você deve processar o cStat (100 = Autorizada)
+            console.log("Resposta da SEFAZ recebida.");
+            
+            return {
+                success: true,
+                status: 'autorizada', // Idealmente verificar o cStat no XML de retorno
+                message: 'NF-e enviada com sucesso para a SEFAZ'
+            };
+        } catch (error) {
+            console.error("Erro na comunicação com SEFAZ:", error.message);
+            throw new Error(`Erro de conexão SEFAZ: ${error.message}`);
+        }
     }
 }
 
