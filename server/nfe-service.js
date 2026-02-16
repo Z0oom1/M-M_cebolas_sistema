@@ -105,14 +105,14 @@ class NFeService {
                         CRT: emit.crt
                     },
                     dest: {
-                        CNPJ: dest.cnpj || undefined,
-                        CPF: dest.cpf || undefined,
+                        CNPJ: (dest.cnpj || '').replace(/\D/g, '') || undefined,
+                        CPF: (dest.cpf || '').replace(/\D/g, '') || undefined,
                         xNome: this.isProduction
                             ? dest.xNome
                             : 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
                         enderDest: typeof dest.enderDest === 'string' ? JSON.parse(dest.enderDest) : dest.enderDest,
-                        indIEDest: dest.indIEDest,
-                        IE: dest.ie || undefined,
+                        indIEDest: dest.indIEDest || '9',
+                        IE: (dest.ie || '').replace(/\D/g, '') || undefined,
                         email: dest.email || undefined
                     },
                     det: det.map((item, index) => ({
@@ -133,7 +133,7 @@ class NFeService {
             }
         };
 
-        const xml = create({ version: '1.0', encoding: 'UTF-8' }, obj).end({ prettyPrint: false });
+        const xml = create({ version: '1.0', encoding: 'UTF-8' }, obj).end({ prettyPrint: false, headless: true });
         return this._signXML(xml, 'infNFe');
     }
 
@@ -201,15 +201,10 @@ class NFeService {
             });
 
             // Estrutura exata exigida pela SEFAZ 4.00
-            const xmlLote = create({ version: '1.0', encoding: 'UTF-8' }, {
-                enviNFe: {
-                    '@xmlns': 'http://www.portalfiscal.inf.br/nfe',
-                    '@versao': '4.00',
-                    idLote: Math.floor(Date.now() / 1000),
-                    indSinc: '1',
-                    NFe: JSON.parse(create(xmlAssinado).end({ format: 'json' })).NFe
-                }
-            }).end({ prettyPrint: false });
+            // O XML assinado já contém a tag <NFe>, precisamos envolvê-lo em <enviNFe>
+            // Removemos qualquer declaração XML interna do xmlAssinado para evitar duplicidade
+            const xmlNFeClean = xmlAssinado.replace(/^<\?xml.*?\?>/, '');
+            const xmlLote = `<?xml version="1.0" encoding="UTF-8"?><enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><idLote>${Math.floor(Date.now() / 1000)}</idLote><indSinc>1</indSinc>${xmlNFeClean}</enviNFe>`;
 
             return new Promise((resolve) => {
                 client.nfeAutorizacaoLote({ nfeDadosMsg: xmlLote }, (err, result, rawResponse) => {
