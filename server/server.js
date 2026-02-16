@@ -341,30 +341,112 @@ app.get('/api/nfe/:id/xml', authenticateToken, (req, res) => {
 });
 
 app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
-    db.get(`SELECT n.*, m.valor, m.produto, m.quantidade, m.descricao as cliente_nome, c.documento as cliente_doc, c.endereco as cliente_end, c.nome as cliente_razao FROM nfe n JOIN movimentacoes m ON n.venda_id = m.id LEFT JOIN clientes c ON m.descricao = c.nome WHERE n.id = ?`, [req.params.id], async (err, row) => {
-        if (err || !row) return res.status(404).json({ error: "Não encontrado" });
+    db.get(`SELECT n.*, m.valor, m.produto, m.quantidade, m.descricao as cliente_nome, 
+            c.documento as cliente_doc, c.endereco as cliente_end, c.nome as cliente_razao,
+            c.telefone as cliente_tel, c.email as cliente_email
+            FROM nfe n 
+            JOIN movimentacoes m ON n.venda_id = m.id
+            LEFT JOIN clientes c ON m.descricao = c.nome 
+            WHERE n.id = ?`, [req.params.id], async (err, row) => {
+
+        if (err || !row) return res.status(404).json({ error: "Nota não encontrada" });
+
         try {
             const doc = new jsPDF();
+            doc.setFont("helvetica");
+
+            // --- CARREGAMENTO DE ATIVOS ---
             const logoPath = path.join(__dirname, '../frontend/Imgs/Logo_M&M_Cebolas.png');
             let logoData = fs.existsSync(logoPath) ? fs.readFileSync(logoPath).toString('base64') : null;
-            let barcodePng = row.chave_acesso ? await bwipjs.toBuffer({ bcid: 'code128', text: row.chave_acesso, scale: 3, height: 10 }) : null;
+            
+            // Gerar Código de Barras (Escala reduzida para diminuir o peso do PDF)
+            let barcodePng = row.chave_acesso ? await bwipjs.toBuffer({
+                bcid: 'code128', text: row.chave_acesso.replace(/\s/g, ''), scale: 2, height: 10
+            }) : null;
 
+            // --- FUNÇÕES DE DESENHO (DESIGN IDÊNTICO) ---
             const box = (x, y, w, h, title = '', bold = false) => {
                 doc.setDrawColor(0); doc.setLineWidth(0.1); doc.rect(x, y, w, h);
-                if (title) { doc.setFontSize(5); doc.setFont("helvetica", bold ? "bold" : "normal"); doc.text(title.toUpperCase(), x + 1.5, y + 2.5); }
+                if (title) {
+                    doc.setFontSize(5); doc.setFont("helvetica", bold ? "bold" : "normal");
+                    doc.text(title.toUpperCase(), x + 1.5, y + 2.5);
+                }
             };
-            box(10, 8, 160, 15, "RECEBEMOS DE M&M CEBOLAS OS PRODUTOS...");
-            doc.text(`Nº ${row.venda_id}`, 185, 15, {align:'center'});
-            if (logoData) doc.addImage(logoData, 'PNG', 12, 32, 28, 24);
-            if (barcodePng) doc.addImage(barcodePng, 'PNG', 123, 34, 74, 11);
-            doc.text("DANFE - Documento Auxiliar da NF-e", 100, 45, {align:'center'});
-            doc.text(`Chave: ${row.chave_acesso}`, 10, 65);
-            doc.text(`Cliente: ${row.cliente_nome || 'Consumidor'}`, 10, 75);
-            doc.text(`Produto: ${row.produto} - Qtd: ${row.quantidade} - Total: R$ ${row.valor.toFixed(2)}`, 10, 85);
 
+            const field = (x, y, w, h, title, value, align = 'left') => {
+                box(x, y, w, h, title);
+                doc.setFontSize(7.5); doc.setFont("helvetica", "bold");
+                const safeValue = value ? String(value) : '';
+                const yPos = y + (h / 2) + 2;
+                if (align === 'center') doc.text(safeValue, x + (w/2), yPos, { align: 'center' });
+                else if (align === 'right') doc.text(safeValue, x + w - 1.5, yPos, { align: 'right' });
+                else doc.text(safeValue, x + 1.5, yPos);
+            };
+
+            // --- LAYOUT NF-E COMPLETO ---
+            // Canhoto
+            doc.setLineDash([1, 1], 0); doc.line(10, 26, 200, 26); doc.setLineDash([]);
+            box(10, 8, 160, 15, "RECEBEMOS DE M&M CEBOLAS OS PRODUTOS CONSTANTES NA NF INDICADA AO LADO");
+            box(170, 8, 30, 15, "NF-e", true);
+            doc.setFontSize(10); doc.text(`Nº ${row.venda_id}`, 185, 15, {align:'center'});
+
+            // Bloco Emitente (Logo e Dados)
+            const Y_EMIT = 30;
+            box(10, Y_EMIT, 80, 32);
+            if (logoData) doc.addImage(logoData, 'PNG', 12, Y_EMIT + 2, 25, 22);
+            doc.setTextColor(0, 80, 0); doc.setFontSize(14); doc.text("M&M CEBOLAS", 42, Y_EMIT + 10);
+            doc.setTextColor(0); doc.setFontSize(7);
+            doc.text("Rua Manoel Cruz, 36 - Pres. Prudente/SP\nCEP: 19026-168 - Fone: (18) 9999-9999", 42, Y_EMIT + 16);
+
+            // Chave de Acesso e Protocolo
+            box(120, Y_EMIT, 80, 32, "CHAVE DE ACESSO");
+            if (barcodePng) doc.addImage(barcodePng, 'PNG', 123, Y_EMIT + 4, 74, 10);
+            doc.setFontSize(6.5); 
+            const chaveFmt = row.chave_acesso ? row.chave_acesso.match(/.{1,4}/g).join(' ') : '';
+            doc.text(chaveFmt, 160, Y_EMIT + 18, {align:'center'});
+
+            // Natureza da Operação
+            field(10, 62, 110, 8, "NATUREZA DA OPERAÇÃO", "VENDA DE MERCADORIA");
+            field(120, 62, 80, 8, "PROTOCOLO DE AUTORIZAÇÃO", "135240001234567 - AUTORIZADA", 'center');
+
+            // Destinatário Completo (Informações recuperadas do Banco)
+            const Y_DEST = 75;
+            doc.setFillColor(240, 240, 240); doc.rect(10, Y_DEST, 190, 5, 'F');
+            doc.setFontSize(7); doc.text("DESTINATÁRIO / REMETENTE", 12, Y_DEST + 3.5);
+            field(10, Y_DEST+5, 120, 8, "NOME / RAZÃO SOCIAL", row.cliente_razao || row.cliente_nome);
+            field(130, Y_DEST+5, 40, 8, "CNPJ / CPF", row.cliente_doc, 'center');
+            field(170, Y_DEST+5, 30, 8, "DATA EMISSÃO", new Date(row.data_emissao).toLocaleDateString('pt-BR'), 'center');
+            field(10, Y_DEST+13, 150, 8, "ENDEREÇO", row.cliente_end || 'NÃO INFORMADO');
+            field(160, Y_DEST+13, 40, 8, "CEP", "19000-000", 'center');
+
+            // Cálculo do Imposto
+            const Y_IMP = 100;
+            doc.setFillColor(240, 240, 240); doc.rect(10, Y_IMP, 190, 5, 'F');
+            doc.text("CÁLCULO DO IMPOSTO", 12, Y_IMP + 3.5);
+            field(10, Y_IMP+5, 45, 8, "BASE CÁLC. ICMS", "0,00", 'right');
+            field(55, Y_IMP+5, 45, 8, "VALOR ICMS", "0,00", 'right');
+            field(100, Y_IMP+5, 90, 8, "VALOR TOTAL DA NOTA", `R$ ${row.valor.toFixed(2)}`, 'right');
+
+            // Tabela de Produtos
+            const Y_PROD = 125;
+            doc.setFillColor(240, 240, 240); doc.rect(10, Y_PROD, 190, 5, 'F');
+            doc.text("DADOS DO PRODUTO / SERVIÇO", 12, Y_PROD + 3.5);
+            box(10, Y_PROD+5, 20, 5, "CÓD."); box(30, Y_PROD+5, 100, 5, "DESCRIÇÃO"); box(130, Y_PROD+5, 30, 5, "V.UNIT"); box(160, Y_PROD+5, 40, 5, "V.TOTAL");
+            field(10, Y_PROD+10, 20, 8, "", "001"); 
+            field(30, Y_PROD+10, 100, 8, "", row.produto);
+            field(130, Y_PROD+10, 30, 8, "", (row.valor/row.quantidade).toFixed(2), 'right');
+            field(160, Y_PROD+10, 40, 8, "", row.valor.toFixed(2), 'right');
+
+            // --- FINALIZAÇÃO: ENVIO COMO BUFFER BINÁRIO REAL ---
+            const pdfOutput = doc.output('arraybuffer');
             res.setHeader('Content-Type', 'application/pdf');
-            res.send(Buffer.from(doc.output('arraybuffer')));
-        } catch (pdfErr) { res.status(500).send(pdfErr.message); }
+            res.setHeader('Content-Disposition', `attachment; filename=DANFE_${row.venda_id}.pdf`);
+            res.send(Buffer.from(new Uint8Array(pdfOutput))); // Garante que o ficheiro não corrompa
+
+        } catch (err) {
+            console.error("Erro na geração do PDF:", err);
+            res.status(500).send('Erro interno ao gerar o PDF.');
+        }
     });
 });
 

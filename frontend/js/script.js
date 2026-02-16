@@ -661,12 +661,17 @@ async function downloadPDF(id) {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) throw new Error("Erro ao baixar PDF");
+        
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
+        a.style.display = 'none'; // Garante que o elemento não aparece
         a.href = url;
         a.download = `DANFE_${id}.pdf`;
+        document.body.appendChild(a); // Necessário para Firefox
         a.click();
+        window.URL.revokeObjectURL(url); // Limpa a memória
+        a.remove();
     } catch (err) {
         showError(err.message);
     }

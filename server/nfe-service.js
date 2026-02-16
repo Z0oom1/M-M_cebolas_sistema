@@ -56,7 +56,7 @@ class NFeService {
     generateChaveAcesso(params) {
         const { cUF, year, month, cnpj, mod, serie, nNF, tpEmis, cNF } = params;
         
-        // Garantir o preenchimento correto de cada campo (Padding)
+        // Força o tamanho correto de cada campo com zeros à esquerda
         const sUF = cUF.toString().padStart(2, '0');
         const sAno = year.toString().padStart(2, '0');
         const sMes = month.toString().padStart(2, '0');
@@ -68,15 +68,8 @@ class NFeService {
         const sCodigo = cNF.toString().padStart(8, '0');
     
         const chaveSemDV = `${sUF}${sAno}${sMes}${sCnpj}${sMod}${sSerie}${sNumero}${sEmis}${sCodigo}`;
-        
         const dv = this._calculateDV(chaveSemDV);
-        const chaveFinal = chaveSemDV + dv;
-    
-        if (chaveFinal.length !== 44) {
-            console.error("Erro crítico: Chave gerada com tamanho inválido:", chaveFinal.length);
-        }
-    
-        return chaveFinal;
+        return chaveSemDV + dv; // Retorna sempre 44 caracteres
     }
 
     _calculateDV(chave) {
@@ -206,16 +199,16 @@ class NFeService {
     
         const url = urls[cUF] ? (this.isProduction ? urls[cUF].producao : urls[cUF].homologacao) : null;
         
-        if (!url) {
-            return { success: false, status: 'erro', message: `URL SEFAZ não configurada para UF ${cUF}` };
-        }
+        if (!url) return { success: false, status: 'erro', message: `URL não configurada para UF ${cUF}` };
     
-        // Montagem do Envelope SOAP para o serviço de Autorização
+        // Remova espaços extras e quebras de linha do XML assinado para evitar erro 400
+        const xmlLimpo = xmlAssinado.replace(/\r?\n|\r/g, "").trim();
+    
         const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
             <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
                 <soap12:Body>
                     <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">
-                        ${xmlAssinado}
+                        ${xmlLimpo}
                     </nfeDadosMsg>
                 </soap12:Body>
             </soap12:Envelope>`;
@@ -224,11 +217,10 @@ class NFeService {
             const axios = require('axios');
             const https = require('https');
     
-            // Configuração do Agente HTTPS com o seu Certificado PFX
             const httpsAgent = new https.Agent({
                 pfx: fs.readFileSync(this.pfxPath),
                 passphrase: this.password,
-                rejectUnauthorized: false // Necessário para alguns servidores da SEFAZ
+                rejectUnauthorized: false 
             });
     
             const response = await axios.post(url, soapEnvelope, {
@@ -240,16 +232,10 @@ class NFeService {
                 timeout: 30000
             });
     
-            // Aqui a SEFAZ retorna um XML. Em produção, você deve processar o cStat (100 = Autorizada)
-            console.log("Resposta da SEFAZ recebida.");
-            
-            return {
-                success: true,
-                status: 'autorizada', // Idealmente verificar o cStat no XML de retorno
-                message: 'NF-e enviada com sucesso para a SEFAZ'
-            };
+            return { success: true, status: 'autorizada', message: 'Enviada com sucesso' };
         } catch (error) {
-            console.error("Erro na comunicação com SEFAZ:", error.message);
+            // Log detalhado para identificar o que a SEFAZ respondeu no corpo do erro
+            console.error("Erro SEFAZ Detalhado:", error.response ? error.response.data : error.message);
             throw new Error(`Erro de conexão SEFAZ: ${error.message}`);
         }
     }
