@@ -6,8 +6,14 @@
 </header>
 
 <div class="panel">
-    <div class="panel-header">
-        <h4 style="font-weight: 700;">Histórico de Emissões</h4>
+    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <h4 style="font-weight: 700; margin: 0;">Histórico de Emissões</h4>
+        <div class="search-box" style="position: relative; flex: 1; max-width: 400px;">
+            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+            <input type="text" id="nfe-search" placeholder="Buscar por NF, chave, empresa..." 
+                style="width: 100%; padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid var(--border);"
+                oninput="debounceSearchNFe()">
+        </div>
     </div>
     <div class="table-container">
         <table class="table-compact">
@@ -17,7 +23,7 @@
                     <th>Venda</th>
                     <th>Chave de Acesso</th>
                     <th>Status</th>
-                    <th style="text-align: right;">Documentos</th>
+                    <th style="text-align: right;">Ações</th>
                 </tr>
             </thead>
             <tbody id="nfe-table-body">

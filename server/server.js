@@ -247,7 +247,47 @@ app.delete('/api/cadastros/:type/:id', authenticateToken, (req, res) => {
     });
 });
 
-app.get('/api/nfe', authenticateToken, (req, res) => db.all('SELECT * FROM nfe ORDER BY data_emissao DESC', [], (err, rows) => res.json(rows || [])));
+app.get('/api/nfe', authenticateToken, (req, res) => {
+    const { search } = req.query;
+    let query = 'SELECT * FROM nfe';
+    let params = [];
+    
+    if (search) {
+        query += ` WHERE venda_id LIKE ? OR chave_acesso LIKE ? OR xml_content LIKE ?`;
+        const searchTerm = `%${search}%`;
+        params = [searchTerm, searchTerm, searchTerm];
+    }
+    
+    query += ' ORDER BY data_emissao DESC';
+    db.all(query, params, (err, rows) => res.json(rows || []));
+});
+
+app.delete('/api/nfe/:id', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    db.run('DELETE FROM nfe WHERE id = ?', [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'NFE_DELETE', `Excluiu NFe ID: ${req.params.id}`);
+        res.json({ success: true });
+    });
+});
+
+app.get('/api/configs', authenticateToken, (req, res) => {
+    db.all('SELECT * FROM configs', [], (err, rows) => {
+        const configs = {};
+        rows?.forEach(r => configs[r.chave] = r.valor);
+        res.json(configs);
+    });
+});
+
+app.post('/api/configs', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    const { chave, valor } = req.body;
+    db.run('INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)', [chave, valor], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'CONFIG_UPDATE', `Atualizou config: ${chave}`);
+        res.json({ success: true });
+    });
+});
 
 app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
     const { venda_id, destinatario, itens } = req.body;
@@ -256,7 +296,7 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
         const configs = {};
         rows?.forEach(r => configs[r.chave] = r.valor);
         const nfeModoEnv = (process.env.NFE_MODO || '').toLowerCase();
-        const isProduction = configs.nfe_modo === 'producao' || nfeModoEnv === 'producao';
+        const isProduction = (configs.nfe_modo === 'producao') || (nfeModoEnv === 'producao');
         const certPass = configs.cert_password || process.env.CERT_PASSWORD || '';
         const pfxPath = path.join(__dirname, '../certificado/certificado.pfx');
 

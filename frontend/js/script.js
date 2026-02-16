@@ -610,16 +610,32 @@ async function deleteMovimentacao(id) {
     }
 }
 
+let nfeSearchTimeout = null;
+function debounceSearchNFe() {
+    clearTimeout(nfeSearchTimeout);
+    nfeSearchTimeout = setTimeout(() => {
+        loadNFeTable();
+    }, 500);
+}
+
 async function loadNFeTable() {
     const tbody = document.getElementById('nfe-table-body');
     if (!tbody) return;
-    const res = await fetchWithAuth('/nfe');
+    
+    const searchInput = document.getElementById('nfe-search');
+    const searchTerm = searchInput ? searchInput.value : '';
+    
+    const res = await fetchWithAuth(`/nfe${searchTerm ? '?search=' + encodeURIComponent(searchTerm) : ''}`);
     if (!res) return;
     const data = await res.json();
     tbody.innerHTML = '';
     
+    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userRole = userData.role || (userData.user ? userData.user.role : null);
+    const isAdmin = userRole === 'admin';
+    
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhuma nota fiscal emitida</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 5}" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhuma nota fiscal encontrada</td></tr>`;
         return;
     }
     
@@ -631,9 +647,46 @@ async function loadNFeTable() {
             <td style="text-align: right;">
                 <button class="btn-icon" onclick="downloadXML(${n.id})" title="Baixar XML"><i class="fas fa-file-code"></i> XML</button>
                 <button class="btn-icon" onclick="downloadPDF(${n.id})" title="Imprimir DANFE"><i class="fas fa-file-pdf"></i> PDF</button>
+                ${isAdmin ? `<button class="btn-icon text-danger" onclick="deleteNFe(${n.id})" title="Remover NFe"><i class="fas fa-trash"></i></button>` : ''}
             </td>`;
         tbody.appendChild(tr);
     });
+}
+
+async function deleteNFe(id) {
+    if (!confirm("Deseja realmente remover esta NFe? Ela não aparecerá mais para os usuários.")) return;
+    const res = await fetchWithAuth(`/nfe/${id}`, { method: 'DELETE' });
+    if (res && res.ok) {
+        showSuccess("NFe removida com sucesso!");
+        loadNFeTable();
+    } else {
+        showError("Erro ao remover NFe.");
+    }
+}
+
+async function updateNFeModo(modo) {
+    const res = await fetchWithAuth('/configs', {
+        method: 'POST',
+        body: JSON.stringify({ chave: 'nfe_modo', valor: modo })
+    });
+    if (res && res.ok) {
+        showSuccess(`Modo alterado para ${modo.toUpperCase()}`);
+    } else {
+        showError("Erro ao alterar modo.");
+    }
+}
+
+async function saveCertPassword() {
+    const pass = document.getElementById('cert-password').value;
+    const res = await fetchWithAuth('/configs', {
+        method: 'POST',
+        body: JSON.stringify({ chave: 'cert_password', valor: pass })
+    });
+    if (res && res.ok) {
+        showSuccess("Senha do certificado salva!");
+    } else {
+        showError("Erro ao salvar senha.");
+    }
 }
 
 async function downloadXML(id) {
