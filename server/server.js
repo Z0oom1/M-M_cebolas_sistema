@@ -469,7 +469,9 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             
             field(10, Y_DEST + 21, 60, 8, "MUNICÍPIO", "PRESIDENTE PRUDENTE");
             field(70, Y_DEST + 21, 10, 8, "UF", "SP", 'center');
-            field(80, Y_DEST + 21, 30, 8, "FONE", row.cliente_tel || '');
+            // Pega apenas o primeiro telefone se houver mais de um (separados por / ou ,)
+            const firstPhone = (row.cliente_tel || '').split(/[\/,]/)[0].trim();
+            field(80, Y_DEST + 21, 30, 8, "FONE", firstPhone);
             field(110, Y_DEST + 21, 80, 8, "INSCRIÇÃO ESTADUAL", row.cliente_ie || '');
 
             // IMPOSTO
