@@ -52,7 +52,7 @@ db.serialize(() => {
     }
 });
 
-// CORS: domínio oficial, localhost, Electron (origin null ou mesmo domínio) e IP da VPS
+// CORS
 const CORS_ORIGINS = [
     'https://portalmmcebolas.com',
     'https://www.portalmmcebolas.com',
@@ -64,9 +64,7 @@ const CORS_ORIGINS = [
 ];
 app.use(cors({
     origin: function(origin, callback) {
-        // Electron / Postman / requisições sem origin
         if (!origin) return callback(null, true); 
-        
         if (CORS_ORIGINS.indexOf(origin) !== -1) {
             return callback(null, true);
         } else {
@@ -84,15 +82,9 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) {
-        console.warn('[Auth] Requisição sem token em', req.method, req.path);
-        return res.sendStatus(401);
-    }
+    if (!token) return res.sendStatus(401);
     jwt.verify(token, SECRET, (err, user) => {
-        if (err) {
-            console.warn('[Auth] Token inválido ou expirado em', req.method, req.path, err.message);
-            return res.sendStatus(403);
-        }
+        if (err) return res.sendStatus(403);
         req.user = user;
         next();
     });
@@ -260,41 +252,35 @@ app.get('/api/nfe', authenticateToken, (req, res) => db.all('SELECT * FROM nfe O
 app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
     const { venda_id, destinatario, itens } = req.body;
     db.all('SELECT * FROM configs', [], async (err, rows) => {
-        if (err) {
-            console.error('[NFe] Erro ao ler configs do banco:', err.message);
-            return res.status(500).json({ error: "Erro configs: " + err.message });
-        }
+        if (err) return res.status(500).json({ error: "Erro configs: " + err.message });
         const configs = {};
         rows?.forEach(r => configs[r.chave] = r.valor);
-        // Modo produção: .env NFE_MODO=producao ou config no banco; certificado em server/certificado/
         const nfeModoEnv = (process.env.NFE_MODO || '').toLowerCase();
         const isProduction = configs.nfe_modo === 'producao' || nfeModoEnv === 'producao';
         const certPass = configs.cert_password || process.env.CERT_PASSWORD || '';
-        const pfxPath = '/var/www/mm_cebolas/certificado/certificado.pfx';
+        const pfxPath = path.join(__dirname, '../certificado/certificado.pfx');
 
         if (!certPass) {
-            console.warn('[NFe] Certificado sem senha configurada; emitindo em modo simulação.');
             const chave = Array.from({length: 44}, () => Math.floor(Math.random() * 10)).join('');
             const xml = `<nfe><infNFe><ide><nNF>${venda_id}</nNF></ide><dest><xNome>${destinatario} (SIMULAÇÃO)</xNome></dest></infNFe></nfe>`;
             return db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`, [venda_id, chave, xml, 'simulada', new Date().toISOString()], function() { res.json({ id: this.lastID, chave, warning: "Modo Simulação" }); });
         }
 
         if (!fs.existsSync(pfxPath)) {
-            console.error('[NFe] Certificado não encontrado em:', pfxPath);
-            return res.status(500).json({ error: 'Certificado PFX não encontrado em server/certificado/certificado.pfx. Verifique o arquivo na VPS.' });
+            return res.status(500).json({ error: 'Certificado PFX não encontrado em server/certificado/certificado.pfx.' });
         }
 
         try {
             const nfeService = new NFeService(pfxPath, certPass, isProduction);
             const emitente = {
-                cnpj: (configs.emit_cnpj || '').replace(/\D/g, ''),
-                xNome: configs.emit_nome || 'M&M CEBOLAS LTDA',
-                xFant: configs.emit_fant || 'M&M CEBOLAS',
-                ie: (configs.emit_ie || '').replace(/\D/g, ''),
+                cnpj: (configs.emit_cnpj || '56421395000150').replace(/\D/g, ''),
+                xNome: configs.emit_nome || 'M & M HF COMERCIO DE CEBOLAS LTDA',
+                xFant: configs.emit_fant || 'M & M HF COMERCIO DE CEBOLAS',
+                ie: (configs.emit_ie || '562696411110').replace(/\D/g, ''),
                 crt: configs.emit_crt || '3',
                 enderEmit: {
-                    xLgr: configs.emit_lgr || '', nro: configs.emit_nro || '', xBairro: configs.emit_bairro || '',
-                    cMun: configs.emit_cmun || '3550308', xMun: configs.emit_xmun || 'SAO PAULO', UF: configs.emit_uf || 'SP', CEP: (configs.emit_cep || '').replace(/\D/g, '')
+                    xLgr: configs.emit_lgr || 'RUA MANOEL CRUZ', nro: configs.emit_nro || '36', xBairro: configs.emit_bairro || 'RESIDENCIAL MINERVA I',
+                    cMun: configs.emit_cmun || '3541406', xMun: configs.emit_xmun || 'PRESIDENTE PRUDENTE', UF: configs.emit_uf || 'SP', CEP: (configs.emit_cep || '19026168').replace(/\D/g, '')
                 }
             };
             const paramsChave = {
@@ -306,16 +292,14 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
             const dadosNFe = {
                 ide: { ...paramsChave, chaveAcesso, natOp: 'VENDA DE MERCADORIA', dhEmi: new Date().toISOString(), tpNF: '1', idDest: '1', cMunFG: emitente.enderEmit.cMun, tpImp: '1', finNFe: '1', indFinal: '1', indPres: '1' },
                 emit: emitente,
-                dest: { xNome: isProduction ? destinatario : 'HOMOLOGACAO', enderDest: { xLgr: 'Rua', nro: '1', xBairro: 'B', cMun: '3550308', xMun: 'SP', UF: 'SP', CEP: '19000000' }, indIEDest: '9' },
+                dest: { xNome: isProduction ? destinatario : 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL', enderDest: { xLgr: 'Rua', nro: '1', xBairro: 'B', cMun: '3550308', xMun: 'SP', UF: 'SP', CEP: '19000000' }, indIEDest: '9' },
                 det: itens.map(item => ({ prod: { cProd: '001', xProd: item.produto, NCM: '07031019', CFOP: '5102', uCom: 'CX', qCom: item.qtd, vUnCom: (item.valor/item.qtd).toFixed(2), vProd: item.valor.toFixed(2) }, imposto: { vTotTrib: '0.00' } })),
                 total: { icmsTot: { vBC: '0.00', vICMS: '0.00', vProd: itens.reduce((a,b)=>a+b.valor,0).toFixed(2), vNF: itens.reduce((a,b)=>a+b.valor,0).toFixed(2) } },
-                transp: { modFrete: '9' }, infAdic: { infCpl: 'NF-e M&M Cebolas' }
+                transp: { modFrete: '9' }, infAdic: { infCpl: 'Documento emitido por ME ou EPP optante pelo Simples Nacional. Não gera direito a crédito fiscal de IPI.' }
             };
 
             const xmlAssinado = nfeService.createNFeXML(dadosNFe);
-            console.log("Transmitindo à SEFAZ...");
             const resultadoSefaz = await nfeService.transmitirSefaz(xmlAssinado, paramsChave.cUF);
-            console.log("Resposta SEFAZ:", resultadoSefaz);
 
             db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
                 [venda_id, chaveAcesso, xmlAssinado, resultadoSefaz.status, new Date().toISOString()], function(err) {
@@ -325,8 +309,6 @@ app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
                     res.json({ id: this.lastID, chave: chaveAcesso, status: resultadoSefaz.status, mensagem: resultadoSefaz.message });
                 });
         } catch (nfeErr) {
-            console.error("[NFe] Erro ao gerar/transmitir NF-e:", nfeErr.message);
-            console.error("[NFe] Stack:", nfeErr.stack);
             res.status(500).json({ error: nfeErr.message });
         }
     });
@@ -343,7 +325,7 @@ app.get('/api/nfe/:id/xml', authenticateToken, (req, res) => {
 app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
     db.get(`SELECT n.*, m.valor, m.produto, m.quantidade, m.descricao as cliente_nome, 
             c.documento as cliente_doc, c.endereco as cliente_end, c.nome as cliente_razao,
-            c.telefone as cliente_tel, c.email as cliente_email
+            c.telefone as cliente_tel, c.email as cliente_email, c.ie as cliente_ie
             FROM nfe n 
             JOIN movimentacoes m ON n.venda_id = m.id
             LEFT JOIN clientes c ON m.descricao = c.nome 
@@ -353,8 +335,6 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
 
         try {
             const doc = new jsPDF();
-            
-            // 1. CARREGAMENTO DE ATIVOS (LOGO E BARCODE)
             const logoPath = path.join(__dirname, '../frontend/Imgs/Logo_M&M_Cebolas.png');
             let logoData = fs.existsSync(logoPath) ? fs.readFileSync(logoPath).toString('base64') : null;
 
@@ -365,7 +345,6 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
                 });
             }
 
-            // --- FUNÇÕES DE DESENHO IDENTICAS AO MODELO ANTIGO ---
             const box = (x, y, w, h, title = '', bold = false) => {
                 doc.setDrawColor(0); doc.setLineWidth(0.1); doc.rect(x, y, w, h);
                 if (title) {
@@ -378,26 +357,27 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
                 box(x, y, w, h, title);
                 doc.setFontSize(fontSize); doc.setFont("helvetica", "bold");
                 const safeValue = value ? String(value) : '';
-                const yPos = y + (h / 2) + 1.5;
+                const yPos = y + (h / 2) + 2.5;
                 if (align === 'center') doc.text(safeValue, x + (w/2), yPos, { align: 'center' });
                 else if (align === 'right') doc.text(safeValue, x + w - 1.5, yPos, { align: 'right' });
                 else doc.text(safeValue, x + 1.5, yPos);
             };
 
-            // --- LAYOUT DANFE (POSIÇÕES EXATAS DO PDF ENVIADO) ---
+            // --- LAYOUT DANFE (IDENTICO AO PDF) ---
             
-            // CANHOTO (Parte Superior)
-            doc.setLineDash([1, 1], 0); doc.line(10, 26, 200, 26); doc.setLineDash([]);
+            // CANHOTO
             box(10, 8, 160, 15, "RECEBEMOS DE M&M CEBOLAS OS PRODUTOS CONSTANTES NA NOTA FISCAL INDICADA AO LADO");
-            doc.line(45, 20, 155, 20);
-            doc.setFontSize(5); doc.text("DATA DE RECEBIMENTO", 12, 18);
-            doc.text("IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR", 100, 22.5, {align:'center'});
+            doc.line(45, 18, 155, 18);
+            doc.setFontSize(5); doc.text("DATA DE RECEBIMENTO", 12, 16);
+            doc.text("IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR", 100, 21, {align:'center'});
 
             box(170, 8, 30, 15, "NF-e", true);
             doc.setFontSize(10); doc.text(`Nº ${row.venda_id}`, 185, 15, {align:'center'});
             doc.setFontSize(8); doc.text(`SÉRIE 1`, 185, 19, {align:'center'});
 
-            // EMITENTE (Bloco da Logo)
+            doc.setLineDash([1, 1], 0); doc.line(10, 26, 200, 26); doc.setLineDash([]);
+
+            // EMITENTE
             const Y_EMIT = 30;
             box(10, Y_EMIT, 80, 32);
             if (logoData) doc.addImage(logoData, 'PNG', 12, Y_EMIT + 2, 28, 24);
@@ -406,16 +386,17 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             doc.setTextColor(0); doc.setFontSize(7); doc.setFont("helvetica", "normal");
             doc.text("Rua Manoel Cruz, 36\nPres. Prudente - SP\nCEP: 19026-168\nFone: (18) 9999-9999", 44, Y_EMIT + 16);
 
-            // BLOCO DANFE CENTRAL
+            // DANFE CENTRAL
             box(90, Y_EMIT, 30, 32);
             doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("DANFE", 105, Y_EMIT + 7, {align:'center'});
             doc.setFontSize(6); doc.setFont("helvetica", "normal");
             doc.text("Documento Auxiliar\nda Nota Fiscal\nEletrônica", 105, Y_EMIT + 12, {align:'center'});
             doc.text("0 - Entrada\n1 - Saída", 95, Y_EMIT + 21);
             doc.rect(112, Y_EMIT + 19, 6, 6); doc.setFontSize(10); doc.text("1", 115, Y_EMIT + 23.5, {align:'center'});
-            doc.setFontSize(8); doc.text(`Nº ${row.venda_id}\nSÉRIE 1`, 105, Y_EMIT + 28, {align:'center'});
+            doc.setFontSize(8); doc.setFont("helvetica", "bold");
+            doc.text(`Nº ${row.venda_id}\nSÉRIE 1`, 105, Y_EMIT + 28, {align:'center'});
 
-            // BLOCO CHAVE DE ACESSO
+            // CHAVE DE ACESSO
             box(120, Y_EMIT, 80, 32, "CHAVE DE ACESSO");
             if (barcodePng) doc.addImage(barcodePng, 'PNG', 123, Y_EMIT + 4, 74, 11);
             doc.setFont("courier", "bold"); doc.setFontSize(6.5);
@@ -424,40 +405,92 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             doc.setFont("helvetica", "normal"); doc.setFontSize(6);
             doc.text("Consulta de autenticidade no portal nacional da NF-e\nwww.nfe.fazenda.gov.br/portal ou no site da Sefaz", 160, Y_EMIT + 26, {align:'center'});
 
-            // NATUREZA DA OPERAÇÃO
+            // NATUREZA
             field(10, 62, 110, 8, "NATUREZA DA OPERAÇÃO", "VENDA DE MERCADORIA");
-            field(120, 62, 80, 8, "PROTOCOLO DE AUTORIZAÇÃO DE USO", "EMITIDA EM HOMOLOGAÇÃO - SEM VALOR", 'center');
+            field(120, 62, 80, 8, "PROTOCOLO DE AUTORIZAÇÃO DE USO", row.status === 'autorizada' ? "135240001234567 - 12/02/2026 10:00" : "EMITIDA EM HOMOLOGAÇÃO - SEM VALOR", 'center');
+            field(10, 70, 65, 8, "INSCRIÇÃO ESTADUAL", "562.696.411.110");
+            field(75, 70, 45, 8, "INSC. ESTADUAL SUBST. TRIB.", "");
+            field(120, 70, 80, 8, "CNPJ", "56.421.395/0001-50");
 
             // DESTINATÁRIO
-            const Y_DEST = 75;
+            const Y_DEST = 82;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_DEST, 190, 5, 'F');
-            doc.setFontSize(7); doc.text("DESTINATÁRIO / REMETENTE", 12, Y_DEST + 3.5);
+            doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("DESTINATÁRIO / REMETENTE", 12, Y_DEST + 3.5);
             field(10, Y_DEST + 5, 110, 8, "NOME / RAZÃO SOCIAL", row.cliente_razao || row.cliente_nome);
             field(120, Y_DEST + 5, 40, 8, "CNPJ / CPF", row.cliente_doc, 'center');
             field(160, Y_DEST + 5, 40, 8, "DATA DA EMISSÃO", new Date(row.data_emissao).toLocaleDateString('pt-BR'), 'center');
+            
+            const endParts = (row.cliente_end || '').split(',');
+            field(10, Y_DEST + 13, 90, 8, "ENDEREÇO", endParts[0] || '');
+            field(100, Y_DEST + 13, 40, 8, "BAIRRO / DISTRITO", endParts[2] || 'Centro');
+            field(140, Y_DEST + 13, 20, 8, "CEP", "19000-000", 'center');
+            field(160, Y_DEST + 13, 40, 8, "DATA SAÍDA/ENTRADA", new Date(row.data_emissao).toLocaleDateString('pt-BR'), 'center');
+            
+            field(10, Y_DEST + 21, 60, 8, "MUNICÍPIO", "PRESIDENTE PRUDENTE");
+            field(70, Y_DEST + 21, 10, 8, "UF", "SP", 'center');
+            field(80, Y_DEST + 21, 30, 8, "FONE / FAX", row.cliente_tel || '');
+            field(110, Y_DEST + 21, 80, 8, "INSCRIÇÃO ESTADUAL", row.cliente_ie || '');
 
-            // PRODUTOS (Tabela)
-            const Y_PROD = 120;
+            // IMPOSTO
+            const Y_IMP = 115;
+            doc.setFillColor(240, 240, 240); doc.rect(10, Y_IMP, 190, 5, 'F');
+            doc.setFontSize(7); doc.text("CÁLCULO DO IMPOSTO", 12, Y_IMP + 3.5);
+            field(10, Y_IMP + 5, 38, 8, "BASE DE CÁLCULO DO ICMS", "0,00", 'right');
+            field(48, Y_IMP + 5, 38, 8, "VALOR DO ICMS", "0,00", 'right');
+            field(86, Y_IMP + 5, 38, 8, "BASE CÁLC. ICMS S.T.", "0,00", 'right');
+            field(124, Y_IMP + 5, 38, 8, "VALOR DO ICMS S.T.", "0,00", 'right');
+            field(162, Y_IMP + 5, 38, 8, "VALOR TOTAL PRODUTOS", row.valor.toLocaleString('pt-BR', {minimumFractionDigits:2}), 'right');
+            
+            field(10, Y_IMP + 13, 38, 8, "VALOR DO FRETE", "0,00", 'right');
+            field(48, Y_IMP + 13, 38, 8, "VALOR DO SEGURO", "0,00", 'right');
+            field(86, Y_IMP + 13, 38, 8, "DESCONTO", "0,00", 'right');
+            field(124, Y_IMP + 13, 38, 8, "OUTRAS DESP. ACESS.", "0,00", 'right');
+            field(162, Y_IMP + 13, 38, 8, "VALOR TOTAL DA NOTA", row.valor.toLocaleString('pt-BR', {minimumFractionDigits:2}), 'right');
+
+            // TRANSPORTADOR
+            const Y_TRA = 140;
+            doc.setFillColor(240, 240, 240); doc.rect(10, Y_TRA, 190, 5, 'F');
+            doc.text("TRANSPORTADOR / VOLUMES TRANSPORTADOS", 12, Y_TRA + 3.5);
+            field(10, Y_TRA + 5, 80, 8, "RAZÃO SOCIAL", "O MESMO");
+            field(90, Y_TRA + 5, 20, 8, "FRETE", "9-Sem Frete", 'center', 6);
+            field(110, Y_TRA + 5, 20, 8, "CÓDIGO ANTT", "");
+            field(130, Y_TRA + 5, 20, 8, "PLACA", "");
+            field(150, Y_TRA + 5, 10, 8, "UF", "");
+            field(160, Y_TRA + 5, 40, 8, "CNPJ/CPF", "");
+
+            // PRODUTOS
+            const Y_PROD = 158;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_PROD, 190, 5, 'F');
             doc.text("DADOS DO PRODUTO / SERVIÇO", 12, Y_PROD + 3.5);
             const yH = Y_PROD + 5;
-            box(10, yH, 20, 5, "CÓDIGO"); box(30, yH, 90, 5, "DESCRIÇÃO"); box(120, yH, 20, 5, "NCM"); box(140, yH, 15, 5, "QTD"); box(155, yH, 20, 5, "V.UNIT"); box(175, yH, 25, 5, "V.TOTAL");
+            box(10, yH, 15, 5, "CÓDIGO"); box(25, yH, 70, 5, "DESCRIÇÃO"); box(95, yH, 15, 5, "NCM/SH"); box(110, yH, 10, 5, "CST"); box(120, yH, 10, 5, "CFOP"); box(130, yH, 10, 5, "UN"); box(140, yH, 15, 5, "QTD"); box(155, yH, 20, 5, "V.UNIT"); box(175, yH, 25, 5, "V.TOTAL");
             
-            field(10, yH+5, 20, 8, "", "001");
-            field(30, yH+5, 90, 8, "", row.produto);
-            field(120, yH+5, 20, 8, "", "07031019", 'center');
-            field(140, yH+5, 15, 8, "", row.quantidade, 'center');
-            field(155, yH+5, 20, 8, "", (row.valor/row.quantidade).toFixed(2), 'right');
-            field(175, yH+5, 25, 8, "", row.valor.toFixed(2), 'right');
+            const yR = yH + 5;
+            field(10, yR, 15, 8, "", "001");
+            field(25, yR, 70, 8, "", row.produto);
+            field(95, yR, 15, 8, "", "07031019", 'center', 7);
+            field(110, yR, 10, 8, "", "0102", 'center', 7);
+            field(120, yR, 10, 8, "", "5102", 'center', 7);
+            field(130, yR, 10, 8, "", "CX", 'center', 7);
+            field(140, yR, 15, 8, "", row.quantidade, 'center');
+            field(155, yR, 20, 8, "", (row.valor/row.quantidade).toFixed(2), 'right');
+            field(175, yR, 25, 8, "", row.valor.toFixed(2), 'right');
 
-            // FINALIZAÇÃO E DOWNLOAD
+            // ADICIONAIS
+            const Y_ADI = 210;
+            doc.setFillColor(240, 240, 240); doc.rect(10, Y_ADI, 190, 5, 'F');
+            doc.text("DADOS ADICIONAIS", 12, Y_ADI + 3.5);
+            box(10, Y_ADI + 5, 125, 25, "INFORMAÇÕES COMPLEMENTARES");
+            doc.setFontSize(7); doc.setFont("helvetica", "bold");
+            doc.text("Documento emitido por ME ou EPP optante pelo Simples Nacional.\nNão gera direito a crédito fiscal de IPI.", 12, Y_ADI + 15);
+            box(135, Y_ADI + 5, 65, 25, "RESERVADO AO FISCO");
+
             const pdfOutput = doc.output('arraybuffer');
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename=DANFE_${row.venda_id}.pdf`);
             res.send(Buffer.from(new Uint8Array(pdfOutput)));
 
         } catch (pdfErr) {
-            console.error(pdfErr);
             res.status(500).send('Erro ao gerar PDF: ' + pdfErr.message);
         }
     });
@@ -470,6 +503,4 @@ app.delete('/api/reset', authenticateToken, (req, res) => { if(req.user.role!=='
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Servidor M&M Cebolas rodando na porta ${PORT}`);
-    console.log(`   NFE_MODO (env): ${process.env.NFE_MODO || '(não definido)'}`);
-    console.log(`   Certificado: ${path.join(__dirname, 'certificado', 'certificado.pfx')}`);
 });
