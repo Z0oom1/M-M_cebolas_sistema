@@ -1,21 +1,27 @@
-// --- CONFIGURAÇÃO DE REDE ---
+// --- CONFIGURAÇÃO DE REDE E AMBIENTE ---
 const isElectron = window.location.protocol === 'file:';
 const API_URL = 'https://portalmmcebolas.com/api';
 
+/** Determina o URL da Home baseado no ambiente */
 function getHomeUrl() {
     if (window.location.protocol === 'file:') return 'home.html';
     if (window.location.pathname.includes('/pages/')) return 'home.html';
     return '/pages/home.html';
 }
 
+/** Função principal de Login */
 async function fazerLogin(e) {
     e.preventDefault();
     const btn = document.getElementById('btnLogin');
+    const errorEl = document.getElementById('loginError');
+    const card = document.getElementById('loginCard');
+    
     if (!btn) return;
+    
     const oldText = btn.innerHTML;
-
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> AUTENTICANDO...';
+    if (errorEl) errorEl.style.display = 'none';
 
     const username = document.getElementById('loginUser').value;
     const password = document.getElementById('loginPass').value;
@@ -33,12 +39,16 @@ async function fazerLogin(e) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('mm_user', JSON.stringify({ user: data.user, role: data.role }));
             
-            // Iniciar Efeito Apple de Loading
+            // Iniciar a experiência de transição Apple
             iniciarTransicaoApple();
         } else {
             showLoginError(data.error || "Usuário ou senha incorretos.");
             btn.disabled = false;
             btn.innerHTML = oldText;
+            if (card) {
+                card.classList.add('shake');
+                setTimeout(() => card.classList.remove('shake'), 500);
+            }
         }
     } catch (error) {
         showLoginError("Erro de conexão com o servidor.");
@@ -47,70 +57,77 @@ async function fazerLogin(e) {
     }
 }
 
+/** Efeito de Carregamento e Transição estilo Apple */
 function iniciarTransicaoApple() {
     const overlay = document.getElementById('loading-overlay');
     const progress = document.getElementById('progress-fill');
     const sound = document.getElementById('startup-sound');
     const body = document.body;
 
-    // 1. Aplicar Blur Suave na página de login
+    // 1. Blur e Fade out na página atual
     body.classList.add('page-transition');
 
     setTimeout(() => {
-        // 2. Mostrar Overlay Preto estilo Apple
-        overlay.style.display = 'flex';
-        setTimeout(() => overlay.style.opacity = '1', 10);
-
-        // 3. Tocar Som do MacBook Pro
-        if (sound) {
-            sound.play().catch(e => console.log("Erro ao tocar som:", e));
+        // 2. Ativar o overlay preto Apple
+        if (overlay) {
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.style.opacity = '1', 50);
         }
 
-        // 4. Animar barra de progresso
-        setTimeout(() => {
-            progress.style.width = '100%';
-        }, 100);
+        // 3. Som do MacBook Pro
+        if (sound) {
+            sound.volume = 0.6;
+            sound.play().catch(e => console.warn("Autoplay bloqueado ou erro no som:", e));
+        }
 
-        // 5. Redirecionar após o carregamento
+        // 4. Progresso da barra
+        if (progress) {
+            setTimeout(() => {
+                progress.style.width = '100%';
+            }, 100);
+        }
+
+        // 5. Redirecionamento final
         setTimeout(() => {
-            const homeUrl = getHomeUrl();
-            window.location.replace(homeUrl);
-        }, 3500); // Tempo para a barra encher e o som tocar
-    }, 800);
+            window.location.replace(getHomeUrl());
+        }, 3600); // Sincronizado com a animação da barra e som
+    }, 600);
 }
 
+/** Exibição de Erros */
 function showLoginError(msg) {
-    let errEl = document.getElementById('login-error');
-    if (!errEl) {
-        errEl = document.createElement('div');
-        errEl.id = 'login-error';
-        errEl.style.color = '#ef4444';
-        errEl.style.marginTop = '15px';
-        errEl.style.fontWeight = '600';
-        document.querySelector('form').after(errEl);
+    const errorEl = document.getElementById('loginError');
+    if (errorEl) {
+        errorEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${msg}`;
+        errorEl.style.display = 'block';
     }
-    errEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${msg}`;
-    
-    const card = document.querySelector('.login-card');
-    card.style.animation = 'none';
-    card.offsetHeight; 
-    card.style.animation = 'shake 0.5s ease';
 }
 
+/** Inicialização da Página */
 window.onload = function() {
+    // Remover loader inicial
     const loader = document.getElementById('initial-loader');
     if(loader) {
         setTimeout(() => {
             loader.style.opacity = '0';
-            setTimeout(() => loader.style.display = 'none', 500);
-        }, 500);
+            setTimeout(() => loader.style.display = 'none', 600);
+        }, 400);
     }
 
-    const titlebar = document.getElementById('titlebar');
+    // Configuração Titlebar (Electron)
     if (isElectron) {
+        const titlebar = document.getElementById('titlebar');
         if (titlebar) titlebar.style.display = 'flex';
+        
+        try {
+            const { ipcRenderer } = require('electron');
+            document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
+            document.getElementById('minBtn')?.addEventListener('click', () => ipcRenderer.send('minimize-app'));
+            document.getElementById('maxBtn')?.addEventListener('click', () => ipcRenderer.send('maximize-app'));
+        } catch(e) {}
     }
 
+    // Vincular formulário
     const form = document.getElementById('formLogin');
     if (form) {
         form.addEventListener('submit', fazerLogin);
