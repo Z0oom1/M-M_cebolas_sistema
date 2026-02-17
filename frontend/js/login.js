@@ -1,12 +1,7 @@
 // --- CONFIGURAÇÃO DE REDE ---
-// Nota: localStorage é sensível ao protocolo e domínio. Se logar em http://72.60.8.186,
-// os dados não aparecem em https://portalmmcebolas.com. Use sempre o mesmo URL para login e Home.
 const isElectron = window.location.protocol === 'file:';
-
-// Web e Electron usam o mesmo servidor (portalmmcebolas.com) para um único banco de dados.
 const API_URL = 'https://portalmmcebolas.com/api';
 
-/** Na Web, a Home fica em /pages/home.html; no Electron, na mesma pasta que login (pages/). */
 function getHomeUrl() {
     if (window.location.protocol === 'file:') return 'home.html';
     if (window.location.pathname.includes('/pages/')) return 'home.html';
@@ -15,7 +10,8 @@ function getHomeUrl() {
 
 async function fazerLogin(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('button[type="submit"]');
+    const btn = document.getElementById('btnLogin');
+    if (!btn) return;
     const oldText = btn.innerHTML;
 
     btn.disabled = true;
@@ -36,11 +32,9 @@ async function fazerLogin(e) {
         if (response.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('mm_user', JSON.stringify({ user: data.user, role: data.role }));
-            setTimeout(() => {
-                // Web (portalmmcebolas.com): / ou /login.html → /pages/home.html; Electron: mesmo pasta → home.html
-                const homeUrl = getHomeUrl();
-                window.location.replace(homeUrl);
-            }, 150);
+            
+            // Iniciar Efeito Apple de Loading
+            iniciarTransicaoApple();
         } else {
             showLoginError(data.error || "Usuário ou senha incorretos.");
             btn.disabled = false;
@@ -53,55 +47,72 @@ async function fazerLogin(e) {
     }
 }
 
+function iniciarTransicaoApple() {
+    const overlay = document.getElementById('loading-overlay');
+    const progress = document.getElementById('progress-fill');
+    const sound = document.getElementById('startup-sound');
+    const body = document.body;
+
+    // 1. Aplicar Blur Suave na página de login
+    body.classList.add('page-transition');
+
+    setTimeout(() => {
+        // 2. Mostrar Overlay Preto estilo Apple
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.style.opacity = '1', 10);
+
+        // 3. Tocar Som do MacBook Pro
+        if (sound) {
+            sound.play().catch(e => console.log("Erro ao tocar som:", e));
+        }
+
+        // 4. Animar barra de progresso
+        setTimeout(() => {
+            progress.style.width = '100%';
+        }, 100);
+
+        // 5. Redirecionar após o carregamento
+        setTimeout(() => {
+            const homeUrl = getHomeUrl();
+            window.location.replace(homeUrl);
+        }, 3500); // Tempo para a barra encher e o som tocar
+    }, 800);
+}
+
 function showLoginError(msg) {
     let errEl = document.getElementById('login-error');
     if (!errEl) {
         errEl = document.createElement('div');
         errEl.id = 'login-error';
-        errEl.className = 'error-message';
+        errEl.style.color = '#ef4444';
+        errEl.style.marginTop = '15px';
+        errEl.style.fontWeight = '600';
         document.querySelector('form').after(errEl);
     }
     errEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${msg}`;
-    errEl.style.display = 'block';
     
-    // Shake animation
     const card = document.querySelector('.login-card');
     card.style.animation = 'none';
-    card.offsetHeight; // trigger reflow
+    card.offsetHeight; 
     card.style.animation = 'shake 0.5s ease';
 }
 
 window.onload = function() {
-    const loading = document.getElementById('loading-screen');
-    if(loading) {
+    const loader = document.getElementById('initial-loader');
+    if(loader) {
         setTimeout(() => {
-            loading.style.opacity = '0';
-            setTimeout(() => loading.style.display = 'none', 500);
+            loader.style.opacity = '0';
+            setTimeout(() => loader.style.display = 'none', 500);
         }, 500);
     }
 
-    // LÓGICA DA BARRA DE CONTROLE (ELECTRON)
     const titlebar = document.getElementById('titlebar');
     if (isElectron) {
         if (titlebar) titlebar.style.display = 'flex';
-        const { ipcRenderer } = require('electron');
-        document.getElementById('closeBtn')?.addEventListener('click', () => ipcRenderer.send('close-app'));
-        document.getElementById('minBtn')?.addEventListener('click', () => ipcRenderer.send('minimize-app'));
-        document.getElementById('maxBtn')?.addEventListener('click', () => ipcRenderer.send('maximize-app'));
-    } else {
-        if (titlebar) titlebar.style.display = 'none';
     }
-}
 
-// No final do login.js
-document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('formLogin');
     if (form) {
-        // Removemos o atributo onsubmit do HTML e controlamos tudo por aqui
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Trava o recarregamento da página imediatamente
-            await fazerLogin(e); // Chama a sua função de login
-        });
-        console.log("Formulário de login vinculado com sucesso!");
+        form.addEventListener('submit', fazerLogin);
     }
-});
+}

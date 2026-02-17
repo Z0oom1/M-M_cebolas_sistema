@@ -35,7 +35,7 @@ window.onload = function() {
     checkLogin();
     checkEnvironment();
     loadDataFromAPI();
-    showSection('dashboard');   // carrega o dashboard na abertura (substitui o placeholder com logo)
+    // showSection('dashboard'); // Removido para permitir animação de entrada suave
     setupSelectors();
 };
 
