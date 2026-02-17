@@ -104,7 +104,7 @@ function showSection(id) {
     if (activeBtn) activeBtn.classList.add('active');
     
     const mainContent = document.getElementById('main-content');
-    mainContent.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;"><i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary);"></i></div>';
+    mainContent.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;"><div class="apple-loader-modern"></div></div>';
     
     fetch(`sections/${id}.html`)
         .then(res => res.text())

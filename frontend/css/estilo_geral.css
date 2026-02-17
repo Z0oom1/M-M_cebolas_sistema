@@ -508,3 +508,17 @@ tr:hover td { background-color: #f8fafc; }
 .search-item:hover { background: var(--primary); color: white; border-color: var(--primary); }
 .search-item strong { display: block; margin-bottom: 2px; }
 .search-item small { opacity: 0.8; font-size: 0.75rem; }
+
+/* Novo Loader Moderno Estilo Apple */
+.apple-loader-modern {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(26, 86, 50, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: appleSpin 0.8s ease-in-out infinite;
+}
+
+@keyframes appleSpin {
+    to { transform: rotate(360deg); }
+}

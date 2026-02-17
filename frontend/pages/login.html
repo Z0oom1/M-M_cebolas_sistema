@@ -13,148 +13,100 @@
             --primary: #1A5632;
             --primary-dark: #123d23;
             --accent: #E89C31;
-            --bg-body: #f8fafc;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', -apple-system, sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
         body {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #1A5632 0%, #124024 100%);
+            background: #000; /* Fundo preto base para transição Apple */
             overflow: hidden;
-            margin: 0;
             height: 100vh;
-            transition: filter 0.8s ease, opacity 0.8s ease;
         }
 
-        body.page-transition {
-            filter: blur(30px);
+        /* Container de fundo com gradiente */
+        #login-viewport {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1A5632 0%, #124024 100%);
+            transition: filter 1s ease, opacity 1s ease;
+            z-index: 1;
+        }
+
+        /* Efeito de transição suave */
+        .transitioning #login-viewport {
+            filter: blur(40px) brightness(0.5);
             opacity: 0;
         }
 
-        /* Barra de Controle da Janela (Estilo macOS) */
+        /* Barra de Controle macOS */
         #titlebar {
             display: flex;
             align-items: center;
-            background-color: #202020;
+            background-color: rgba(32, 32, 32, 0.9);
             height: 38px;
             padding: 0 15px;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
+            top: 0; left: 0; width: 100%;
             z-index: 9999;
             -webkit-app-region: drag;
         }
 
-        .window-controls {
-            display: flex;
-            gap: 8px;
-            -webkit-app-region: no-drag;
-        }
-
-        .control-btn {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-        }
-
+        .window-controls { display: flex; gap: 8px; -webkit-app-region: no-drag; }
+        .control-btn { width: 12px; height: 12px; border-radius: 50%; border: none; }
         .control-btn.close { background: #ff5f56; }
         .control-btn.minimize { background: #ffbd2e; }
         .control-btn.maximize { background: #27c93f; }
+        .window-title { flex: 1; text-align: center; color: #888; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
 
-        .window-title {
-            flex: 1;
-            text-align: center;
-            color: #888;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-
-        /* Card de Login */
+        /* Card de Login Profissional */
         .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.98);
             padding: 50px 40px;
-            border-radius: 28px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border-radius: 32px;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
             width: 100%;
             max-width: 420px;
             text-align: center;
-            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-            z-index: 10;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: appleEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        @keyframes appleEntrance {
+            from { transform: scale(0.9) translateY(20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
         }
 
         .login-card img {
-            width: 110px;
-            height: 110px;
+            width: 110px; height: 110px;
             margin-bottom: 24px;
-            border-radius: 24px;
+            border-radius: 26px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-            border: 3px solid white;
         }
 
-        .login-card h1 {
-            font-size: 2rem;
-            font-weight: 800;
-            color: var(--primary);
-            margin-bottom: 8px;
-            letter-spacing: -1px;
-        }
+        .login-card h1 { font-size: 2rem; font-weight: 800; color: var(--primary); margin-bottom: 8px; letter-spacing: -1px; }
+        .login-card h1 span { color: var(--accent); }
+        .login-card p { color: #64748b; margin-bottom: 35px; font-size: 0.95rem; font-weight: 500; }
 
-        .login-card h1 span {
-            color: var(--accent);
-        }
-
-        .login-card p {
-            color: #64748b;
-            margin-bottom: 35px;
-            font-size: 0.95rem;
-            font-weight: 500;
-        }
-
-        .login-form {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-
+        .login-form { display: flex; flex-direction: column; gap: 18px; }
         .login-form input {
             padding: 16px 20px;
             background: #f1f5f9;
             border: 2px solid transparent;
             font-weight: 500;
-            border-radius: 14px;
+            border-radius: 16px;
             width: 100%;
             font-size: 1rem;
             transition: var(--transition);
         }
 
-        .login-form input:focus {
-            border-color: var(--primary);
-            background: white;
-            outline: none;
-            box-shadow: 0 0 0 4px rgba(26, 86, 50, 0.1);
-        }
+        .login-form input:focus { border-color: var(--primary); background: white; outline: none; box-shadow: 0 0 0 4px rgba(26, 86, 50, 0.1); }
 
         .login-form button {
             margin-top: 10px;
@@ -163,172 +115,105 @@
             background: var(--primary);
             color: white;
             border: none;
-            border-radius: 14px;
+            border-radius: 16px;
             font-weight: 700;
             cursor: pointer;
             transition: var(--transition);
             box-shadow: 0 10px 20px -5px rgba(26, 86, 50, 0.3);
         }
 
-        .login-form button:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 15px 25px -5px rgba(26, 86, 50, 0.4);
-        }
+        .login-form button:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(26, 86, 50, 0.4); }
 
-        .login-form button:active {
-            transform: translateY(0);
-        }
-
-        .footer-links {
-            margin-top: 30px;
-            font-size: 0.9rem;
-        }
-
-        .footer-links a {
-            color: #64748b;
-            text-decoration: none;
-            transition: var(--transition);
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .footer-links a:hover {
-            color: var(--primary);
-        }
-
-        /* Apple Style Loading Screen Overlay */
-        #loading-overlay {
+        /* Nova Tela de Transição Apple (Totalmente Nova) */
+        #apple-transition-screen {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: #000;
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 99999;
+            z-index: 10000;
             opacity: 0;
-            transition: opacity 0.6s ease;
+            transition: opacity 0.8s ease;
         }
 
-        #loading-overlay.active {
-            display: flex;
-            opacity: 1;
-        }
+        #apple-transition-screen.active { display: flex; opacity: 1; }
 
-        .apple-logo {
+        .apple-logo-v2 {
             color: white;
-            font-size: 4.5rem;
-            margin-bottom: 50px;
-            animation: pulse 2s infinite ease-in-out;
+            font-size: 5rem;
+            margin-bottom: 60px;
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.2));
+            animation: applePulse 2.5s infinite ease-in-out;
         }
 
-        @keyframes pulse {
-            0% { opacity: 0.4; transform: scale(0.96); }
-            50% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0.4; transform: scale(0.96); }
+        @keyframes applePulse {
+            0% { opacity: 0.4; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.02); }
+            100% { opacity: 0.4; transform: scale(0.98); }
         }
 
-        .progress-bar-container {
-            width: 220px;
-            height: 5px;
-            background: #333;
+        .apple-progress-container {
+            width: 240px;
+            height: 6px;
+            background: #222;
             border-radius: 3px;
             overflow: hidden;
-            position: relative;
         }
 
-        .progress-bar-fill {
+        .apple-progress-fill {
             width: 0%;
             height: 100%;
-            background: white;
-            transition: width 3.2s cubic-bezier(0.1, 0.5, 0.5, 1);
+            background: #fff;
+            transition: width 3.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
         }
 
-        /* Initial Screen Loader */
-        #initial-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--primary);
-            z-index: 100001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.6s ease;
-        }
-
+        .error-msg { color: #ef4444; font-size: 0.85rem; font-weight: 600; margin-top: 15px; display: none; }
+        
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            20% { transform: translateX(-10px); }
-            40% { transform: translateX(10px); }
-            60% { transform: translateX(-10px); }
-            80% { transform: translateX(10px); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
         }
-
-        .shake {
-            animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-        }
-
-        .error-msg {
-            color: #ef4444;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-top: 15px;
-            display: none;
-        }
+        .shake { animation: shake 0.4s ease-in-out; }
     </style>
 </head>
 <body>
-    <!-- Barra de Controle (Visível no Electron) -->
+    <!-- Barra de Controle (Electron) -->
     <div id="titlebar" style="display: none;">
         <div class="window-controls">
-            <button id="closeBtn" class="control-btn close" title="Fechar"></button>
-            <button id="minBtn" class="control-btn minimize" title="Minimizar"></button>
-            <button id="maxBtn" class="control-btn maximize" title="Maximizar"></button>
+            <button id="closeBtn" class="control-btn close"></button>
+            <button id="minBtn" class="control-btn minimize"></button>
+            <button id="maxBtn" class="control-btn maximize"></button>
         </div>
-        <div class="window-title">M&M CEBOLAS - LOGIN</div>
+        <div class="window-title">M&M CEBOLAS - SISTEMA DE GESTÃO</div>
     </div>
     
-    <!-- Loader Inicial (Fade Out) -->
-    <div id="initial-loader">
-        <div style="text-align: center; color: white;">
-             <i class="fas fa-circle-notch fa-spin fa-3x"></i>
+    <!-- Viewport de Login -->
+    <div id="login-viewport">
+        <div class="login-card" id="loginCard">
+            <img src="../Imgs/logo_M&M.jpg" alt="Logo">
+            <h1>M&M <span>CEBOLAS</span></h1>
+            <p>Sistema de Gestão Integrado</p>
+            
+            <form class="login-form" id="formLogin">
+                <input type="text" id="loginUser" placeholder="Usuário" required>
+                <input type="password" id="loginPass" placeholder="Senha" required>
+                <button type="submit" id="btnLogin">ENTRAR NO SISTEMA</button>
+                <div id="loginError" class="error-msg"></div>
+            </form>
         </div>
     </div>
 
-    <!-- Overlay de Carregamento Estilo Apple -->
-    <div id="loading-overlay">
-        <i class="fab fa-apple apple-logo"></i>
-        <div class="progress-bar-container">
-            <div class="progress-bar-fill" id="progress-fill"></div>
+    <!-- Nova Tela de Transição Apple -->
+    <div id="apple-transition-screen">
+        <i class="fab fa-apple apple-logo-v2"></i>
+        <div class="apple-progress-container">
+            <div class="apple-progress-fill" id="apple-progress"></div>
         </div>
     </div>
-
-    <div class="login-card" id="loginCard">
-        <img src="../Imgs/logo_M&M.jpg" alt="Logo">
-        <h1>M&M <span>CEBOLAS</span></h1>
-        <p>Sistema de Gestão Integrado</p>
-        
-        <form class="login-form" id="formLogin">
-            <input type="text" id="loginUser" placeholder="Usuário" required autocomplete="username">
-            <input type="password" id="loginPass" placeholder="Senha" required autocomplete="current-password">
-            <button type="submit" id="btnLogin">ENTRAR NO SISTEMA</button>
-            <div id="loginError" class="error-msg"></div>
-        </form>
-        
-        <div class="footer-links">
-            <a onclick="alert('Contate o administrador para recuperar sua senha.')">Esqueceu sua senha?</a>
-        </div>
-    </div>
-
-    <!-- Áudio de Inicialização -->
-    <audio id="startup-sound" src="../sounds/mac-startup.mp3" preload="auto"></audio>
 
     <script src="../js/login.js"></script>
 </body>
