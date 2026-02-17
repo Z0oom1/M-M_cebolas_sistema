@@ -14,7 +14,8 @@ function createWindow() {
         icon: path.join(__dirname, 'Imgs', 'Logo_M&M_Cebolas.png'),
         webPreferences: {
             nodeIntegration: true,
-            contextIsolation: false
+            contextIsolation: false,
+            autoplayPolicy: 'no-user-gesture-required'
         }
     });
 
