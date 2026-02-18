@@ -284,19 +284,35 @@ body {
 }
 
 /* --- MODAIS --- */
-.modal-overlay {
+.modal-overlay { /* substituir */
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(4px);
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4); 
+    backdrop-filter: blur(10px); 
     display: none;
-    align-items: center;
+    align-items: center; 
     justify-content: center;
-    z-index: 1000;
+    z-index: 10000; 
     padding: 20px;
+    transition: var(--transition);
 }
 .modal-overlay.active { display: flex; }
-.edit-modal { background: white; border-radius: 20px; width: 100%; max-width: 500px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow: hidden; }
+.edit-modal { /* substituir */
+    background: white; 
+    border-radius: 20px; 
+    width: 100%; 
+    max-width: 650px; 
+    max-height: 90vh; 
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); 
+    overflow-y: auto; 
+    position: relative; 
+    display: flex; 
+    flex-direction: column;
+    animation: modalShow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
 /* --- ICON & COLOR SELECTORS --- */
 .icon-option, .color-option {
@@ -334,8 +350,42 @@ body {
 }
 
 /* --- FORMULÁRIOS --- */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 24px; }
-.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-grid { /* substituir */
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 20px; 
+    padding: 24px; 
+    align-items: flex-end;
+}
+.form-group { /* substituir */
+    display: flex; 
+    flex-direction: column; 
+    gap: 8px; 
+    width: 100%;
+}
+@keyframes modalShow { /* adicionar */
+    from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header { /* adicionar */
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fcfcfc;
+}
+
+/* Ajuste de responsividade para evitar quebra em telas menores */
+@media (max-width: 768px) { /* adicionar */
+    .form-grid { 
+        grid-template-columns: 1fr; 
+        gap: 16px; 
+    }
+    .edit-modal {
+        max-width: 95%;
+    }
+}
 .span-2 { grid-column: span 2; }
 label { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); }
 input, select, textarea {

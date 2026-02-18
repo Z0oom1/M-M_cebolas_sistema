@@ -121,6 +121,37 @@ function showSection(id) {
             mainContent.innerHTML = '<div class="panel" style="padding:24px;text-align:center;"><i class="fas fa-exclamation-triangle fa-3x" style="color:var(--danger);margin-bottom:16px;"></i><h3>Erro ao carregar seção</h3><p>Verifique sua conexão ou tente novamente.</p></div>';
         });
 }
+/* adicionar */
+function playLoginSound() {
+    const audio = new Audio('../sounds/mac-startup.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log("Interação necessária para tocar áudio:", err));
+}
+function finalizarLoading() {
+    const loadingScreen = document.getElementById('loading-screen');
+    const mainContent = document.getElementById('main-layout');
+
+    if (loadingScreen) {
+        // Inicia o sumiço visual do loading
+        loadingScreen.style.opacity = '0';
+        loadingScreen.style.transition = 'opacity 0.5s ease';
+
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+            
+            // ✅ ADICIONAR: O som toca APENAS AQUI, no milissegundo que o loading some
+            const audio = new Audio('../sounds/mac-startup.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log("Áudio aguardando interação"));
+
+            if (mainContent) {
+                mainContent.style.display = 'block';
+                mainContent.classList.add('fade-in-system'); // Sua animação de entrada
+            }
+        }, 500); // Tempo exato da transição de opacidade
+    }
+}
+
 
 function initSection(id) {
     const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
