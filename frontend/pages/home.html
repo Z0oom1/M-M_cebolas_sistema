@@ -141,3 +141,154 @@
     </script>
 </body>
 </html>
+
+    <!-- Modal de Edição de Contatos (Cliente/Fornecedor) -->
+    <div id="modal-edit" class="modal-overlay">
+        <div class="edit-modal">
+            <div class="panel-header" style="background: var(--primary); color: white;">
+                <h3 id="modal-title" style="margin: 0;">Novo Cadastro</h3>
+                <button onclick="closeEditModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+            </div>
+            <form onsubmit="saveCadastro(event)" class="form-grid">
+                <input type="hidden" id="edit-type">
+                <input type="hidden" id="edit-id">
+                <div class="form-group">
+                    <label id="label-doc-type">Tipo de Documento</label>
+                    <select id="edit-doc-type" onchange="updateDocMask()">
+                        <option value="CNPJ">CNPJ (Empresa)</option>
+                        <option value="CPF">CPF (Pessoa Física)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label id="label-doc">CNPJ</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="edit-doc" placeholder="00.000.000/0000-00" required style="flex: 1;">
+                        <button type="button" class="btn-primary" onclick="consultarDocumento()" title="Consultar dados automaticamente">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group span-2">
+                    <label>Nome / Razão Social</label>
+                    <input type="text" id="edit-nome" required placeholder="Nome completo ou Razão Social">
+                </div>
+                <div class="form-group">
+                    <label>Inscrição Estadual (Opcional)</label>
+                    <input type="text" id="edit-ie" placeholder="Isento ou Número">
+                </div>
+                <div class="form-group">
+                    <label>Telefone / WhatsApp</label>
+                    <input type="text" id="edit-tel" placeholder="(00) 00000-0000">
+                </div>
+                <div class="form-group span-2">
+                    <label>E-mail</label>
+                    <input type="email" id="edit-email" placeholder="email@exemplo.com">
+                </div>
+                <div class="form-group span-2">
+                    <label>Endereço Completo</label>
+                    <input type="text" id="edit-end" placeholder="Rua, Número, Bairro, Cidade - UF">
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 10px;" class="span-2">
+                    <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Cadastro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Produto -->
+    <div id="modal-produto" class="modal-overlay">
+        <div class="edit-modal">
+            <div class="panel-header" style="background: var(--primary); color: white;">
+                <h3 id="produto-modal-title" style="margin: 0;">Novo Produto</h3>
+                <button onclick="closeProdutoModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+            </div>
+            <form onsubmit="saveProduto(event)" class="form-grid">
+                <input type="hidden" id="prod-id">
+                <input type="hidden" id="prod-icone" value="fa-box">
+                <input type="hidden" id="prod-cor" value="#1A5632">
+                
+                <div class="form-group span-2">
+                    <label>Nome da Variedade</label>
+                    <input type="text" id="prod-nome" required placeholder="Ex: Cebola Amarela Especial">
+                </div>
+                <div class="form-group">
+                    <label>NCM</label>
+                    <input type="text" id="prod-ncm" placeholder="07031011">
+                </div>
+                <div class="form-group">
+                    <label>Preço Base (Venda)</label>
+                    <input type="number" step="0.01" id="prod-preco" placeholder="0.00">
+                </div>
+                
+                <div class="form-group span-2">
+                    <label>Escolha um Ícone</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
+                        <div class="icon-option" onclick="selectIcon(this, 'fa-box')"><i class="fas fa-box"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this, 'fa-seedling')"><i class="fas fa-seedling"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this, 'fa-leaf')"><i class="fas fa-leaf"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this, 'fa-shopping-basket')"><i class="fas fa-shopping-basket"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this, 'fa-circle')"><i class="fas fa-circle"></i></div>
+                    </div>
+                </div>
+
+                <div class="form-group span-2">
+                    <label>Escolha uma Cor</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
+                        <div class="color-option" onclick="selectColor(this, '#1A5632')" style="background: #1A5632;"></div>
+                        <div class="color-option" onclick="selectColor(this, '#E89C31')" style="background: #E89C31;"></div>
+                        <div class="color-option" onclick="selectColor(this, '#dc2626')" style="background: #dc2626;"></div>
+                        <div class="color-option" onclick="selectColor(this, '#2563eb')" style="background: #2563eb;"></div>
+                        <div class="color-option" onclick="selectColor(this, '#7c3aed')" style="background: #7c3aed;"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 10px;" class="span-2">
+                    <button type="button" class="btn-danger" onclick="closeProdutoModal()" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Produto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Busca de Contatos -->
+    <div id="modal-search" class="modal-overlay">
+        <div class="edit-modal" style="max-width: 400px;">
+            <div class="panel-header">
+                <h4 style="margin: 0;">Selecionar Contato</h4>
+                <button onclick="closeSearchModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding: 15px;">
+                <input type="hidden" id="search-type">
+                <input type="text" id="search-input" placeholder="Buscar..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);" oninput="renderSearchList(document.getElementById('search-type').value, this.value)">
+                <div id="search-list" style="margin-top: 15px; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay de Confirmação (NFe/Sucesso) -->
+    <div id="confirmation-overlay" class="confirmation-overlay">
+        <div class="check-container">
+            <svg class="check-svg" viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="25" fill="none" stroke="#10b981" stroke-width="2"/>
+                <path class="check-path" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Lixeira para Animação de Exclusão -->
+    <div id="trash-container" class="trash-animation-container">
+        <i class="fas fa-trash-alt"></i>
+    </div>
+
+    <!-- Áudios do Sistema -->
+    <div id="system-sounds" style="display: none;">
+        <!-- Som de abertura (Startup) -->
+        <audio id="sound-startup" src="../sounds/mac-startup.mp3"></audio>
+        <!-- Som de confirmação (Sucesso) -->
+        <audio id="sound-success" src="../sounds/success-chime.mp3"></audio>
+        <!-- Som de lixeira (Trash) -->
+        <audio id="sound-trash" src="../sounds/trash-empty.mp3"></audio>
+    </div>

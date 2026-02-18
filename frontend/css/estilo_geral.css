@@ -522,3 +522,110 @@ tr:hover td { background-color: #f8fafc; }
 @keyframes appleSpin {
     to { transform: rotate(360deg); }
 }
+
+/* --- ANIMAÇÕES SOLICITADAS --- */
+
+/* Overlay de Confirmação com Blur */
+.confirmation-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(15px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 11000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+.confirmation-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Check Verde Animado */
+.check-container {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    transform: scale(0.5);
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.confirmation-overlay.active .check-container {
+    transform: scale(1);
+}
+
+.check-svg {
+    width: 80px;
+    height: 80px;
+}
+
+.check-path {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: drawCheck 0.8s ease-in-out forwards 0.3s;
+}
+
+@keyframes drawCheck {
+    to { stroke-dashoffset: 0; }
+}
+
+/* Lixeira Vermelha Animada */
+.trash-animation-container {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    width: 80px;
+    height: 80px;
+    background: #fee2e2;
+    border: 3px solid #ef4444;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: #ef4444;
+    z-index: 10500;
+    transform: translateY(150px);
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+}
+
+.trash-animation-container.active {
+    transform: translateY(0);
+}
+
+.trash-animation-container.shake {
+    animation: trashShake 0.4s ease-in-out;
+}
+
+@keyframes trashShake {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* Arquivo voando para a lixeira */
+.flying-file {
+    position: fixed;
+    width: 40px;
+    height: 50px;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    z-index: 10600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    pointer-events: none;
+}

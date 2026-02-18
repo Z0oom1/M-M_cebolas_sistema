@@ -37,6 +37,11 @@ window.onload = function() {
     loadDataFromAPI();
     // showSection('dashboard'); // Removido para permitir animação de entrada suave
     setupSelectors();
+    
+    // Som de abertura ao entrar no sistema (Startup)
+    setTimeout(() => {
+        playSystemSound('startup');
+    }, 1000);
 };
 
 function checkEnvironment() {
@@ -391,6 +396,7 @@ async function saveCadastro(event) {
 
 async function deleteCadastro(type, id) {
     if (!confirm(`Excluir este ${type} permanentemente?`)) return;
+    animateTrash(`deleteCadastro('${type}', ${id})`);
     const res = await fetchWithAuth(`/cadastros/${type}/${id}`, { method: 'DELETE' });
     if (res && res.ok) { 
         showSuccess("Cadastro removido!"); 
@@ -510,6 +516,7 @@ async function gerarNFe(vendaId, destinatario, itens) {
         body: JSON.stringify({ venda_id: vendaId, destinatario, itens })
     });
     if (res && res.ok) {
+        showAnimatedCheck(); // Animação bonita de check verde com blur
         showSuccess("NF-e gerada com sucesso!");
         showSection('nfe');
     } else {
@@ -601,6 +608,7 @@ function renderStockTable() {
 
 async function deleteMovimentacao(id) {
     if (!confirm("Excluir este registro permanentemente?")) return;
+    animateTrash(`deleteMovimentacao(${id})`);
     const res = await fetchWithAuth(`/movimentacoes/${id}`, { method: 'DELETE' });
     if (res && res.ok) { 
         showSuccess("Registro excluído!"); 
@@ -655,6 +663,7 @@ async function loadNFeTable() {
 
 async function deleteNFe(id) {
     if (!confirm("Deseja realmente remover esta NFe? Ela não aparecerá mais para os usuários.")) return;
+    animateTrash(`deleteNFe(${id})`);
     const res = await fetchWithAuth(`/nfe/${id}`, { method: 'DELETE' });
     if (res && res.ok) {
         showSuccess("NFe removida com sucesso!");
@@ -1077,3 +1086,85 @@ async function resetSystem() {
         window.location.reload();
     }
 }
+/** --- FUNÇÕES DE ANIMAÇÃO E SOM (SOLICITADAS) --- */
+
+function playSystemSound(id) {
+    const sound = document.getElementById(`sound-${id}`);
+    if (sound) {
+        sound.currentTime = 0;
+        sound.play().catch(err => console.warn("Som bloqueado:", err));
+    }
+}
+
+function showAnimatedCheck() {
+    const overlay = document.getElementById('confirmation-overlay');
+    if (!overlay) return;
+    
+    overlay.classList.add('active');
+    playSystemSound('success');
+    
+    setTimeout(() => {
+        overlay.classList.remove('active');
+    }, 2500);
+}
+
+function animateTrash(elementId) {
+    const trash = document.getElementById('trash-container');
+    const sourceEl = document.querySelector(`[onclick*="${elementId}"]`) || document.getElementById(elementId);
+    
+    if (!trash) return;
+
+    // 1. Mostrar lixeira
+    trash.classList.add('active');
+    
+    // 2. Criar "arquivo" voador se tivermos o elemento de origem
+    if (sourceEl) {
+        const rect = sourceEl.getBoundingClientRect();
+        const trashRect = trash.getBoundingClientRect();
+        
+        const file = document.createElement('div');
+        file.className = 'flying-file';
+        file.innerHTML = '<i class="fas fa-file-alt"></i>';
+        file.style.left = `${rect.left}px`;
+        file.style.top = `${rect.top}px`;
+        document.body.appendChild(file);
+        
+        // Animar para a lixeira
+        setTimeout(() => {
+            file.style.transition = 'all 0.8s cubic-bezier(0.55, 0, 0.1, 1)';
+            file.style.left = `${trashRect.left + 20}px`;
+            file.style.top = `${trashRect.top + 10}px`;
+            file.style.transform = 'scale(0.1) rotate(360deg)';
+            file.style.opacity = '0';
+        }, 50);
+        
+        setTimeout(() => file.remove(), 900);
+    }
+    
+    // 3. Efeito de impacto na lixeira e som
+    setTimeout(() => {
+        trash.classList.add('shake');
+        playSystemSound('trash');
+        setTimeout(() => trash.classList.remove('shake'), 400);
+    }, 800);
+    
+    // 4. Esconder lixeira
+    setTimeout(() => {
+        trash.classList.remove('active');
+    }, 2500);
+}
+
+// Interceptar funções existentes para adicionar animações
+const originalShowSuccess = showSuccess;
+showSuccess = function(msg) {
+    originalShowSuccess(msg);
+    if (msg.toLowerCase().includes('sucesso') || msg.toLowerCase().includes('salvo') || msg.toLowerCase().includes('gerada')) {
+        // Se for NFe ou algo importante, mostra o check grande
+        if (msg.toLowerCase().includes('nf-e') || msg.toLowerCase().includes('venda')) {
+            showAnimatedCheck();
+        }
+    }
+    if (msg.toLowerCase().includes('excluído') || msg.toLowerCase().includes('removido')) {
+        // A animação de lixeira é chamada manualmente nos deletes para pegar o ID do elemento
+    }
+};
