@@ -1,7 +1,12 @@
 // Electron: app desktop consome a API da VPS (https://portalmmcebolas.com.br) quando não for localhost.
 // O frontend em script.js define API_URL dinamicamente (file:// → produção; localhost → :3000).
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
+
+// Configuração básica do autoUpdater
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -49,8 +54,37 @@ function createWindow() {
         ipcMain.removeAllListeners('close-app');
     });
 
-    // (Opcional) Abre o DevTools
-    // win.webContents.openDevTools(); 
+    // --- LÓGICA DE AUTO-UPDATE ---
+    
+    autoUpdater.on('update-available', () => {
+        dialog.showMessageBox({
+            type: 'info',
+            title: 'Atualização disponível',
+            message: 'Uma nova versão está disponível. O download começará em segundo plano.',
+            buttons: ['OK']
+        });
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+        dialog.showMessageBox({
+            type: 'info',
+            title: 'Atualização pronta',
+            message: 'A atualização foi baixada e será instalada ao reiniciar o aplicativo.',
+            buttons: ['Reiniciar agora', 'Depois'],
+            defaultId: 0
+        }).then((result) => {
+            if (result.response === 0) {
+                autoUpdater.quitAndInstall();
+            }
+        });
+    });
+
+    autoUpdater.on('error', (err) => {
+        console.error('Erro no auto-updater:', err);
+    });
+
+    // Verificar atualizações após a janela ser criada
+    autoUpdater.checkForUpdatesAndNotify();
 }
 
 app.whenReady().then(() => {

@@ -1,14 +1,60 @@
 {
-    "name": "sistema-cebolas",
-    "version": "0.1.2",
-    "description": "Sistema de Controle de Estoque",
-    "main": "frontend/main.js",
-    "scripts": {
-      "start": "electron ."
+  "name": "sistema-cebolas",
+  "version": "0.1.2",
+  "description": "Sistema de Controle de Estoque M&M Cebolas",
+  "main": "frontend/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder build",
+    "build:win": "electron-builder build --win",
+    "build:mac": "electron-builder build --mac",
+    "publish": "electron-builder build --publish always"
+  },
+  "author": "M&M Cebolas",
+  "license": "ISC",
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.mmcebolas.sistema",
+    "productName": "M&M Cebolas",
+    "directories": {
+      "output": "dist"
     },
-    "author": "",
-    "license": "ISC",
-    "devDependencies": {
-      "electron": "latest"
+    "files": [
+      "frontend/**/*",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Z0oom1",
+        "repo": "M-M_cebolas_sistema"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "frontend/Imgs/Logo_M&M_Cebolas.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "installerIcon": "frontend/Imgs/Logo_M&M_Cebolas.png",
+      "uninstallerIcon": "frontend/Imgs/Logo_M&M_Cebolas.png",
+      "shortcutName": "M&M Cebolas"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "frontend/Imgs/Logo_M&M_Cebolas.png"
     }
   }
+}
