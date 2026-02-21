@@ -811,6 +811,10 @@ function closeSearchModal() {
 }
 
 async function loadConfigData() {
+    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userRole = userData.role || (userData.user ? userData.user.role : null);
+    const isAdmin = userRole === 'admin';
+
     const res = await fetchWithAuth('/configs');
     if (res && res.ok) {
         const configs = await res.json();
@@ -823,10 +827,14 @@ async function loadConfigData() {
             if (passInput) passInput.value = configs.cert_password;
         }
     }
+
+    // Esconder seção de modo NFe se não for admin
+    const nfeModoPanel = document.querySelector('.panel:has(input[name="nfe_modo"])');
+    if (nfeModoPanel && !isAdmin) {
+        nfeModoPanel.style.display = 'none';
+    }
     
-    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
-    const userRole = userData.role || (userData.user ? userData.user.role : null);
-    if (userRole === 'admin') {
+    if (isAdmin) {
         const listUser = document.getElementById('list-usuarios');
         if (listUser) {
             listUser.innerHTML = '';
@@ -1092,14 +1100,6 @@ async function consultarDocumento() {
     }
 }
 
-async function updateNFeModo(modo) {
-    const res = await fetchWithAuth('/configs', {
-        method: 'POST',
-        body: JSON.stringify({ chave: 'nfe_modo', valor: modo })
-    });
-    if (res && res.ok) showSuccess(`Modo NF-e alterado para ${modo.toUpperCase()}`);
-}
-
 async function saveCertPassword() {
     const password = document.getElementById('cert-password').value;
     const res = await fetchWithAuth('/configs', {
@@ -1107,6 +1107,18 @@ async function saveCertPassword() {
         body: JSON.stringify({ chave: 'cert_password', valor: password })
     });
     if (res && res.ok) showSuccess("Senha do certificado salva!");
+}
+
+async function updateNFeModo(modo) {
+    const res = await fetchWithAuth('/configs', {
+        method: 'POST',
+        body: JSON.stringify({ chave: 'nfe_modo', valor: modo })
+    });
+    if (res && res.ok) {
+        showSuccess(`Ambiente alterado para ${modo.toUpperCase()}!`);
+    } else {
+        showError("Erro ao alterar ambiente.");
+    }
 }
 
 async function resetSystem() {
