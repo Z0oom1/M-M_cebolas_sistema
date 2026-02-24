@@ -15,7 +15,7 @@ let stockChart = null;
 
 // API base: Web e Electron usam o mesmo servidor (portalmmcebolas.com) para dados partilhados.
 // Só localhost no browser usa :3000 para desenvolvimento local.
-const API_URL = (function() {
+const API_URL = (function () {
     const host = window.location.hostname;
     const isElectron = window.location.protocol === 'file:' ||
         (typeof process !== 'undefined' && process.versions && process.versions.electron);
@@ -40,13 +40,13 @@ function getLoginUrl() {
     return '/pages/login.html';
 }
 
-window.onload = function() {
+window.onload = function () {
     checkLogin();
     checkEnvironment();
     loadDataFromAPI();
     // showSection('dashboard'); // Removido para permitir animação de entrada suave
     setupSelectors();
-    
+
     // Som de abertura ao entrar no sistema (Startup)
     setTimeout(() => {
         playSystemSound('startup');
@@ -116,10 +116,10 @@ function showSection(id) {
     document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
     const activeBtn = document.querySelector(`.nav-item[onclick*="${id}"]`);
     if (activeBtn) activeBtn.classList.add('active');
-    
+
     const mainContent = document.getElementById('main-content');
     mainContent.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;"><div class="apple-loader-modern"></div></div>';
-    
+
     fetch(`sections/${id}.html`)
         .then(res => res.text())
         .then(html => {
@@ -147,7 +147,7 @@ function finalizarLoading() {
 
         setTimeout(() => {
             loadingScreen.style.display = 'none';
-            
+
             // ✅ ADICIONAR: O som toca APENAS AQUI, no milissegundo que o loading some
             const audio = new Audio('../sounds/mac-startup.mp3');
             audio.volume = 0.5;
@@ -186,17 +186,17 @@ function initSection(id) {
     }
     if (id === 'estoque') renderStockTable();
     if (id === 'nfe') loadNFeTable();
-    
+
     if (id === 'config') {
         loadConfigData();
         if (isAdmin) {
             loadLogs();
         } else {
             const adminSelectors = [
-                '#admin-users-panel', 
+                '#admin-users-panel',
                 '#admin-logs-panel',
-                '#admin-entities-panel', 
-                '#admin-products-panel', 
+                '#admin-entities-panel',
+                '#admin-products-panel',
                 '#admin-danger-panel'
             ];
             adminSelectors.forEach(selector => {
@@ -237,9 +237,9 @@ function updateDashboardKPIs(stockMap) {
     const dPro = document.getElementById('dash-profit');
     const dDate = document.getElementById('current-date');
 
-    if (dRev) dRev.innerText = `R$ ${revenue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (dExp) dExp.innerText = `R$ ${expenses.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (dPro) dPro.innerText = `R$ ${(revenue - expenses).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (dRev) dRev.innerText = `R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    if (dExp) dExp.innerText = `R$ ${expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    if (dPro) dPro.innerText = `R$ ${(revenue - expenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     if (dDate) dDate.innerText = now.toLocaleDateString('pt-BR');
 }
 
@@ -247,12 +247,12 @@ function renderRecentTransactions() {
     const tbody = document.getElementById('recent-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (appData.transactions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhuma movimentação registrada</td></tr>';
         return;
     }
-    
+
     appData.transactions.slice(0, 5).forEach(t => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -260,7 +260,7 @@ function renderRecentTransactions() {
             <td>${t.produto}</td>
             <td>${t.descricao}</td>
             <td>${t.quantidade}</td>
-            <td>R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td>R$ ${t.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
             <td>${new Date(t.data).toLocaleDateString('pt-BR')}</td>
         `;
         tbody.appendChild(tr);
@@ -271,19 +271,19 @@ function renderProductShowcase(section) {
     const container = document.getElementById('product-showcase');
     if (!container) return;
     container.innerHTML = '';
-    
+
     if (appData.products.length === 0) {
         container.innerHTML = '<div style="grid-column:span 4;text-align:center;padding:40px;color:var(--text-muted);"><i class="fas fa-info-circle fa-2x"></i><p style="margin-top:10px;">Nenhum produto cadastrado no sistema.</p></div>';
         return;
     }
-    
+
     const stockMap = calculateStock();
 
     appData.products.forEach(p => {
         const qty = stockMap[p.nome] || 0;
         const card = document.createElement('div');
         card.className = `product-card ${qty <= 0 && section === 'saida' ? 'disabled' : ''}`;
-        
+
         // Lógica para alternar entre SVG personalizado e ícone FontAwesome
         let iconHTML = '';
         if (p.icone === 'onion') {
@@ -294,7 +294,7 @@ function renderProductShowcase(section) {
         } else {
             iconHTML = `<i class="fas ${p.icone || 'fa-box'}"></i>`;
         }
-    
+
         card.innerHTML = `
             <div class="product-icon-circle" style="background: ${p.cor}20; color: ${p.cor}">
                 ${iconHTML}
@@ -302,7 +302,7 @@ function renderProductShowcase(section) {
             <div class="product-name">${p.nome}</div>
             <div class="product-stock">${qty} Cx</div>
         `;
-        
+
         if (!(qty <= 0 && section === 'saida')) {
             card.onclick = (event) => selectProduct(p, section, event);
         }
@@ -313,7 +313,7 @@ function renderProductShowcase(section) {
 function selectProduct(p, section, event) {
     const input = document.getElementById(section === 'entrada' ? 'entry-product' : 'exit-product');
     if (input) input.value = p.nome;
-    
+
     const priceInput = document.getElementById(section === 'entrada' ? 'entry-value' : 'exit-value');
     if (priceInput && p.preco_venda) {
         priceInput.value = p.preco_venda;
@@ -338,7 +338,7 @@ function loadCadastros() {
     const userRole = userData.role || (userData.user ? userData.user.role : null);
     const isAdmin = userRole === 'admin';
     const listCli = document.getElementById('list-clientes'), listForn = document.getElementById('list-fornecedores'), listProd = document.getElementById('list-produtos');
-    
+
     if (listCli) {
         listCli.innerHTML = '';
         appData.clients.forEach(c => {
@@ -366,7 +366,7 @@ function loadCadastros() {
             const actions = isAdmin ? `<td><button class="btn-icon" onclick='openProdutoModal(${JSON.stringify(p)})'><i class="fas fa-edit"></i></button>
                 <button class="btn-icon text-danger" onclick="deleteCadastro('produto', ${p.id})"><i class="fas fa-trash"></i></button></td>` : '<td>-</td>';
             tr.innerHTML = `<td><i class="fas ${p.icone || 'fa-box'}" style="color: ${p.cor}"></i> ${p.nome}</td><td>${p.ncm}</td>
-                <td>R$ ${p.preco_venda.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>${actions}`;
+                <td>R$ ${p.preco_venda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>${actions}`;
             listProd.appendChild(tr);
         });
     }
@@ -378,7 +378,7 @@ function openEditModal(type, data = null) {
     modal.classList.add('active');
     document.getElementById('edit-type').value = type;
     document.getElementById('modal-title').innerText = data ? `Editar ${type}` : `Novo ${type}`;
-    
+
     if (data) {
         document.getElementById('edit-id').value = data.id;
         document.getElementById('edit-nome').value = data.nome;
@@ -419,10 +419,10 @@ async function saveCadastro(event) {
             method: 'POST',
             body: JSON.stringify(data)
         });
-        if (res && res.ok) { 
-            showSuccess(`${type === 'cliente' ? 'Cliente' : 'Fornecedor'} salvo com sucesso!`); 
-            closeEditModal(); 
-            await loadDataFromAPI(); 
+        if (res && res.ok) {
+            showSuccess(`${type === 'cliente' ? 'Cliente' : 'Fornecedor'} salvo com sucesso!`);
+            closeEditModal();
+            await loadDataFromAPI();
             if (currentSectionId === 'config') loadConfigData();
             if (currentSectionId === 'cadastro') loadCadastros();
         } else {
@@ -438,10 +438,10 @@ async function deleteCadastro(type, id) {
     if (!confirm(`Excluir este ${type} permanentemente?`)) return;
     animateTrash(`deleteCadastro('${type}', ${id})`);
     const res = await fetchWithAuth(`/cadastros/${type}/${id}`, { method: 'DELETE' });
-    if (res && res.ok) { 
-        showSuccess("Cadastro removido!"); 
-        await loadDataFromAPI(); 
-        if (currentSectionId === 'cadastro') loadCadastros(); 
+    if (res && res.ok) {
+        showSuccess("Cadastro removido!");
+        await loadDataFromAPI();
+        if (currentSectionId === 'cadastro') loadCadastros();
         if (currentSectionId === 'config') loadConfigData();
     } else {
         const err = await res.json();
@@ -454,7 +454,7 @@ function openProdutoModal(data = null) {
     if (!modal) return;
     modal.classList.add('active');
     document.getElementById('produto-modal-title').innerText = data ? "Editar Produto" : "Novo Produto";
-    
+
     if (data) {
         document.getElementById('prod-id').value = data.id;
         document.getElementById('prod-nome').value = data.nome;
@@ -462,7 +462,7 @@ function openProdutoModal(data = null) {
         document.getElementById('prod-preco').value = data.preco_venda;
         document.getElementById('prod-icone').value = data.icone;
         document.getElementById('prod-cor').value = data.cor;
-        
+
         // Atualiza a interface visual das opções
         document.querySelectorAll('.icon-option').forEach(opt => {
             opt.classList.toggle('active', opt.getAttribute('onclick').includes(`'${data.icone}'`));
@@ -473,7 +473,7 @@ function openProdutoModal(data = null) {
     } else {
         document.getElementById('prod-id').value = '';
         document.querySelector('#modal-produto form').reset();
-        
+
         // Define padrões para novo produto
         const firstIcon = document.querySelector('.icon-option');
         const firstColor = document.querySelector('.color-option');
@@ -525,10 +525,15 @@ async function saveSaida(event) { await saveMovimentacao('saida', event); }
 async function saveMovimentacao(type, event) {
     event.preventDefault();
     const prefix = type === 'entrada' ? 'entry' : 'exit';
+
+    // Captura o valor do select (CX ou KG)
+    const unidadeSelecionada = document.getElementById(`${prefix}-unit`).value;
+
     const data = {
         tipo: type,
         produto: document.getElementById(`${prefix}-product`).value,
         quantidade: parseInt(document.getElementById(`${prefix}-qty`).value),
+        unidade: unidadeSelecionada, // Campo crucial adicionado aqui
         valor: parseFloat(document.getElementById(`${prefix}-value`).value),
         descricao: document.getElementById(`${prefix}-desc`).value,
         data: document.getElementById(`${prefix}-date`).value || new Date().toISOString()
@@ -539,9 +544,16 @@ async function saveMovimentacao(type, event) {
         showSuccess("Movimentação registrada!");
         await loadDataFromAPI();
         event.target.reset();
+
         if (type === 'saida' && confirm("Deseja emitir NF-e para esta venda?")) {
             const result = await res.json();
-            gerarNFe(result.id, data.descricao, [{ produto: data.produto, qtd: data.quantidade, valor: data.valor }]);
+            // Passamos a unidade para a função da NF-e
+            gerarNFe(result.id, data.descricao, [{
+                produto: data.produto,
+                qtd: data.quantidade,
+                valor: data.valor,
+                unidade: data.unidade // Passa KG ou CX para a nota
+            }]);
         }
     } else {
         const err = await res.json();
@@ -574,9 +586,9 @@ function updateFinanceKPIs() {
     const finIn = document.getElementById('fin-total-in');
     const finOut = document.getElementById('fin-total-out');
     const finBal = document.getElementById('fin-balance');
-    if (finIn) finIn.innerText = `R$ ${totalRevenue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (finOut) finOut.innerText = `R$ ${totalExpenses.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (finBal) finBal.innerText = `R$ ${(totalRevenue - totalExpenses).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (finIn) finIn.innerText = `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    if (finOut) finOut.innerText = `R$ ${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    if (finBal) finBal.innerText = `R$ ${(totalRevenue - totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 }
 
 async function saveDespesa(event) {
@@ -589,10 +601,10 @@ async function saveDespesa(event) {
         descricao: document.getElementById('desp-desc').value,
         data: document.getElementById('desp-data').value || new Date().toISOString()
     };
-const res = await fetchWithAuth('/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
+    const res = await fetchWithAuth('/movimentacoes', { method: 'POST', body: JSON.stringify(data) });
     if (res && res.ok) {
         showSuccess("Despesa lançada!");
-        await loadDataFromAPI(); 
+        await loadDataFromAPI();
         event.target.reset();
     }
 }
@@ -601,21 +613,21 @@ function renderFinanceTable() {
     const tbody = document.getElementById('finance-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     const financeData = appData.transactions.filter(t => t.tipo === 'saida' || t.tipo === 'entrada' || t.tipo === 'despesa');
-    
+
     if (financeData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum lançamento financeiro</td></tr>';
         return;
     }
-    
+
     financeData.forEach(t => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${new Date(t.data).toLocaleDateString('pt-BR')}</td>
             <td><span class="badge ${t.tipo}">${t.tipo === 'entrada' ? 'COMPRA' : (t.tipo === 'saida' ? 'VENDA' : t.tipo.toUpperCase())}</span></td>
             <td>${t.descricao}</td>
-            <td style="color: ${t.tipo === 'saida' ? 'var(--primary)' : 'var(--danger)'}">R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="color: ${t.tipo === 'saida' ? 'var(--primary)' : 'var(--danger)'}">R$ ${t.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -625,23 +637,22 @@ function renderStockTable() {
     const tbody = document.getElementById('full-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (appData.transactions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum registro de movimentação encontrado</td></tr>';
         return;
     }
-    
+
     appData.transactions.forEach(t => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${new Date(t.data).toLocaleDateString('pt-BR')}</td>
-            <td><span class="badge ${t.tipo}">${t.tipo === 'entrada' ? 'COMPRA' : (t.tipo === 'saida' ? 'VENDA' : t.tipo.toUpperCase())}</span></td>
-            <td>${t.produto}</td>
-            <td>${t.descricao}</td>
-            <td>${t.quantidade}</td>
-            <td>R$ ${t.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-            <td style="text-align: right;"><button class="btn-icon text-danger" onclick="deleteMovimentacao(${t.id})"><i class="fas fa-trash"></i></button></td>
-        `;
+    <td>${new Date(t.data).toLocaleDateString('pt-BR')}</td>
+    <td><span class="badge ${t.tipo}">${t.tipo === 'entrada' ? 'COMPRA' : 'VENDA'}</span></td>
+    <td>${t.produto}</td>
+    <td>${t.descricao}</td>
+    <td>${t.quantidade} ${t.unidade || 'CX'}</td> <td>R$ ${t.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+    <td style="text-align: right;"><button class="btn-icon text-danger" onclick="deleteMovimentacao(${t.id})"><i class="fas fa-trash"></i></button></td>
+`;
         tbody.appendChild(tr);
     });
 }
@@ -650,9 +661,9 @@ async function deleteMovimentacao(id) {
     if (!confirm("Excluir este registro permanentemente?")) return;
     animateTrash(`deleteMovimentacao(${id})`);
     const res = await fetchWithAuth(`/movimentacoes/${id}`, { method: 'DELETE' });
-    if (res && res.ok) { 
-        showSuccess("Registro excluído!"); 
-        await loadDataFromAPI(); 
+    if (res && res.ok) {
+        showSuccess("Registro excluído!");
+        await loadDataFromAPI();
         if (currentSectionId === 'estoque') renderStockTable();
         if (currentSectionId === 'dashboard') renderRecentTransactions();
     }
@@ -669,24 +680,24 @@ function debounceSearchNFe() {
 async function loadNFeTable() {
     const tbody = document.getElementById('nfe-table-body');
     if (!tbody) return;
-    
+
     const searchInput = document.getElementById('nfe-search');
     const searchTerm = searchInput ? searchInput.value : '';
-    
+
     const res = await fetchWithAuth(`/nfe${searchTerm ? '?search=' + encodeURIComponent(searchTerm) : ''}`);
     if (!res) return;
     const data = await res.json();
     tbody.innerHTML = '';
-    
+
     const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
     const userRole = userData.role || (userData.user ? userData.user.role : null);
     const isAdmin = userRole === 'admin';
-    
+
     if (data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 5}" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhuma nota fiscal encontrada</td></tr>`;
         return;
     }
-    
+
     data.forEach(n => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${new Date(n.data_emissao).toLocaleDateString('pt-BR')}</td><td>#${n.venda_id}</td>
@@ -763,7 +774,7 @@ async function downloadPDF(id) {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) throw new Error("Erro ao baixar PDF");
-        
+
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -783,7 +794,7 @@ function openSearchModal(type) {
     const modal = document.getElementById('modal-search');
     const input = document.getElementById('search-input');
     const typeInput = document.getElementById('search-type');
-    
+
     if (modal) modal.classList.add('active');
     if (typeInput) typeInput.value = type;
     if (input) {
@@ -799,7 +810,7 @@ function renderSearchList(type, filter) {
     if (!list) return;
     list.innerHTML = '';
     const items = type === 'cliente' ? appData.clients : appData.suppliers;
-    
+
     items.filter(i => i.nome.toLowerCase().includes(filter.toLowerCase())).forEach(i => {
         const div = document.createElement('div');
         div.className = 'search-item';
@@ -814,9 +825,9 @@ function renderSearchList(type, filter) {
     });
 }
 
-function closeSearchModal() { 
+function closeSearchModal() {
     const modal = document.getElementById('modal-search');
-    if (modal) modal.classList.remove('active'); 
+    if (modal) modal.classList.remove('active');
 }
 
 async function loadConfigData() {
@@ -842,7 +853,7 @@ async function loadConfigData() {
     if (nfeModoPanel && !isAdmin) {
         nfeModoPanel.style.display = 'none';
     }
-    
+
     if (isAdmin) {
         const listUser = document.getElementById('list-usuarios');
         if (listUser) {
@@ -888,7 +899,7 @@ async function loadConfigData() {
             appData.products.forEach(p => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `<td><i class="fas ${p.icone || 'fa-box'}" style="color: ${p.cor}"></i> ${p.nome}</td>
-                    <td>R$ ${p.preco_venda.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                    <td>R$ ${p.preco_venda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td style="text-align: right;">
                         <button class="btn-icon" onclick='openProdutoModal(${JSON.stringify(p)})'><i class="fas fa-edit"></i></button>
                         <button class="btn-icon text-danger" onclick="deleteCadastro('produto', ${p.id})"><i class="fas fa-trash"></i></button></td>`;
@@ -902,7 +913,7 @@ async function fetchWithAuth(url, options = {}) {
     const token = localStorage.getItem('token');
     const mmUser = localStorage.getItem('mm_user');
     if (!token || !mmUser) { window.location.href = getLoginUrl(); return; }
-    
+
     options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
     if (options.body && !options.headers['Content-Type']) {
         options.headers['Content-Type'] = 'application/json';
@@ -995,7 +1006,7 @@ function openUsuarioModal(data = null) {
     if (!modal) return;
     modal.classList.add('active');
     document.getElementById('user-modal-title').innerText = data ? "Editar Usuário" : "Novo Usuário";
-    
+
     if (data) {
         document.getElementById('user-id').value = data.id;
         document.getElementById('user-label').value = data.label;
@@ -1049,7 +1060,7 @@ async function deleteUsuario(id) {
 async function loadLogs() {
     const listLogs = document.getElementById('list-logs');
     if (!listLogs) return;
-    
+
     const res = await fetchWithAuth('/logs');
     if (res && res.ok) {
         const logs = await res.json();
@@ -1079,14 +1090,14 @@ function updateDocMask() {
 async function consultarDocumento() {
     const doc = document.getElementById('edit-doc').value.replace(/\D/g, '');
     const type = document.getElementById('edit-doc-type').value;
-    
+
     if (!doc) {
         showError("Digite um documento para consultar.");
         return;
     }
 
     showSuccess("Consultando documento...");
-    
+
     try {
         const res = await fetchWithAuth(`/consultar/${type}/${doc}`);
         if (res && res.ok) {
@@ -1151,10 +1162,10 @@ function playSystemSound(id) {
 function showAnimatedCheck() {
     const overlay = document.getElementById('confirmation-overlay');
     if (!overlay) return;
-    
+
     overlay.classList.add('active');
     playSystemSound('success');
-    
+
     setTimeout(() => {
         overlay.classList.remove('active');
     }, 2500);
@@ -1163,24 +1174,24 @@ function showAnimatedCheck() {
 function animateTrash(elementId) {
     const trash = document.getElementById('trash-container');
     const sourceEl = document.querySelector(`[onclick*="${elementId}"]`) || document.getElementById(elementId);
-    
+
     if (!trash) return;
 
     // 1. Mostrar lixeira
     trash.classList.add('active');
-    
+
     // 2. Criar "arquivo" voador se tivermos o elemento de origem
     if (sourceEl) {
         const rect = sourceEl.getBoundingClientRect();
         const trashRect = trash.getBoundingClientRect();
-        
+
         const file = document.createElement('div');
         file.className = 'flying-file';
         file.innerHTML = '<i class="fas fa-file-alt"></i>';
         file.style.left = `${rect.left}px`;
         file.style.top = `${rect.top}px`;
         document.body.appendChild(file);
-        
+
         // Animar para a lixeira
         setTimeout(() => {
             file.style.transition = 'all 0.8s cubic-bezier(0.55, 0, 0.1, 1)';
@@ -1189,17 +1200,17 @@ function animateTrash(elementId) {
             file.style.transform = 'scale(0.1) rotate(360deg)';
             file.style.opacity = '0';
         }, 50);
-        
+
         setTimeout(() => file.remove(), 900);
     }
-    
+
     // 3. Efeito de impacto na lixeira e som
     setTimeout(() => {
         trash.classList.add('shake');
         playSystemSound('trash');
         setTimeout(() => trash.classList.remove('shake'), 400);
     }, 800);
-    
+
     // 4. Esconder lixeira
     setTimeout(() => {
         trash.classList.remove('active');
@@ -1208,7 +1219,7 @@ function animateTrash(elementId) {
 
 // Interceptar funções existentes para adicionar animações
 const originalShowSuccess = showSuccess;
-showSuccess = function(msg) {
+showSuccess = function (msg) {
     originalShowSuccess(msg);
     if (msg.toLowerCase().includes('sucesso') || msg.toLowerCase().includes('salvo') || msg.toLowerCase().includes('gerada')) {
         // Se for NFe ou algo importante, mostra o check grande
