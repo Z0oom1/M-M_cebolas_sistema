@@ -29,8 +29,14 @@
             <input type="text" id="exit-product" readonly style="background: #f1f5f9; font-weight: 700; color: var(--primary);">
         </div>
         <div class="form-group">
-            <label>Quantidade (Caixas)</label>
-            <input type="number" id="exit-qty" placeholder="0" required>
+            <label>Quantidade</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="number" id="exit-qty" placeholder="0" style="flex: 2;" required>
+                <select id="exit-unit" style="flex: 1; border-radius: 8px; border: 1px solid #ddd;">
+                    <option value="CX">CX (Caixa)</option>
+                    <option value="KG">KG (Quilo)</option>
+                </select>
+            </div>
         </div>
         <div class="form-group">
             <label>Valor Total (R$)</label>

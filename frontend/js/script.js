@@ -23,6 +23,15 @@ const API_URL = (function() {
     if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000/api';
     return 'https://portalmmcebolas.com/api';
 })();
+// Exemplo para a função saveSaida
+const unidade = document.getElementById('exit-unit').value;
+const dados = {
+    tipo: 'saida',
+    produto: document.getElementById('exit-product').value,
+    quantidade: document.getElementById('exit-qty').value,
+    unidade: unidade, // Envia a unidade escolhida
+    // ... demais campos
+};
 
 /** Redirecionamento para login: na Web com path na raiz usar /pages/login.html; Electron mesma pasta. */
 function getLoginUrl() {
