@@ -1,7 +1,7 @@
 <header class="top-bar">
     <div>
         <h2 class="page-title">Registrar Venda</h2>
-        <p style="color: var(--text-muted);">Selecione o produto abaixo para preencher rapidamente.</p>
+        <p style="color: var(--text-muted);">Selecione o produto abaixo para vender.</p>
     </div>
 </header>
 
@@ -14,13 +14,13 @@
 
 <div class="panel">
     <div class="panel-header">
-        <h4 style="font-weight: 700;"><i class="fas fa-hand-holding-usd" style="color: var(--primary);"></i> Dados da Venda</h4>
+        <h4 style="font-weight: 700;"><i class="fas fa-hand-holding-usd" style="color: var(--accent);"></i> Dados da Venda</h4>
     </div>
-    <form onsubmit="saveSaida(event)" class="form-grid">
+    <form onsubmit="saveSaida(event)" class="form-grid" style="padding: 24px;">
         <div class="form-group span-2">
-            <label>Cliente / Destino</label>
+            <label>Cliente / Destinatário</label>
             <div style="display: flex; gap: 10px;">
-                <input type="text" id="exit-desc" placeholder="Ex: Supermercado Central ou Nome do Cliente" style="flex: 1;" required>
+                <input type="text" id="exit-desc" placeholder="Ex: Mercado Central ou Nome do Cliente" style="flex: 1;" required>
                 <button type="button" class="btn-primary" onclick="openSearchModal('cliente')" style="padding: 12px;"><i class="fas fa-search"></i></button>
             </div>
         </div>
@@ -30,10 +30,10 @@
         </div>
         <div class="form-group">
             <label>Modo de Quantidade</label>
-            <select id="exit-unit" onchange="toggleQuantityMode('exit')" style="border-radius: 8px; border: 1px solid #ddd; padding: 10px 14px; width: 100%; font-size: 0.95rem;">
-                <option value="CX">📦 Caixas (CX)</option>
-                <option value="KG">⚖️ Quilos (KG)</option>
-                <option value="AMBOS">📦 + ⚖️ Ambos (Caixas e Kg)</option>
+            <select id="exit-unit" onchange="toggleQuantityMode('exit')" class="minimal-select" style="width: 100%; height: 45px;">
+                <option value="CX">📦 Por Caixas (Padrão)</option>
+                <option value="KG">⚖️ Por Quilos (Peso Real)</option>
+                <option value="AMBOS">📦+⚖️ Ambos (Caixas + Peso)</option>
             </select>
         </div>
 
@@ -41,27 +41,28 @@
         <div id="exit-qty-simple" class="form-group span-2">
             <label id="exit-qty-label">Quantidade (Caixas)</label>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="number" id="exit-qty" placeholder="0" style="flex: 1;" min="0" step="0.1">
-                <span id="exit-unit-badge" style="background: #dcfce7; color: #166534; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; white-space: nowrap;">CX</span>
-                <span id="exit-peso-calc" style="color: var(--text-muted); font-size: 0.85rem; white-space: nowrap;"></span>
+                <input type="number" id="exit-qty" placeholder="0" style="flex: 1;" min="0" step="0.1" oninput="updatePesoCalc('exit')">
+                <span id="exit-unit-badge" style="background: #fef3c7; color: #92400e; padding: 12px 18px; border-radius: 8px; font-weight: 800; font-size: 1rem; min-width: 80px; text-align: center;">CX</span>
+                <span id="exit-peso-calc" style="font-weight: 800; color: var(--accent); font-size: 1.1rem; min-width: 100px; text-align: right;"></span>
             </div>
         </div>
 
         <!-- Modo AMBOS -->
-        <div id="exit-qty-ambos" class="form-group" style="display: none;">
-            <label>Quantidade de Caixas</label>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="number" id="exit-qtd-caixas" placeholder="0" style="flex: 1;" min="0" step="1" oninput="calcPesoFromCaixas('exit')">
-                <span style="background: #dcfce7; color: #166534; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;">CX</span>
+        <div id="exit-qty-ambos-row" class="form-group span-2" style="display: none; background: #fffbeb; padding: 20px; border-radius: 12px; border: 2px dashed var(--accent); gap: 20px;">
+            <div style="flex: 1;">
+                <label style="font-weight: 700; color: #92400e;">Qtd. Caixas</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="exit-qtd-caixas" placeholder="0" style="flex: 1;" min="0" step="1" oninput="calcPesoFromCaixas('exit')">
+                    <span style="background: #fef3c7; color: #92400e; padding: 10px 14px; border-radius: 8px; font-weight: 700;">CX</span>
+                </div>
             </div>
-        </div>
-        <div id="exit-peso-ambos" class="form-group" style="display: none;">
-            <label>Peso Total (Kg)</label>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="number" id="exit-peso-kg" placeholder="0.0" style="flex: 1;" min="0" step="0.1">
-                <span style="background: #dbeafe; color: #1e40af; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;">KG</span>
+            <div style="flex: 1;">
+                <label style="font-weight: 700; color: #1e40af;">Peso Total (Kg)</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="exit-peso-kg" placeholder="0.0" style="flex: 1;" min="0" step="0.1">
+                    <span style="background: #dbeafe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-weight: 700;">KG</span>
+                </div>
             </div>
-            <small style="color: var(--text-muted); margin-top: 4px; display: block;">Preenchido automaticamente com base nas caixas × peso/cx configurado. Pode ser ajustado manualmente.</small>
         </div>
 
         <div class="form-group">
@@ -73,21 +74,15 @@
             <input type="date" id="exit-date" required>
         </div>
 
-        <!-- Info calculada -->
-        <div id="exit-info-box" class="span-2" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px; margin-top: 4px;">
-            <p style="font-size: 0.85rem; color: #166534; font-weight: 600; margin: 0;" id="exit-info-text"></p>
-        </div>
-
-        <div class="form-group span-2" style="margin-top: 10px;">
-            <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">
-                <i class="fas fa-check-circle"></i> FINALIZAR VENDA
+        <div class="form-group span-2" style="margin-top: 15px;">
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 18px; font-size: 1.2rem; font-weight: 800; background: var(--accent); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2); border-color: var(--accent);">
+                <i class="fas fa-check-circle"></i> FINALIZAR VENDA E SAÍDA
             </button>
         </div>
     </form>
 </div>
 
 <script>
-    // Inicializar data de hoje
     (function() {
         const dateInput = document.getElementById('exit-date');
         if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];

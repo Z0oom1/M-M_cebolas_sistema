@@ -187,16 +187,18 @@
     </div>
 </div>
 
-<div id="admin-danger-panel" class="panel" style="margin-top: 24px; border-color: #fee2e2;">
-    <div class="panel-header" style="background: #fff1f2;">
-        <h4 style="color: #991b1b; font-weight: 700;">Zona de Perigo</h4>
+<div id="admin-danger-panel" class="panel" style="margin-top: 24px; border: 2px solid #fee2e2;">
+    <div class="panel-header" style="background: #fff1f2; border-bottom: 1px solid #fee2e2;">
+        <h4 style="color: #991b1b; font-weight: 800;"><i class="fas fa-exclamation-triangle"></i> ZONA DE PERIGO (ADMINISTRADOR)</h4>
     </div>
     <div style="padding: 24px; display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <strong style="display: block; margin-bottom: 4px;">Resetar Dados do Sistema</strong>
-            <span style="color: var(--text-muted); font-size: 0.85rem;">Esta ação apagará todas as movimentações, clientes e fornecedores.</span>
+            <strong style="display: block; margin-bottom: 4px; color: #991b1b; font-size: 1.1rem;">Resetar Dados do Sistema</strong>
+            <span style="color: var(--text-muted); font-size: 0.9rem;">Esta ação é irreversível. Apagará movimentações, NF-es, clientes, fornecedores e produtos.</span>
         </div>
-        <button class="btn-danger" onclick="resetSystem()">APAGAR TUDO</button>
+        <button class="btn-danger" onclick="resetSystem()" style="background: #dc2626; padding: 14px 28px; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);">
+            <i class="fas fa-trash-alt"></i> APAGAR TUDO E REINICIAR
+        </button>
     </div>
 </div>
 

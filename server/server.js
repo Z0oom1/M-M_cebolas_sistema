@@ -641,14 +641,16 @@ app.post('/api/configs', authenticateToken, (req, res) => {
     });
 });
 
-app.delete('/api/reset', authenticateToken, (req, res) => {
-    if (req.user.role !== 'admin') return res.sendStatus(403);
-    db.serialize(() => {
-        ['movimentacoes', 'nfe', 'clientes', 'fornecedores', 'produtos'].forEach(t => db.run(`DELETE FROM ${t}`));
-        registrarLog(req, 'SYSTEM_RESET', 'Sistema resetado pelo administrador');
-        res.json({ success: true });
+    app.delete('/api/reset', authenticateToken, (req, res) => {
+        if (req.user.role !== 'admin') return res.sendStatus(403);
+        db.serialize(() => {
+            const tables = ['movimentacoes', 'nfe', 'clientes', 'fornecedores', 'produtos', 'logs'];
+            tables.forEach(t => db.run(`DELETE FROM ${t}`));
+            db.run("DELETE FROM sqlite_sequence WHERE name IN ('movimentacoes', 'nfe', 'clientes', 'fornecedores', 'produtos', 'logs')");
+            registrarLog(req, 'SYSTEM_RESET', 'Sistema resetado pelo administrador');
+            res.json({ success: true, message: "Sistema resetado com sucesso." });
+        });
     });
-});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
