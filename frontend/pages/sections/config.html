@@ -3,39 +3,73 @@
 </header>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+
+    <!-- CONFIGURAÇÕES DO SISTEMA -->
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;">Ambiente e Certificado NF-e</h4>
+            <h4 style="font-weight: 700;"><i class="fas fa-cogs" style="color: var(--primary);"></i> Configurações do Sistema</h4>
         </div>
-        <div style="padding: 24px;">
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-                <label style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: var(--transition);">
-                    <input type="radio" name="nfe_modo" value="homologacao" onchange="updateNFeModo('homologacao')" style="width: auto; margin-top: 4px;">
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+
+            <!-- Peso por Caixa -->
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                    <div style="width: 36px; height: 36px; background: #dcfce7; color: #166534; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-weight-hanging"></i>
+                    </div>
                     <div>
-                        <strong style="display: block; margin-bottom: 4px;">Homologação</strong>
-                        <span style="color: var(--text-muted); font-size: 0.8rem;">Ambiente de testes e treinamento. As notas geradas não possuem valor fiscal.</span>
+                        <strong style="display: block;">Peso Padrão por Caixa</strong>
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">Usado para calcular kg automaticamente ao registrar em caixas</span>
                     </div>
-                </label>
-                <label style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: var(--transition);">
-                    <input type="radio" name="nfe_modo" value="producao" onchange="updateNFeModo('producao')" style="width: auto; margin-top: 4px;">
-                    <div>
-                        <strong style="display: block; margin-bottom: 4px;">Produção</strong>
-                        <span style="color: var(--text-muted); font-size: 0.8rem;">Ambiente real de operação. As notas geradas possuem validade jurídica e fiscal.</span>
-                    </div>
-                </label>
-                
-                <hr style="border: 0; border-top: 1px solid var(--border); margin: 8px 0;">
-                
-                <div class="form-group">
-                    <label>Senha do Certificado (.pfx)</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="password" id="cert-password" placeholder="Digite a senha do certificado" style="flex: 1;">
-                        <button class="btn-primary" onclick="saveCertPassword()" style="padding: 10px 16px;">
-                            <i class="fas fa-save"></i>
-                        </button>
-                    </div>
-                    <small style="color: var(--text-muted); margin-top: 4px;">O certificado deve estar em: <code>/server/certificado/certificado.pfx</code></small>
                 </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="number" id="config-peso-cx" placeholder="20" step="0.1" min="0.1"
+                        style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 1rem;">
+                    <span style="background: #dbeafe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-weight: 700;">Kg/Cx</span>
+                    <button class="btn-primary" onclick="savePesoPorCaixa()" style="padding: 10px 16px;">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+                <small style="color: var(--text-muted); margin-top: 8px; display: block;">
+                    Exemplo: se cada caixa pesa 20 kg, ao registrar 10 caixas o sistema calculará 200 kg automaticamente.
+                </small>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border);">
+
+            <!-- Ambiente NF-e -->
+            <div>
+                <strong style="display: block; margin-bottom: 12px;">Ambiente NF-e</strong>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: var(--transition);">
+                        <input type="radio" name="nfe_modo" value="homologacao" onchange="updateNFeModo('homologacao')" style="width: auto; margin-top: 4px;">
+                        <div>
+                            <strong style="display: block; margin-bottom: 2px;">Homologação</strong>
+                            <span style="color: var(--text-muted); font-size: 0.8rem;">Ambiente de testes. As notas não possuem valor fiscal.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: var(--transition);">
+                        <input type="radio" name="nfe_modo" value="producao" onchange="updateNFeModo('producao')" style="width: auto; margin-top: 4px;">
+                        <div>
+                            <strong style="display: block; margin-bottom: 2px;">Produção</strong>
+                            <span style="color: var(--text-muted); font-size: 0.8rem;">Ambiente real. As notas possuem validade jurídica e fiscal.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border);">
+
+            <!-- Certificado -->
+            <div class="form-group">
+                <label>Senha do Certificado (.pfx)</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="password" id="cert-password" placeholder="Digite a senha do certificado" style="flex: 1;">
+                    <button class="btn-primary" onclick="saveCertPassword()" style="padding: 10px 16px;">
+                        <i class="fas fa-save"></i>
+                    </button>
+                </div>
+                <small style="color: var(--text-muted); margin-top: 4px;">O certificado deve estar em: <code>/server/certificado/certificado.pfx</code></small>
             </div>
         </div>
     </div>
@@ -144,6 +178,7 @@
                     <th>Variedade</th>
                     <th>NCM</th>
                     <th>Preço Base</th>
+                    <th>Kg/Cx</th>
                     <th style="text-align: right;">Ações</th>
                 </tr>
             </thead>

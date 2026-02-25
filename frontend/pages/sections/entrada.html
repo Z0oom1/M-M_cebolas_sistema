@@ -26,30 +26,75 @@
         </div>
         <div class="form-group">
             <label>Produto Selecionado</label>
-            <input type="text" id="entry-product" readonly style="background: #f1f5f9; font-weight: 700; color: var(--primary);">
+            <input type="text" id="entry-product" readonly style="background: #f1f5f9; font-weight: 700; color: var(--primary);" placeholder="Selecione um produto acima">
         </div>
         <div class="form-group">
-            <label>Quantidade</label>
-            <div style="display: flex; gap: 5px;">
-                <input type="number" id="exit-qty" placeholder="0" style="flex: 2;" required>
-                <select id="exit-unit" style="flex: 1; border-radius: 8px; border: 1px solid #ddd;">
-                    <option value="CX">CX (Caixa)</option>
-                    <option value="KG">KG (Quilo)</option>
-                </select>
+            <label>Modo de Quantidade</label>
+            <select id="entry-unit" onchange="toggleQuantityMode('entry')" style="border-radius: 8px; border: 1px solid #ddd; padding: 10px 14px; width: 100%; font-size: 0.95rem;">
+                <option value="CX">📦 Caixas (CX)</option>
+                <option value="KG">⚖️ Quilos (KG)</option>
+                <option value="AMBOS">📦 + ⚖️ Ambos (Caixas e Kg)</option>
+            </select>
+        </div>
+
+        <!-- Modo CX ou KG (padrão) -->
+        <div id="entry-qty-simple" class="form-group span-2">
+            <label id="entry-qty-label">Quantidade (Caixas)</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" id="entry-qty" placeholder="0" style="flex: 1;" min="0" step="0.1">
+                <span id="entry-unit-badge" style="background: #dcfce7; color: #166534; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; white-space: nowrap;">CX</span>
+                <span id="entry-peso-calc" style="color: var(--text-muted); font-size: 0.85rem; white-space: nowrap;"></span>
             </div>
         </div>
+
+        <!-- Modo AMBOS -->
+        <div id="entry-qty-ambos" class="form-group" style="display: none;">
+            <label>Quantidade de Caixas</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" id="entry-qtd-caixas" placeholder="0" style="flex: 1;" min="0" step="1" oninput="calcPesoFromCaixas('entry')">
+                <span style="background: #dcfce7; color: #166534; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;">CX</span>
+            </div>
+        </div>
+        <div id="entry-peso-ambos" class="form-group" style="display: none;">
+            <label>Peso Total (Kg)</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" id="entry-peso-kg" placeholder="0.0" style="flex: 1;" min="0" step="0.1">
+                <span style="background: #dbeafe; color: #1e40af; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;">KG</span>
+            </div>
+            <small style="color: var(--text-muted); margin-top: 4px; display: block;">Preenchido automaticamente com base nas caixas × peso/cx configurado. Pode ser ajustado manualmente.</small>
+        </div>
+
         <div class="form-group">
             <label>Custo Total (R$)</label>
-            <input type="number" step="0.01" id="entry-value" placeholder="0.00" required>
+            <input type="number" step="0.01" id="entry-value" placeholder="0.00" required min="0">
         </div>
         <div class="form-group">
             <label>Data da Compra</label>
             <input type="date" id="entry-date" required>
         </div>
+
+        <!-- Info calculada -->
+        <div id="entry-info-box" class="span-2" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px; margin-top: 4px;">
+            <p style="font-size: 0.85rem; color: #166534; font-weight: 600; margin: 0;" id="entry-info-text"></p>
+        </div>
+
         <div class="form-group span-2" style="margin-top: 10px;">
-            <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem; background: #059669;">
                 <i class="fas fa-plus-circle"></i> FINALIZAR COMPRA
             </button>
         </div>
     </form>
 </div>
+
+<script>
+    // Inicializar data de hoje
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.getElementById('entry-date');
+        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    });
+    // Também inicializar imediatamente caso o DOM já esteja pronto
+    (function() {
+        const dateInput = document.getElementById('entry-date');
+        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    })();
+</script>

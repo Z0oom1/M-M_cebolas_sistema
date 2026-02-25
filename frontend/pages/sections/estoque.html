@@ -10,12 +10,25 @@
     </div>
 </header>
 
+<!-- Resumo de estoque -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;" id="estoque-resumo">
+    <!-- Injetado via JS -->
+</div>
+
 <div class="panel">
     <div class="panel-header">
         <h4 style="font-weight: 700;">Histórico de Movimentações</h4>
-        <div class="search-box" style="width: 300px;">
-            <i class="fas fa-search"></i>
-            <input type="text" id="search-mov" placeholder="Filtrar movimentação..." onkeyup="filterTable()">
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="filter-tipo" onchange="filterTable()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem;">
+                <option value="">Todos os tipos</option>
+                <option value="entrada">Compras</option>
+                <option value="saida">Vendas</option>
+                <option value="despesa">Despesas</option>
+            </select>
+            <div class="search-box" style="width: 260px;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="search-mov" placeholder="Filtrar movimentação..." onkeyup="filterTable()">
+            </div>
         </div>
     </div>
     <div class="table-container">
@@ -26,7 +39,8 @@
                     <th>Tipo</th>
                     <th>Produto</th>
                     <th>Descrição / Contato</th>
-                    <th>Qtd</th>
+                    <th>Caixas</th>
+                    <th>Kg</th>
                     <th>Valor</th>
                     <th style="text-align: right;">Ações</th>
                 </tr>
@@ -41,6 +55,7 @@
 <script>
     function filterTable() {
         const input = document.getElementById("search-mov");
+        const tipoFilter = document.getElementById("filter-tipo").value.toUpperCase();
         const filter = input.value.toUpperCase();
         const table = document.getElementById("main-table");
         const tr = table.getElementsByTagName("tr");
@@ -48,13 +63,22 @@
         for (let i = 1; i < tr.length; i++) {
             let found = false;
             const tds = tr[i].getElementsByTagName("td");
+            let tipoMatch = true;
+
+            if (tipoFilter) {
+                const tipoCell = tds[1] ? tds[1].textContent.toUpperCase() : '';
+                if (tipoFilter === 'ENTRADA') tipoMatch = tipoCell.includes('COMPRA');
+                else if (tipoFilter === 'SAIDA') tipoMatch = tipoCell.includes('VENDA');
+                else if (tipoFilter === 'DESPESA') tipoMatch = tipoCell.includes('DESPESA');
+            }
+
             for (let j = 0; j < tds.length; j++) {
                 if (tds[j].textContent.toUpperCase().indexOf(filter) > -1) {
                     found = true;
                     break;
                 }
             }
-            tr[i].style.display = found ? "" : "none";
+            tr[i].style.display = (found && tipoMatch) ? "" : "none";
         }
     }
 </script>

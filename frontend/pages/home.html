@@ -220,6 +220,15 @@
                     <label>Preço Base (Venda)</label>
                     <input type="number" step="0.01" id="prod-preco" placeholder="0.00">
                 </div>
+                <div class="form-group">
+                    <label>Peso por Caixa (Kg)</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="number" step="0.1" id="prod-peso-cx" placeholder="20" min="0.1" style="flex: 1;">
+                        <span style="background: #dbeafe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-weight: 700;">Kg/Cx</span>
+                    </div>
+                    <small style="color: var(--text-muted); margin-top: 4px; display: block;">Peso médio de cada caixa deste produto</small>
+                </div>
+                <div class="form-group"></div>
                 
                 <div class="form-group span-2">
                     <label>Escolha um Ícone</label>
@@ -253,17 +262,22 @@
 
     <!-- Modal de Busca de Contatos -->
     <div id="modal-search" class="modal-overlay">
-        <div class="edit-modal" style="max-width: 400px;">
+        <div class="edit-modal" style="max-width: 500px;">
             <div class="panel-header">
                 <h4 style="margin: 0;">Selecionar Contato</h4>
                 <button onclick="closeSearchModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
             <div style="padding: 15px;">
-                <input type="hidden" id="search-type">
-                <input type="text" id="search-input" placeholder="Buscar..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);" oninput="renderSearchList(document.getElementById('search-type').value, this.value)">
-                <div id="search-list" style="margin-top: 15px; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-                    <!-- JS -->
-                </div>
+                <table style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Documento</th>
+                            <th>Telefone</th>
+                        </tr>
+                    </thead>
+                    <tbody id="search-results"></tbody>
+                </table>
             </div>
         </div>
     </div>

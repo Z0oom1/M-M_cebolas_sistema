@@ -3,7 +3,10 @@
         <h2 class="page-title">Visão Geral</h2>
         <p style="color: var(--text-muted); font-size: 0.9rem;">Bem-vindo, acompanhe o desempenho da M&M Cebolas.</p>
     </div>
-    <div style="display: flex; gap: 15px;">
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <button class="btn-icon" onclick="refreshDashboard()" title="Atualizar dados" style="padding: 8px 14px; border-radius: 100px; border: 1px solid var(--border); background: white; font-size: 0.82rem; font-weight: 700; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
         <div style="background: white; padding: 8px 16px; border-radius: 100px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
             <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 10px #22c55e;"></span>
             SISTEMA ONLINE
@@ -15,71 +18,177 @@
     </div>
 </header>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px;">
-    <div class="panel" style="padding: 24px; display: flex; align-items: center; gap: 20px;">
-        <div style="width: 56px; height: 56px; background: #dcfce7; color: #166534; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-            <i class="fas fa-boxes"></i>
-        </div>
-        <div>
-            <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Estoque Total</p>
-            <h3 id="dash-stock" style="font-size: 1.5rem; font-weight: 800;">0 Cx</h3>
-        </div>
-    </div>
+<!-- KPIs PRINCIPAIS: ESTOQUE -->
+<div style="margin-bottom: 12px;">
+    <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;"><i class="fas fa-warehouse"></i> &nbsp;ESTOQUE ATUAL</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
 
-    <div class="panel" style="padding: 24px; display: flex; align-items: center; gap: 20px;">
-        <div style="width: 56px; height: 56px; background: #dbeafe; color: #1e40af; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-            <i class="fas fa-hand-holding-usd"></i>
+        <div class="panel" style="padding: 20px; display: flex; align-items: center; gap: 16px; border-left: 4px solid #1A5632;">
+            <div style="width: 50px; height: 50px; background: #dcfce7; color: #166534; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div>
+                <p style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total em Caixas</p>
+                <h3 id="dash-stock-cx" style="font-size: 1.6rem; font-weight: 800; color: #166534;">0 Cx</h3>
+            </div>
         </div>
-        <div>
-            <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Receita (Mês)</p>
-            <h3 id="dash-revenue" style="font-size: 1.5rem; font-weight: 800;">R$ 0,00</h3>
-        </div>
-    </div>
 
-    <div class="panel" style="padding: 24px; display: flex; align-items: center; gap: 20px;">
-        <div style="width: 56px; height: 56px; background: #fee2e2; color: #991b1b; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-            <i class="fas fa-file-invoice"></i>
+        <div class="panel" style="padding: 20px; display: flex; align-items: center; gap: 16px; border-left: 4px solid #0369a1;">
+            <div style="width: 50px; height: 50px; background: #dbeafe; color: #1e40af; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                <i class="fas fa-weight-hanging"></i>
+            </div>
+            <div>
+                <p style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total em Kg</p>
+                <h3 id="dash-stock-kg" style="font-size: 1.6rem; font-weight: 800; color: #1e40af;">0 Kg</h3>
+            </div>
         </div>
-        <div>
-            <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Despesas</p>
-            <h3 id="dash-expenses" style="font-size: 1.5rem; font-weight: 800;">R$ 0,00</h3>
-        </div>
-    </div>
 
-    <div class="panel" style="padding: 24px; display: flex; align-items: center; gap: 20px;">
-        <div style="width: 56px; height: 56px; background: #fef3c7; color: #92400e; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-            <i class="fas fa-coins"></i>
+        <div class="panel" style="padding: 20px; display: flex; align-items: center; gap: 16px; border-left: 4px solid #7c3aed;">
+            <div style="width: 50px; height: 50px; background: #ede9fe; color: #7c3aed; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div>
+                <p style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Variedades</p>
+                <h3 id="dash-stock-tipos" style="font-size: 1.6rem; font-weight: 800; color: #7c3aed;">0</h3>
+            </div>
         </div>
-        <div>
-            <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Lucro Estimado</p>
-            <h3 id="dash-profit" style="font-size: 1.5rem; font-weight: 800;">R$ 0,00</h3>
+
+        <div class="panel" style="padding: 20px; display: flex; align-items: center; gap: 16px; border-left: 4px solid #d97706;">
+            <div style="width: 50px; height: 50px; background: #fef3c7; color: #92400e; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                <i class="fas fa-balance-scale"></i>
+            </div>
+            <div>
+                <p style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Kg por Caixa (config.)</p>
+                <h3 id="dash-peso-cx" style="font-size: 1.6rem; font-weight: 800; color: #92400e;">20 Kg</h3>
+            </div>
         </div>
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
+<!-- KPIs FINANCEIROS -->
+<div style="margin-bottom: 24px;">
+    <p style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;"><i class="fas fa-chart-line"></i> &nbsp;FINANCEIRO — MÊS ATUAL</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+
+        <div class="panel" style="padding: 20px; display: flex; align-items: center; gap: 16px; border-left: 4px solid #059669;">
+            <div style="width: 50px; height: 50px; background: #d1fae5; color: #065f46; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                <i class="fas fa-hand-holding-usd"></i>
+            </div>
+            <div>
+                <p style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Receita (Mês)</p>
+                <h3 id="dash-revenue" style="font-size: 1.4rem; font-weight: 800; color: #065f46;">R$ 0,00</h3>
+            </div>
+        </div>
+
+        <div class="panel" style="padding: 20px; display: flex; align-items: center; gap: 16px; border-left: 4px solid #dc2626;">
+            <div style="width: 50px; height: 50px; background: #fee2e2; color: #991b1b; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                <i class="fas fa-file-invoice"></i>
+            </div>
+            <div>
+                <p style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Despesas (Mês)</p>
+                <h3 id="dash-expenses" style="font-size: 1.4rem; font-weight: 800; color: #991b1b;">R$ 0,00</h3>
+            </div>
+        </div>
+
+        <div class="panel" style="padding: 20px; display: flex; align-items: center; gap: 16px; border-left: 4px solid #f59e0b;">
+            <div style="width: 50px; height: 50px; background: #fef3c7; color: #92400e; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                <i class="fas fa-coins"></i>
+            </div>
+            <div>
+                <p style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Lucro (Mês)</p>
+                <h3 id="dash-profit" style="font-size: 1.4rem; font-weight: 800;">R$ 0,00</h3>
+            </div>
+        </div>
+
+        <div class="panel" style="padding: 20px; display: flex; align-items: center; gap: 16px; border-left: 4px solid #6366f1;">
+            <div style="width: 50px; height: 50px; background: #e0e7ff; color: #4338ca; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                <i class="fas fa-piggy-bank"></i>
+            </div>
+            <div>
+                <p style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Lucro Total</p>
+                <h3 id="dash-profit-total" style="font-size: 1.4rem; font-weight: 800;">R$ 0,00</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRÁFICOS -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;">Fluxo de Caixa (Últimos 6 meses)</h4>
+            <h4 style="font-weight: 700;"><i class="fas fa-chart-bar" style="color: var(--primary);"></i> Fluxo de Caixa — Últimos 6 Meses</h4>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="switchChartMode('financeiro')" id="btn-chart-fin" class="btn-primary" style="padding: 6px 12px; font-size: 0.75rem;">Financeiro</button>
+                <button onclick="switchChartMode('estoque')" id="btn-chart-est" class="btn-icon" style="padding: 6px 12px; font-size: 0.75rem;">Estoque (Cx)</button>
+            </div>
         </div>
-        <div style="padding: 24px; height: 300px;">
+        <div style="padding: 20px; height: 280px;">
             <canvas id="financeChart"></canvas>
         </div>
     </div>
 
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;">Estoque por Tipo</h4>
+            <h4 style="font-weight: 700;"><i class="fas fa-chart-pie" style="color: var(--primary);"></i> Estoque por Produto</h4>
         </div>
-        <div style="padding: 24px; height: 300px;">
+        <div style="padding: 20px; height: 280px;">
             <canvas id="stockChart"></canvas>
         </div>
     </div>
 </div>
 
+<!-- ESTOQUE POR PRODUTO (TABELA) + AÇÕES RÁPIDAS -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight: 700;"><i class="fas fa-warehouse" style="color: var(--primary);"></i> Estoque por Produto</h4>
+        </div>
+        <div class="table-container">
+            <table class="table-compact">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th style="text-align: center;">Caixas</th>
+                        <th style="text-align: center;">Kg</th>
+                        <th style="text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="dash-stock-table">
+                    <tr><td colspan="4" style="text-align:center; padding: 20px; color: var(--text-muted);">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight: 700;"><i class="fas fa-bolt" style="color: var(--primary);"></i> Ações Rápidas</h4>
+        </div>
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+            <button class="btn-primary" style="padding: 14px; font-size: 0.95rem; background: #059669; display: flex; align-items: center; gap: 10px; justify-content: center;" onclick="showSection('entrada')">
+                <i class="fas fa-arrow-down-to-bracket"></i> Registrar Compra (Entrada)
+            </button>
+            <button class="btn-primary" style="padding: 14px; font-size: 0.95rem; background: #dc2626; display: flex; align-items: center; gap: 10px; justify-content: center;" onclick="showSection('saida')">
+                <i class="fas fa-arrow-up-from-bracket"></i> Registrar Venda (Saída)
+            </button>
+            <button class="btn-primary" style="padding: 14px; font-size: 0.95rem; background: #2563eb; display: flex; align-items: center; gap: 10px; justify-content: center;" onclick="showSection('estoque')">
+                <i class="fas fa-list-alt"></i> Ver Movimentações
+            </button>
+            <button class="btn-primary" style="padding: 14px; font-size: 0.95rem; background: #7c3aed; display: flex; align-items: center; gap: 10px; justify-content: center;" onclick="showSection('financeiro')">
+                <i class="fas fa-chart-line"></i> Relatório Financeiro
+            </button>
+            <button class="btn-primary" style="padding: 14px; font-size: 0.95rem; background: #0369a1; display: flex; align-items: center; gap: 10px; justify-content: center;" onclick="showSection('cadastro')">
+                <i class="fas fa-address-book"></i> Clientes e Fornecedores
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ÚLTIMAS MOVIMENTAÇÕES -->
 <div class="panel">
     <div class="panel-header">
-        <h4 style="font-weight: 700;">Últimas Movimentações</h4>
+        <h4 style="font-weight: 700;"><i class="fas fa-history" style="color: var(--primary);"></i> Últimas Movimentações</h4>
         <button class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem;" onclick="showSection('estoque')">Ver Todas</button>
     </div>
     <div class="table-container">
@@ -89,7 +198,8 @@
                     <th>Tipo</th>
                     <th>Produto</th>
                     <th>Descrição</th>
-                    <th>Qtd</th>
+                    <th>Caixas</th>
+                    <th>Kg</th>
                     <th>Valor</th>
                     <th>Data</th>
                 </tr>
@@ -100,3 +210,10 @@
         </table>
     </div>
 </div>
+
+<style>
+#btn-chart-fin.active, #btn-chart-est.active {
+    background: var(--primary) !important;
+    color: white !important;
+}
+</style>

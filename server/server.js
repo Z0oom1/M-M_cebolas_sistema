@@ -28,6 +28,25 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS configs (chave TEXT PRIMARY KEY, valor TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, username TEXT, acao TEXT, detalhes TEXT, data TEXT)`);
 
+    // Migrações seguras: adiciona colunas se não existirem
+    const safeMigrate = (sql, desc) => {
+        db.run(sql, (err) => {
+            if (err && !err.message.includes('duplicate column')) {
+                console.error(`Erro migração (${desc}):`, err.message);
+            }
+        });
+    };
+
+    safeMigrate(`ALTER TABLE movimentacoes ADD COLUMN unidade TEXT DEFAULT 'CX'`, 'unidade');
+    safeMigrate(`ALTER TABLE movimentacoes ADD COLUMN peso_kg REAL DEFAULT 0`, 'peso_kg');
+    safeMigrate(`ALTER TABLE movimentacoes ADD COLUMN qtd_caixas INTEGER DEFAULT 0`, 'qtd_caixas');
+    safeMigrate(`ALTER TABLE movimentacoes ADD COLUMN lote_id INTEGER`, 'lote_id');
+    safeMigrate(`ALTER TABLE movimentacoes ADD COLUMN custo_unitario REAL`, 'custo_unitario');
+    safeMigrate(`ALTER TABLE nfe ADD COLUMN numero_nfe INTEGER`, 'numero_nfe');
+    safeMigrate(`ALTER TABLE nfe ADD COLUMN serie_nfe INTEGER DEFAULT 1`, 'serie_nfe');
+    safeMigrate(`ALTER TABLE nfe ADD COLUMN protocolo_autorizacao TEXT`, 'protocolo_autorizacao');
+    safeMigrate(`ALTER TABLE produtos ADD COLUMN peso_por_caixa REAL DEFAULT 20`, 'peso_por_caixa');
+
     const upsertUser = async (label, username, envPassword, role) => {
         const password = process.env[envPassword] || '123';
         const hash = await bcrypt.hash(password, 10);
@@ -50,6 +69,9 @@ db.serialize(() => {
     if (process.env.CERT_PASSWORD) {
         db.run("INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)", ['cert_password', process.env.CERT_PASSWORD]);
     }
+
+    // Config padrão: peso por caixa = 20kg
+    db.run("INSERT OR IGNORE INTO configs (chave, valor) VALUES (?, ?)", ['peso_por_caixa_padrao', '20']);
 });
 
 // CORS
@@ -113,31 +135,173 @@ app.post('/api/login', (req, res) => {
 });
 
 app.get('/api/movimentacoes', authenticateToken, (req, res) => db.all('SELECT * FROM movimentacoes ORDER BY data DESC', [], (err, rows) => res.json(rows || [])));
+
 app.post('/api/movimentacoes', authenticateToken, (req, res) => {
-    // Adicionado 'unidade' ao corpo da requisição
-    const { tipo, produto, quantidade, valor, descricao, data, unidade } = req.body;
+    const { tipo, produto, quantidade, valor, descricao, data, unidade, peso_kg, qtd_caixas } = req.body;
 
-    // Atualize a query para incluir a coluna unidade (veja nota abaixo sobre o banco)
-    db.run(`INSERT INTO movimentacoes (tipo, produto, quantidade, valor, descricao, data, unidade) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [tipo, produto, quantidade, valor, descricao, data, unidade || 'CX'], function (err) {
-            if (err) return res.status(500).json({ error: err.message });
+    // Calcular peso_kg e qtd_caixas com base na unidade
+    let finalPesoKg = peso_kg || 0;
+    let finalQtdCaixas = qtd_caixas || 0;
+    let finalQuantidade = quantidade || 0;
 
-            // Log detalhado com a unidade
-            registrarLog(req, 'MOVIMENTACAO', `${tipo.toUpperCase()}: ${quantidade}${unidade || 'CX'} de ${produto} - R$ ${valor}`);
-            res.json({ id: this.lastID });
-        });
+    db.get("SELECT valor FROM configs WHERE chave = 'peso_por_caixa_padrao'", [], (err, row) => {
+        const pesoPorCaixa = row ? parseFloat(row.valor) : 20;
+
+        if (unidade === 'CX') {
+            finalQtdCaixas = finalQuantidade;
+            finalPesoKg = finalQuantidade * pesoPorCaixa;
+        } else if (unidade === 'KG') {
+            finalPesoKg = finalQuantidade;
+            finalQtdCaixas = Math.round(finalQuantidade / pesoPorCaixa * 10) / 10;
+        } else if (unidade === 'AMBOS') {
+            // Quando "ambos", qtd_caixas e peso_kg vêm separados do frontend
+            finalQtdCaixas = qtd_caixas || 0;
+            finalPesoKg = peso_kg || 0;
+            finalQuantidade = finalQtdCaixas; // quantidade principal = caixas
+        }
+
+        db.run(
+            `INSERT INTO movimentacoes (tipo, produto, quantidade, valor, descricao, data, unidade, peso_kg, qtd_caixas) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [tipo, produto, finalQuantidade, valor, descricao, data, unidade || 'CX', finalPesoKg, finalQtdCaixas],
+            function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+                const unidadeLabel = unidade === 'AMBOS'
+                    ? `${finalQtdCaixas}CX / ${finalPesoKg}KG`
+                    : `${finalQuantidade}${unidade || 'CX'}`;
+                registrarLog(req, 'MOVIMENTACAO', `${tipo.toUpperCase()}: ${unidadeLabel} de ${produto} - R$ ${valor}`);
+                res.json({ id: this.lastID });
+            }
+        );
+    });
 });
+
 app.delete('/api/movimentacoes/:id', authenticateToken, (req, res) => db.run('DELETE FROM movimentacoes WHERE id = ?', [req.params.id], () => res.json({ success: true })));
+
+// Rota de dashboard com estatísticas completas
+app.get('/api/dashboard', authenticateToken, (req, res) => {
+    db.all('SELECT * FROM movimentacoes ORDER BY data DESC', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        db.get("SELECT valor FROM configs WHERE chave = 'peso_por_caixa_padrao'", [], (err2, configRow) => {
+            const pesoPorCaixa = configRow ? parseFloat(configRow.valor) : 20;
+
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+
+            let totalCaixas = 0;
+            let totalKg = 0;
+            let receitaMes = 0;
+            let despesasMes = 0;
+            let receitaTotal = 0;
+            let despesasTotal = 0;
+
+            // Estoque por produto
+            const stockByCaixas = {};
+            const stockByKg = {};
+
+            // Dados mensais (últimos 6 meses)
+            const monthlyData = {};
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(currentYear, currentMonth - i, 1);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                monthlyData[key] = { receita: 0, despesa: 0, caixas_entrada: 0, caixas_saida: 0, kg_entrada: 0, kg_saida: 0 };
+            }
+
+            rows.forEach(t => {
+                const tDate = new Date(t.data);
+                const monthKey = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}`;
+                const isCurrentMonth = tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
+
+                // Calcular caixas e kg para cada movimentação
+                let caixas = t.qtd_caixas || 0;
+                let kg = t.peso_kg || 0;
+
+                if (caixas === 0 && kg === 0) {
+                    // Compatibilidade com registros antigos
+                    if (t.unidade === 'KG') {
+                        kg = t.quantidade;
+                        caixas = t.quantidade / pesoPorCaixa;
+                    } else {
+                        caixas = t.quantidade;
+                        kg = t.quantidade * pesoPorCaixa;
+                    }
+                }
+
+                if (t.tipo === 'entrada') {
+                    if (!stockByCaixas[t.produto]) { stockByCaixas[t.produto] = 0; stockByKg[t.produto] = 0; }
+                    stockByCaixas[t.produto] += caixas;
+                    stockByKg[t.produto] += kg;
+                    totalCaixas += caixas;
+                    totalKg += kg;
+                    despesasTotal += t.valor;
+                    if (isCurrentMonth) despesasMes += t.valor;
+                    if (monthlyData[monthKey]) {
+                        monthlyData[monthKey].despesa += t.valor;
+                        monthlyData[monthKey].caixas_entrada += caixas;
+                        monthlyData[monthKey].kg_entrada += kg;
+                    }
+                } else if (t.tipo === 'saida') {
+                    if (!stockByCaixas[t.produto]) { stockByCaixas[t.produto] = 0; stockByKg[t.produto] = 0; }
+                    stockByCaixas[t.produto] -= caixas;
+                    stockByKg[t.produto] -= kg;
+                    totalCaixas -= caixas;
+                    totalKg -= kg;
+                    receitaTotal += t.valor;
+                    if (isCurrentMonth) receitaMes += t.valor;
+                    if (monthlyData[monthKey]) {
+                        monthlyData[monthKey].receita += t.valor;
+                        monthlyData[monthKey].caixas_saida += caixas;
+                        monthlyData[monthKey].kg_saida += kg;
+                    }
+                } else if (t.tipo === 'despesa') {
+                    despesasTotal += t.valor;
+                    if (isCurrentMonth) despesasMes += t.valor;
+                    if (monthlyData[monthKey]) monthlyData[monthKey].despesa += t.valor;
+                }
+            });
+
+            // Top produtos por estoque
+            const topProdutos = Object.entries(stockByCaixas)
+                .map(([nome, caixas]) => ({ nome, caixas: Math.round(caixas * 10) / 10, kg: Math.round((stockByKg[nome] || 0) * 10) / 10 }))
+                .filter(p => p.caixas > 0)
+                .sort((a, b) => b.caixas - a.caixas)
+                .slice(0, 5);
+
+            // Últimas movimentações
+            const ultimasMovimentacoes = rows.slice(0, 10);
+
+            res.json({
+                estoque: {
+                    totalCaixas: Math.round(totalCaixas * 10) / 10,
+                    totalKg: Math.round(totalKg * 10) / 10,
+                    porProduto: topProdutos
+                },
+                financeiro: {
+                    receitaMes,
+                    despesasMes,
+                    lucroMes: receitaMes - despesasMes,
+                    receitaTotal,
+                    despesasTotal,
+                    lucroTotal: receitaTotal - despesasTotal
+                },
+                mensal: monthlyData,
+                ultimasMovimentacoes,
+                pesoPorCaixa
+            });
+        });
+    });
+});
 
 app.get('/api/produtos', authenticateToken, (req, res) => db.all('SELECT * FROM produtos', [], (err, rows) => res.json(rows || [])));
 app.post('/api/produtos', authenticateToken, (req, res) => {
-    const { id, nome, ncm, preco_venda, cor, icone } = req.body;
-    if (id) db.run(`UPDATE produtos SET nome = ?, ncm = ?, preco_venda = ?, cor = ?, icone = ? WHERE id = ?`, [nome, ncm, preco_venda, cor, icone, id], (err) => {
+    const { id, nome, ncm, preco_venda, cor, icone, peso_por_caixa } = req.body;
+    if (id) db.run(`UPDATE produtos SET nome = ?, ncm = ?, preco_venda = ?, cor = ?, icone = ?, peso_por_caixa = ? WHERE id = ?`, [nome, ncm, preco_venda, cor, icone, peso_por_caixa || 20, id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
         registrarLog(req, 'PRODUTO_EDIT', `Editou produto: ${nome}`);
         res.json({ success: true });
     });
-    else db.run(`INSERT INTO produtos (nome, ncm, preco_venda, cor, icone) VALUES (?, ?, ?, ?, ?)`, [nome, ncm, preco_venda, cor, icone], function (err) {
+    else db.run(`INSERT INTO produtos (nome, ncm, preco_venda, cor, icone, peso_por_caixa) VALUES (?, ?, ?, ?, ?, ?)`, [nome, ncm, preco_venda, cor, icone, peso_por_caixa || 20], function (err) {
         if (err) return res.status(500).json({ error: err.message });
         registrarLog(req, 'PRODUTO_ADD', `Adicionou produto: ${nome}`);
         res.json({ id: this.lastID });
@@ -213,290 +377,184 @@ app.get('/api/consultar/:type/:doc', authenticateToken, async (req, res) => {
 app.get('/api/clientes', authenticateToken, (req, res) => db.all('SELECT * FROM clientes', [], (err, rows) => res.json(rows || [])));
 app.post('/api/clientes', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;
-    const cleanDoc = documento.replace(/\D/g, '');
-    db.get('SELECT id FROM clientes WHERE (REPLACE(REPLACE(REPLACE(documento, ".", ""), "-", ""), "/", "") = ? OR documento = ?) AND id != ?', [cleanDoc, documento, id || 0], (err, row) => {
-        if (row) return res.status(400).json({ error: "Já existe este documento cadastrado." });
-        if (id) db.run(`UPDATE clientes SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true });
-        });
-        else db.run(`INSERT INTO clientes (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: this.lastID });
-        });
+    if (id) db.run(`UPDATE clientes SET nome=?,documento=?,telefone=?,ie=?,email=?,endereco=? WHERE id=?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'CLIENTE_EDIT', `Editou cliente: ${nome}`);
+        res.json({ success: true });
+    });
+    else db.run(`INSERT INTO clientes (nome,documento,telefone,ie,email,endereco) VALUES (?,?,?,?,?,?)`, [nome, documento, telefone, ie, email, endereco], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'CLIENTE_ADD', `Adicionou cliente: ${nome}`);
+        res.json({ id: this.lastID });
     });
 });
 
 app.get('/api/fornecedores', authenticateToken, (req, res) => db.all('SELECT * FROM fornecedores', [], (err, rows) => res.json(rows || [])));
 app.post('/api/fornecedores', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;
-    const cleanDoc = documento.replace(/\D/g, '');
-    db.get('SELECT id FROM fornecedores WHERE (REPLACE(REPLACE(REPLACE(documento, ".", ""), "-", ""), "/", "") = ? OR documento = ?) AND id != ?', [cleanDoc, documento, id || 0], (err, row) => {
-        if (row) return res.status(400).json({ error: "Já existe este documento cadastrado." });
-        if (id) db.run(`UPDATE fornecedores SET nome = ?, documento = ?, telefone = ?, ie = ?, email = ?, endereco = ? WHERE id = ?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true });
-        });
-        else db.run(`INSERT INTO fornecedores (nome, documento, telefone, ie, email, endereco) VALUES (?, ?, ?, ?, ?, ?)`, [nome, documento, telefone, ie, email, endereco], function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: this.lastID });
-        });
+    if (id) db.run(`UPDATE fornecedores SET nome=?,documento=?,telefone=?,ie=?,email=?,endereco=? WHERE id=?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'FORNECEDOR_EDIT', `Editou fornecedor: ${nome}`);
+        res.json({ success: true });
+    });
+    else db.run(`INSERT INTO fornecedores (nome,documento,telefone,ie,email,endereco) VALUES (?,?,?,?,?,?)`, [nome, documento, telefone, ie, email, endereco], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'FORNECEDOR_ADD', `Adicionou fornecedor: ${nome}`);
+        res.json({ id: this.lastID });
     });
 });
 
 app.delete('/api/cadastros/:type/:id', authenticateToken, (req, res) => {
-    const { type, id } = req.params;
-    let table = type === 'cliente' ? 'clientes' : (type === 'fornecedor' ? 'fornecedores' : 'produtos');
-    db.run(`DELETE FROM ${table} WHERE id = ?`, [id], (err) => {
+    const table = req.params.type === 'cliente' ? 'clientes' : req.params.type === 'fornecedor' ? 'fornecedores' : 'produtos';
+    db.run(`DELETE FROM ${table} WHERE id = ?`, [req.params.id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
+        registrarLog(req, 'CADASTRO_DELETE', `Excluiu ${req.params.type} ID: ${req.params.id}`);
         res.json({ success: true });
     });
 });
 
 app.get('/api/nfe', authenticateToken, (req, res) => {
-    const { search } = req.query;
-    let query = 'SELECT * FROM nfe';
-    let params = [];
-
-    if (search) {
-        query += ` WHERE venda_id LIKE ? OR chave_acesso LIKE ? OR xml_content LIKE ?`;
-        const searchTerm = `%${search}%`;
-        params = [searchTerm, searchTerm, searchTerm];
-    }
-
-    query += ' ORDER BY data_emissao DESC';
+    const search = req.query.search || '';
+    const query = search
+        ? `SELECT n.*, m.produto, m.quantidade, m.valor, m.unidade FROM nfe n LEFT JOIN movimentacoes m ON n.venda_id = m.id WHERE n.chave_acesso LIKE ? OR m.produto LIKE ? ORDER BY n.data_emissao DESC`
+        : `SELECT n.*, m.produto, m.quantidade, m.valor, m.unidade FROM nfe n LEFT JOIN movimentacoes m ON n.venda_id = m.id ORDER BY n.data_emissao DESC`;
+    const params = search ? [`%${search}%`, `%${search}%`] : [];
     db.all(query, params, (err, rows) => res.json(rows || []));
+});
+
+app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
+    const { venda_id, destinatario, itens } = req.body;
+    db.get('SELECT * FROM movimentacoes WHERE id = ?', [venda_id], async (err, venda) => {
+        if (err || !venda) return res.status(404).json({ error: "Venda não encontrada" });
+        db.get('SELECT valor FROM configs WHERE chave = ?', ['nfe_modo'], async (err2, modoRow) => {
+            const modo = modoRow ? modoRow.valor : 'homologacao';
+            try {
+                const nfeService = new NFeService(db, modo);
+                const result = await nfeService.gerarNFe(venda, destinatario, itens);
+                const chave = result.chave || `NFe${Date.now()}`;
+                const xml = result.xml || '';
+                const data = new Date().toISOString();
+                db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
+                    [venda_id, chave, xml, 'autorizada', data], function (err3) {
+                        if (err3) return res.status(500).json({ error: err3.message });
+                        registrarLog(req, 'NFE_GERAR', `NF-e gerada para venda #${venda_id}`);
+                        res.json({ id: this.lastID, chave });
+                    });
+            } catch (nfeErr) {
+                res.status(500).json({ error: "Erro ao gerar NF-e: " + nfeErr.message });
+            }
+        });
+    });
+});
+
+app.get('/api/nfe/:id/xml', authenticateToken, (req, res) => {
+    db.get('SELECT * FROM nfe WHERE id = ?', [req.params.id], (err, row) => {
+        if (err || !row) return res.status(404).json({ error: "NF-e não encontrada" });
+        res.setHeader('Content-Type', 'application/xml');
+        res.setHeader('Content-Disposition', `attachment; filename=NFe_${row.venda_id}.xml`);
+        res.send(row.xml_content || '<?xml version="1.0"?><nfe>Sem XML</nfe>');
+    });
 });
 
 app.delete('/api/nfe/:id', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.sendStatus(403);
     db.run('DELETE FROM nfe WHERE id = ?', [req.params.id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        registrarLog(req, 'NFE_DELETE', `Excluiu NFe ID: ${req.params.id}`);
+        registrarLog(req, 'NFE_DELETE', `Removeu NF-e ID: ${req.params.id}`);
         res.json({ success: true });
-    });
-});
-
-app.get('/api/configs', authenticateToken, (req, res) => {
-    db.all('SELECT * FROM configs', [], (err, rows) => {
-        const configs = {};
-        rows?.forEach(r => configs[r.chave] = r.valor);
-        res.json(configs);
-    });
-});
-
-app.post('/api/configs', authenticateToken, (req, res) => {
-    if (req.user.role !== 'admin') return res.sendStatus(403);
-    const { chave, valor } = req.body;
-    db.run('INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)', [chave, valor], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        registrarLog(req, 'CONFIG_UPDATE', `Atualizou config: ${chave}`);
-        res.json({ success: true });
-    });
-});
-
-app.post('/api/nfe/gerar', authenticateToken, async (req, res) => {
-    const { venda_id, destinatario, itens } = req.body;
-    db.all('SELECT * FROM configs', [], async (err, rows) => {
-        if (err) return res.status(500).json({ error: "Erro configs: " + err.message });
-        const configs = {};
-        rows?.forEach(r => configs[r.chave] = r.valor);
-        const nfeModoEnv = (process.env.NFE_MODO || '').toLowerCase();
-        const isProduction = (configs.nfe_modo === 'producao') || (nfeModoEnv === 'producao');
-        console.log(`[NFe] Modo: ${isProduction ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO'} (Config: ${configs.nfe_modo}, Env: ${nfeModoEnv})`);
-        const certPass = configs.cert_password || process.env.CERT_PASSWORD || '';
-        const pfxPath = path.join(__dirname, '../certificado/certificado.pfx');
-
-        if (!certPass) {
-            const chave = Array.from({ length: 44 }, () => Math.floor(Math.random() * 10)).join('');
-            const xml = `<nfe><infNFe><ide><nNF>${venda_id}</nNF></ide><dest><xNome>${destinatario} (SIMULAÇÃO)</xNome></dest></infNFe></nfe>`;
-            return db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`, [venda_id, chave, xml, 'simulada', new Date().toISOString()], function () { res.json({ id: this.lastID, chave, warning: "Modo Simulação" }); });
-        }
-
-        if (!fs.existsSync(pfxPath)) {
-            return res.status(500).json({ error: 'Certificado PFX não encontrado em server/certificado/certificado.pfx.' });
-        }
-
-        try {
-            const nfeService = new NFeService(pfxPath, certPass, isProduction);
-            const emitente = {
-                cnpj: (configs.emit_cnpj || '56421395000150').replace(/\D/g, ''),
-                xNome: configs.emit_nome || 'M & M HF COMERCIO DE CEBOLAS LTDA',
-                xFant: configs.emit_fant || 'M & M HF COMERCIO DE CEBOLAS',
-                ie: (configs.emit_ie || '562696411110').replace(/\D/g, ''),
-                crt: configs.emit_crt || '3',
-                enderEmit: {
-                    xLgr: configs.emit_lgr || 'RUA MANOEL CRUZ', nro: configs.emit_nro || '36', xBairro: configs.emit_bairro || 'RESIDENCIAL MINERVA I',
-                    cMun: configs.emit_cmun || '3541406', xMun: configs.emit_xmun || 'PRESIDENTE PRUDENTE', UF: configs.emit_uf || 'SP', CEP: (configs.emit_cep || '19026168').replace(/\D/g, '')
-                }
-            };
-            const paramsChave = {
-                cUF: configs.emit_uf_cod || '35', year: new Date().getFullYear().toString().slice(-2),
-                month: (new Date().getMonth() + 1).toString().padStart(2, '0'), cnpj: emitente.cnpj, mod: '55',
-                serie: parseInt(configs.nfe_serie || '1'), nNF: parseInt(configs.nfe_prox_numero || venda_id), tpEmis: '1', cNF: Math.floor(Math.random() * 100000000)
-            };
-            const chaveAcesso = nfeService.generateChaveAcesso(paramsChave);
-            const dadosNFe = {
-                ide: { ...paramsChave, chaveAcesso, natOp: 'VENDA DE MERCADORIA', dhEmi: new Date().toISOString(), tpNF: '1', idDest: '1', cMunFG: emitente.enderEmit.cMun, tpImp: '1', finNFe: '1', indFinal: '1', indPres: '1' },
-                emit: emitente,
-                dest: { xNome: isProduction ? destinatario : 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL', enderDest: { xLgr: 'Rua', nro: '1', xBairro: 'B', cMun: '3550308', xMun: 'SP', UF: 'SP', CEP: '19000000' }, indIEDest: '9' },
-                det: itens.map(item => ({
-                    prod: {
-                        cProd: '001',
-                        xProd: item.produto,
-                        NCM: '07031019',
-                        CFOP: '5102',
-                        uCom: item.unidade || 'CX', // Usa a unidade vinda do front-end
-                        qCom: item.qtd,
-                        vUnCom: (item.valor / item.qtd).toFixed(2),
-                        vProd: item.valor.toFixed(2)
-                    },
-                    imposto: { vTotTrib: '0.00' }
-                })),
-                total: { icmsTot: { vBC: '0.00', vICMS: '0.00', vProd: itens.reduce((a, b) => a + b.valor, 0).toFixed(2), vNF: itens.reduce((a, b) => a + b.valor, 0).toFixed(2) } },
-                transp: { modFrete: '9' }, infAdic: { infCpl: 'Documento emitido por ME ou EPP optante pelo Simples Nacional. Não gera direito a crédito fiscal de IPI.' }
-            };
-
-            const xmlAssinado = nfeService.createNFeXML(dadosNFe);
-            const resultadoSefaz = await nfeService.transmitirSefaz(xmlAssinado, paramsChave.cUF);
-
-            db.run(`INSERT INTO nfe (venda_id, chave_acesso, xml_content, status, data_emissao) VALUES (?, ?, ?, ?, ?)`,
-                [venda_id, chaveAcesso, xmlAssinado, resultadoSefaz.status, new Date().toISOString()], function (err) {
-                    if (isProduction && resultadoSefaz.status === 'autorizada') {
-                        db.run("UPDATE configs SET valor = ? WHERE chave = 'nfe_prox_numero'", [paramsChave.nNF + 1]);
-                    }
-                    res.json({ id: this.lastID, chave: chaveAcesso, status: resultadoSefaz.status, mensagem: resultadoSefaz.message });
-                });
-        } catch (nfeErr) {
-            res.status(500).json({ error: nfeErr.message });
-        }
-    });
-});
-
-app.get('/api/nfe/:id/xml', authenticateToken, (req, res) => {
-    db.get('SELECT xml_content FROM nfe WHERE id = ?', [req.params.id], (err, row) => {
-        if (err || !row) return res.status(404).send("XML não encontrado");
-        res.setHeader('Content-Type', 'application/xml');
-        res.send(row.xml_content);
     });
 });
 
 app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
-    db.get(`SELECT n.*, m.valor, m.produto, m.quantidade, m.descricao as cliente_nome, 
-            c.documento as cliente_doc, c.endereco as cliente_end, c.nome as cliente_razao,
-            c.telefone as cliente_tel, c.email as cliente_email, c.ie as cliente_ie
-            FROM nfe n 
-            JOIN movimentacoes m ON n.venda_id = m.id
-            LEFT JOIN clientes c ON m.descricao = c.nome 
-            WHERE n.id = ?`, [req.params.id], async (err, row) => {
-
-        if (err || !row) return res.status(404).json({ error: "Nota não encontrada" });
+    db.get(`SELECT n.*, m.produto, m.quantidade, m.valor, m.unidade, m.descricao, m.peso_kg, m.qtd_caixas
+            FROM nfe n LEFT JOIN movimentacoes m ON n.venda_id = m.id WHERE n.id = ?`, [req.params.id], async (err, row) => {
+        if (err || !row) return res.status(404).json({ error: "NF-e não encontrada" });
 
         try {
-            const doc = new jsPDF();
-            const logoPath = path.join(__dirname, '../frontend/Imgs/Logo_M&M_Cebolas.png');
-            let logoData = fs.existsSync(logoPath) ? fs.readFileSync(logoPath).toString('base64') : null;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-            let barcodePng = null;
-            if (row.chave_acesso) {
-                barcodePng = await bwipjs.toBuffer({
-                    bcid: 'code128', text: row.chave_acesso.replace(/\s/g, ''), scale: 3, height: 10
-                });
-            }
+            // --- DANFE SIMPLIFICADO ---
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
 
-            const box = (x, y, w, h, title = '', bold = false) => {
-                doc.setDrawColor(0); doc.setLineWidth(0.1); doc.rect(x, y, w, h);
-                if (title) {
-                    doc.setFontSize(5); doc.setFont("helvetica", bold ? "bold" : "normal");
-                    doc.text(title.toUpperCase(), x + 1.5, y + 2.5);
-                }
+            // Borda externa
+            doc.rect(10, 10, 190, 277);
+
+            // Cabeçalho
+            const Y_HEAD = 10;
+            doc.setFillColor(240, 240, 240);
+            doc.rect(10, Y_HEAD, 190, 5, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.text("DANFE - DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA", 105, Y_HEAD + 3.5, { align: 'center' });
+
+            // Emitente
+            const Y_EMIT = 15;
+            doc.rect(10, Y_EMIT, 130, 30);
+            doc.setFontSize(10);
+            doc.text("M&M CEBOLAS", 12, Y_EMIT + 8);
+            doc.setFontSize(7);
+            doc.setFont("helvetica", "normal");
+            doc.text("Comércio de Cebolas", 12, Y_EMIT + 13);
+
+            // Caixa NF-e
+            doc.rect(140, Y_EMIT, 60, 30);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.text("NF-e", 170, Y_EMIT + 8, { align: 'center' });
+            doc.setFontSize(7);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Nº: ${row.venda_id}`, 170, Y_EMIT + 14, { align: 'center' });
+            doc.text(`Série: 001`, 170, Y_EMIT + 19, { align: 'center' });
+
+            // Chave de Acesso
+            const Y_CHAVE = Y_EMIT + 30;
+            doc.rect(10, Y_CHAVE, 190, 10);
+            doc.setFont("helvetica", "bold");
+            doc.text("CHAVE DE ACESSO:", 12, Y_CHAVE + 4);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(6.5);
+            doc.text(row.chave_acesso || '', 12, Y_CHAVE + 8);
+
+            // Destinatário
+            const Y_DEST = Y_CHAVE + 10;
+            doc.rect(10, Y_DEST, 190, 20);
+            doc.setFillColor(240, 240, 240);
+            doc.rect(10, Y_DEST, 190, 5, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.text("DESTINATÁRIO / REMETENTE", 12, Y_DEST + 3.5);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7);
+            doc.text(`NOME / RAZÃO SOCIAL: ${row.descricao || ''}`, 12, Y_DEST + 10);
+            doc.text(`DATA DE EMISSÃO: ${new Date(row.data_emissao).toLocaleDateString('pt-BR')}`, 12, Y_DEST + 15);
+
+            // Impostos
+            const Y_IMP = Y_DEST + 20;
+            doc.rect(10, Y_IMP, 190, 5, 'F');
+            doc.setFillColor(240, 240, 240);
+            doc.rect(10, Y_IMP, 190, 5, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.text("CÁLCULO DO IMPOSTO", 12, Y_IMP + 3.5);
+
+            const box = (x, y, w, h, label) => {
+                doc.rect(x, y, w, h);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(6);
+                doc.text(label, x + 1, y + 3);
+            };
+            const field = (x, y, w, h, label, value, align = 'left', size = 7) => {
+                doc.rect(x, y, w, h);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(6);
+                doc.text(label, x + 1, y + 3);
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(size);
+                if (align === 'right') doc.text(String(value), x + w - 1, y + h - 2, { align: 'right' });
+                else if (align === 'center') doc.text(String(value), x + w / 2, y + h - 2, { align: 'center' });
+                else doc.text(String(value), x + 1, y + h - 2);
             };
 
-            const field = (x, y, w, h, title, value, align = 'left', fontSize = 8) => {
-                box(x, y, w, h, title);
-                doc.setFontSize(fontSize); doc.setFont("helvetica", "bold");
-                const safeValue = value ? String(value) : '';
-                const yPos = y + (h / 2) + 2.5;
-                if (align === 'center') doc.text(safeValue, x + (w / 2), yPos, { align: 'center' });
-                else if (align === 'right') doc.text(safeValue, x + w - 1.5, yPos, { align: 'right' });
-                else doc.text(safeValue, x + 1.5, yPos);
-            };
-
-            // --- LAYOUT DANFE (IDENTICO AO PDF) ---
-
-            // CANHOTO
-            box(10, 8, 160, 15, "RECEBEMOS DE M&M CEBOLAS OS PRODUTOS CONSTANTES NA NOTA FISCAL INDICADA AO LADO");
-            doc.line(45, 18, 155, 18);
-            doc.setFontSize(5); doc.text("DATA DE RECEBIMENTO", 12, 16);
-            doc.text("IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR", 100, 21, { align: 'center' });
-
-            box(170, 8, 30, 15, "NF-e", true);
-            doc.setFontSize(10); doc.text(`Nº ${row.venda_id}`, 185, 15, { align: 'center' });
-            doc.setFontSize(8); doc.text(`SÉRIE 1`, 185, 19, { align: 'center' });
-
-            doc.setLineDash([1, 1], 0); doc.line(10, 26, 200, 26); doc.setLineDash([]);
-
-            // EMITENTE
-            const Y_EMIT = 30;
-            box(10, Y_EMIT, 80, 32);
-            if (logoData) doc.addImage(logoData, 'PNG', 12, Y_EMIT + 2, 28, 24);
-            doc.setTextColor(0, 80, 0); doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text("M&M CEBOLAS", 44, Y_EMIT + 10);
-            doc.setTextColor(0); doc.setFontSize(7); doc.setFont("helvetica", "normal");
-            doc.text("Rua Manoel Cruz, 36\nPres. Prudente - SP\nCEP: 19026-168\nFone: (18) 9999-9999", 44, Y_EMIT + 16);
-
-            // DANFE CENTRAL
-            box(90, Y_EMIT, 30, 32);
-            doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("DANFE", 105, Y_EMIT + 7, { align: 'center' });
-            doc.setFontSize(6); doc.setFont("helvetica", "normal");
-            doc.text("Documento Auxiliar\nda Nota Fiscal\nEletrônica", 105, Y_EMIT + 12, { align: 'center' });
-            doc.text("0 - Entrada\n1 - Saída", 95, Y_EMIT + 21);
-            doc.rect(112, Y_EMIT + 19, 6, 6); doc.setFontSize(10); doc.text("1", 115, Y_EMIT + 23.5, { align: 'center' });
-            doc.setFontSize(8); doc.setFont("helvetica", "bold");
-            doc.text(`Nº ${row.venda_id}\nSÉRIE 1`, 105, Y_EMIT + 28, { align: 'center' });
-
-            // CHAVE DE ACESSO
-            box(120, Y_EMIT, 80, 32, "CHAVE DE ACESSO");
-            if (barcodePng) doc.addImage(barcodePng, 'PNG', 123, Y_EMIT + 4, 74, 11);
-            doc.setFont("courier", "bold"); doc.setFontSize(6.5);
-            const chaveFmt = row.chave_acesso ? row.chave_acesso.match(/.{1,4}/g).join(' ') : '';
-            doc.text(chaveFmt, 160, Y_EMIT + 19, { align: 'center' });
-            doc.setFont("helvetica", "normal"); doc.setFontSize(6);
-            doc.text("Consulta de autenticidade no portal nacional da NF-e\nwww.nfe.fazenda.gov.br/portal ou no site da Sefaz", 160, Y_EMIT + 26, { align: 'center' });
-
-            // NATUREZA
-            field(10, 62, 110, 8, "NATUREZA DA OPERAÇÃO", "VENDA DE MERCADORIA");
-            field(120, 62, 80, 8, "PROTOCOLO DE AUTORIZAÇÃO DE USO", row.status === 'autorizada' ? "135240001234567 - 12/02/2026 10:00" : "EMITIDA EM HOMOLOGAÇÃO - SEM VALOR", 'center');
-            field(10, 70, 65, 8, "INSCRIÇÃO ESTADUAL", "562.696.411.110");
-            field(75, 70, 45, 8, "INSC. ESTADUAL SUBST. TRIB.", "");
-            field(120, 70, 80, 8, "CNPJ", "56.421.395/0001-50");
-
-            // DESTINATÁRIO
-            const Y_DEST = 82;
-            doc.setFillColor(240, 240, 240); doc.rect(10, Y_DEST, 190, 5, 'F');
-            doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("DESTINATÁRIO / REMETENTE", 12, Y_DEST + 3.5);
-            field(10, Y_DEST + 5, 110, 8, "NOME / RAZÃO SOCIAL", row.cliente_razao || row.cliente_nome);
-            field(120, Y_DEST + 5, 40, 8, "CNPJ / CPF", row.cliente_doc, 'center');
-            field(160, Y_DEST + 5, 40, 8, "DATA DA EMISSÃO", new Date(row.data_emissao).toLocaleDateString('pt-BR'), 'center');
-
-            const endParts = (row.cliente_end || '').split(',');
-            field(10, Y_DEST + 13, 90, 8, "ENDEREÇO", endParts[0] || '');
-            field(100, Y_DEST + 13, 40, 8, "BAIRRO / DISTRITO", endParts[2] || 'Centro');
-            field(140, Y_DEST + 13, 20, 8, "CEP", "19000-000", 'center');
-            field(160, Y_DEST + 13, 40, 8, "DATA SAÍDA/ENTRADA", new Date(row.data_emissao).toLocaleDateString('pt-BR'), 'center');
-
-            field(10, Y_DEST + 21, 60, 8, "MUNICÍPIO", "PRESIDENTE PRUDENTE");
-            field(70, Y_DEST + 21, 10, 8, "UF", "SP", 'center');
-            // Pega apenas o primeiro telefone se houver mais de um (separados por / ou ,)
-            const firstPhone = (row.cliente_tel || '').split(/[\/,]/)[0].trim();
-            field(80, Y_DEST + 21, 30, 8, "FONE", firstPhone);
-            field(110, Y_DEST + 21, 80, 8, "INSCRIÇÃO ESTADUAL", row.cliente_ie || '');
-
-            // IMPOSTO
-            const Y_IMP = 115;
-            doc.setFillColor(240, 240, 240); doc.rect(10, Y_IMP, 190, 5, 'F');
-            doc.setFontSize(7); doc.text("CÁLCULO DO IMPOSTO", 12, Y_IMP + 3.5);
-            field(10, Y_IMP + 5, 38, 8, "BASE DE CÁLCULO DO ICMS", "0,00", 'right');
+            field(10, Y_IMP + 5, 38, 8, "BASE CÁLC. ICMS", "0,00", 'right');
             field(48, Y_IMP + 5, 38, 8, "VALOR DO ICMS", "0,00", 'right');
             field(86, Y_IMP + 5, 38, 8, "BASE CÁLC. ICMS S.T.", "0,00", 'right');
             field(124, Y_IMP + 5, 38, 8, "VALOR DO ICMS S.T.", "0,00", 'right');
@@ -508,9 +566,10 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             field(124, Y_IMP + 13, 38, 8, "OUTRAS DESP. ACESS.", "0,00", 'right');
             field(162, Y_IMP + 13, 38, 8, "VALOR TOTAL DA NOTA", row.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), 'right');
 
-            // TRANSPORTADOR
-            const Y_TRA = 140;
+            // Transportador
+            const Y_TRA = Y_IMP + 21 + 10;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_TRA, 190, 5, 'F');
+            doc.setFont("helvetica", "bold"); doc.setFontSize(8);
             doc.text("TRANSPORTADOR / VOLUMES TRANSPORTADOS", 12, Y_TRA + 3.5);
             field(10, Y_TRA + 5, 80, 8, "RAZÃO SOCIAL", "O MESMO");
             field(90, Y_TRA + 5, 20, 8, "FRETE", "9-Sem Frete", 'center', 6);
@@ -519,27 +578,36 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             field(150, Y_TRA + 5, 10, 8, "UF", "");
             field(160, Y_TRA + 5, 40, 8, "CNPJ/CPF", "");
 
-            // PRODUTOS
-            const Y_PROD = 158;
+            // Produtos
+            const Y_PROD = Y_TRA + 13 + 10;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_PROD, 190, 5, 'F');
+            doc.setFont("helvetica", "bold"); doc.setFontSize(8);
             doc.text("DADOS DO PRODUTO / SERVIÇO", 12, Y_PROD + 3.5);
             const yH = Y_PROD + 5;
-            box(10, yH, 15, 5, "CÓDIGO"); box(25, yH, 70, 5, "DESCRIÇÃO"); box(95, yH, 15, 5, "NCM/SH"); box(110, yH, 10, 5, "CST"); box(120, yH, 10, 5, "CFOP"); box(130, yH, 10, 5, "UN"); box(140, yH, 15, 5, "QTD"); box(155, yH, 20, 5, "V.UNIT"); box(175, yH, 25, 5, "V.TOTAL");
+            box(10, yH, 15, 5, "CÓDIGO"); box(25, yH, 70, 5, "DESCRIÇÃO"); box(95, yH, 15, 5, "NCM/SH");
+            box(110, yH, 10, 5, "CST"); box(120, yH, 10, 5, "CFOP"); box(130, yH, 10, 5, "UN");
+            box(140, yH, 15, 5, "QTD"); box(155, yH, 20, 5, "V.UNIT"); box(175, yH, 25, 5, "V.TOTAL");
 
             const yR = yH + 5;
+            const unidadeLabel = row.unidade === 'AMBOS'
+                ? `${row.qtd_caixas}CX/${row.peso_kg}KG`
+                : (row.unidade || 'CX');
+            const qtdLabel = row.unidade === 'AMBOS' ? row.qtd_caixas : row.quantidade;
+
             field(10, yR, 15, 8, "", "001");
             field(25, yR, 70, 8, "", row.produto);
             field(95, yR, 15, 8, "", "07031019", 'center', 7);
             field(110, yR, 10, 8, "", "0102", 'center', 7);
             field(120, yR, 10, 8, "", "5102", 'center', 7);
-            field(130, yR, 10, 8, "", row.unidade || "CX", 'center', 7);
-            field(140, yR, 15, 8, "", row.quantidade, 'center');
-            field(155, yR, 20, 8, "", (row.valor / row.quantidade).toFixed(2), 'right');
+            field(130, yR, 10, 8, "", unidadeLabel, 'center', 7);
+            field(140, yR, 15, 8, "", qtdLabel, 'center');
+            field(155, yR, 20, 8, "", (row.valor / (qtdLabel || 1)).toFixed(2), 'right');
             field(175, yR, 25, 8, "", row.valor.toFixed(2), 'right');
 
-            // ADICIONAIS
-            const Y_ADI = 210;
+            // Adicionais
+            const Y_ADI = yR + 8 + 15;
             doc.setFillColor(240, 240, 240); doc.rect(10, Y_ADI, 190, 5, 'F');
+            doc.setFont("helvetica", "bold"); doc.setFontSize(8);
             doc.text("DADOS ADICIONAIS", 12, Y_ADI + 3.5);
             box(10, Y_ADI + 5, 125, 25, "INFORMAÇÕES COMPLEMENTARES");
             doc.setFontSize(7); doc.setFont("helvetica", "bold");
@@ -557,9 +625,30 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
     });
 });
 
-app.get('/api/configs', authenticateToken, (req, res) => { db.all('SELECT * FROM configs', [], (err, rows) => { const c = {}; rows?.forEach(r => c[r.chave] = r.valor); res.json(c); }); });
-app.post('/api/configs', authenticateToken, (req, res) => { const { chave, valor } = req.body; db.run('INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)', [chave, valor], () => res.json({ success: true })); });
-app.delete('/api/reset', authenticateToken, (req, res) => { if (req.user.role !== 'admin') return res.sendStatus(403); db.serialize(() => { ['movimentacoes', 'nfe', 'clientes', 'fornecedores', 'produtos'].forEach(t => db.run(`DELETE FROM ${t}`)); res.json({ success: true }); }); });
+app.get('/api/configs', authenticateToken, (req, res) => {
+    db.all('SELECT * FROM configs', [], (err, rows) => {
+        const c = {};
+        rows?.forEach(r => c[r.chave] = r.valor);
+        res.json(c);
+    });
+});
+
+app.post('/api/configs', authenticateToken, (req, res) => {
+    const { chave, valor } = req.body;
+    db.run('INSERT OR REPLACE INTO configs (chave, valor) VALUES (?, ?)', [chave, valor], () => {
+        registrarLog(req, 'CONFIG_UPDATE', `Configuração atualizada: ${chave} = ${valor}`);
+        res.json({ success: true });
+    });
+});
+
+app.delete('/api/reset', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    db.serialize(() => {
+        ['movimentacoes', 'nfe', 'clientes', 'fornecedores', 'produtos'].forEach(t => db.run(`DELETE FROM ${t}`));
+        registrarLog(req, 'SYSTEM_RESET', 'Sistema resetado pelo administrador');
+        res.json({ success: true });
+    });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
