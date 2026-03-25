@@ -377,31 +377,41 @@ app.get('/api/consultar/:type/:doc', authenticateToken, async (req, res) => {
 app.get('/api/clientes', authenticateToken, (req, res) => db.all('SELECT * FROM clientes', [], (err, rows) => res.json(rows || [])));
 app.post('/api/clientes', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;
-    if (id) db.run(`UPDATE clientes SET nome=?,documento=?,telefone=?,ie=?,email=?,endereco=? WHERE id=?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        registrarLog(req, 'CLIENTE_EDIT', `Editou cliente: ${nome}`);
-        res.json({ success: true });
-    });
-    else db.run(`INSERT INTO clientes (nome,documento,telefone,ie,email,endereco) VALUES (?,?,?,?,?,?)`, [nome, documento, telefone, ie, email, endereco], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        registrarLog(req, 'CLIENTE_ADD', `Adicionou cliente: ${nome}`);
-        res.json({ id: this.lastID });
-    });
+    if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
+    
+    if (id) {
+        db.run(`UPDATE clientes SET nome=?,documento=?,telefone=?,ie=?,email=?,endereco=? WHERE id=?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            registrarLog(req, 'CLIENTE_EDIT', `Editou cliente: ${nome}`);
+            res.json({ success: true });
+        });
+    } else {
+        db.run(`INSERT INTO clientes (nome,documento,telefone,ie,email,endereco) VALUES (?,?,?,?,?,?)`, [nome, documento, telefone, ie, email, endereco], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            registrarLog(req, 'CLIENTE_ADD', `Adicionou cliente: ${nome}`);
+            res.json({ id: this.lastID });
+        });
+    }
 });
 
 app.get('/api/fornecedores', authenticateToken, (req, res) => db.all('SELECT * FROM fornecedores', [], (err, rows) => res.json(rows || [])));
 app.post('/api/fornecedores', authenticateToken, (req, res) => {
     const { id, nome, documento, telefone, ie, email, endereco } = req.body;
-    if (id) db.run(`UPDATE fornecedores SET nome=?,documento=?,telefone=?,ie=?,email=?,endereco=? WHERE id=?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        registrarLog(req, 'FORNECEDOR_EDIT', `Editou fornecedor: ${nome}`);
-        res.json({ success: true });
-    });
-    else db.run(`INSERT INTO fornecedores (nome,documento,telefone,ie,email,endereco) VALUES (?,?,?,?,?,?)`, [nome, documento, telefone, ie, email, endereco], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        registrarLog(req, 'FORNECEDOR_ADD', `Adicionou fornecedor: ${nome}`);
-        res.json({ id: this.lastID });
-    });
+    if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
+    
+    if (id) {
+        db.run(`UPDATE fornecedores SET nome=?,documento=?,telefone=?,ie=?,email=?,endereco=? WHERE id=?`, [nome, documento, telefone, ie, email, endereco, id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            registrarLog(req, 'FORNECEDOR_EDIT', `Editou fornecedor: ${nome}`);
+            res.json({ success: true });
+        });
+    } else {
+        db.run(`INSERT INTO fornecedores (nome,documento,telefone,ie,email,endereco) VALUES (?,?,?,?,?,?)`, [nome, documento, telefone, ie, email, endereco], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            registrarLog(req, 'FORNECEDOR_ADD', `Adicionou fornecedor: ${nome}`);
+            res.json({ id: this.lastID });
+        });
+    }
 });
 
 app.delete('/api/cadastros/:type/:id', authenticateToken, (req, res) => {

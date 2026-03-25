@@ -104,8 +104,15 @@
             </button>
         </div>
 
+        <div style="padding: 16px 24px; border-bottom: 1px solid var(--border);">
+            <div class="search-box-pro" style="width:100%;max-width:400px;">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Buscar produto..." onkeyup="filterCadTable('table-produtos', this.value)" style="width:100%">
+            </div>
+        </div>
+
         <div class="table-container">
-            <table>
+            <table id="table-produtos">
                 <thead>
                     <tr>
                         <th>Produto</th>

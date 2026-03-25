@@ -1484,3 +1484,14 @@ function openUsuarioModal(data = null) {
 function closeUsuarioModal() {
     document.getElementById('modal-usuario')?.classList.remove('active');
 }
+
+
+// =============================================
+// FUNÇÃO AUXILIAR: Alternar abas do painel admin
+// =============================================
+function switchAdminTab(tab, btn) {
+    document.querySelectorAll('.admin-tab-content').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('admin-tab-' + tab).style.display = 'block';
+    btn.classList.add('active');
+}
