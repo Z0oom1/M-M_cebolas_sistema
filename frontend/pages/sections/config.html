@@ -1,13 +1,13 @@
 <header class="top-bar">
-    <h2 class="page-title">Configurações e Segurança</h2>
+    <h2 class="page-title">Configurações do Sistema</h2>
 </header>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
 
-    <!-- CONFIGURAÇÕES DO SISTEMA -->
+    <!-- CONFIGURAÇÕES GERAIS -->
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;"><i class="fas fa-cogs" style="color: var(--primary);"></i> Configurações do Sistema</h4>
+            <h4 style="font-weight: 700;"><i class="fas fa-cogs" style="color: var(--primary);"></i> Configurações Gerais</h4>
         </div>
         <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
 
@@ -19,7 +19,7 @@
                     </div>
                     <div>
                         <strong style="display: block;">Peso Padrão por Caixa</strong>
-                        <span style="color: var(--text-muted); font-size: 0.8rem;">Usado para calcular kg automaticamente ao registrar em caixas</span>
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">Usado para calcular kg automaticamente</span>
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
@@ -30,218 +30,134 @@
                         <i class="fas fa-save"></i> Salvar
                     </button>
                 </div>
-                <small style="color: var(--text-muted); margin-top: 8px; display: block;">
-                    Exemplo: se cada caixa pesa 20 kg, ao registrar 10 caixas o sistema calculará 200 kg automaticamente.
-                </small>
             </div>
 
             <hr style="border: 0; border-top: 1px solid var(--border);">
 
-            <!-- Ambiente NF-e -->
+            <!-- Ambiente NF-e (somente visualização para não-admin) -->
             <div>
-                <strong style="display: block; margin-bottom: 12px;">Ambiente NF-e</strong>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
+                <strong style="display: block; margin-bottom: 12px;"><i class="fas fa-file-invoice"></i> Ambiente NF-e</strong>
+                <div class="admin-config-section" style="display: flex; flex-direction: column; gap: 10px;">
                     <label style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: var(--transition);">
                         <input type="radio" name="nfe_modo" value="homologacao" onchange="updateNFeModo('homologacao')" style="width: auto; margin-top: 4px;">
                         <div>
-                            <strong style="display: block; margin-bottom: 2px;">Homologação</strong>
-                            <span style="color: var(--text-muted); font-size: 0.8rem;">Ambiente de testes. As notas não possuem valor fiscal.</span>
+                            <strong style="display: block; margin-bottom: 2px;">🧪 Homologação (Testes)</strong>
+                            <span style="color: var(--text-muted); font-size: 0.8rem;">Notas não possuem valor fiscal.</span>
                         </div>
                     </label>
                     <label style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: var(--transition);">
                         <input type="radio" name="nfe_modo" value="producao" onchange="updateNFeModo('producao')" style="width: auto; margin-top: 4px;">
                         <div>
-                            <strong style="display: block; margin-bottom: 2px;">Produção</strong>
-                            <span style="color: var(--text-muted); font-size: 0.8rem;">Ambiente real. As notas possuem validade jurídica e fiscal.</span>
+                            <strong style="display: block; margin-bottom: 2px;">🏭 Produção (Real)</strong>
+                            <span style="color: var(--text-muted); font-size: 0.8rem;">Ambiente real com validade fiscal.</span>
                         </div>
                     </label>
+                </div>
+                <div class="non-admin-nfe-info" style="display:none; background:#f1f5f9; border-radius:10px; padding:12px;">
+                    <p style="font-size:0.85rem;color:var(--text-muted);"><i class="fas fa-lock"></i> Apenas administradores podem alterar o modo NF-e. Contate o administrador do sistema.</p>
                 </div>
             </div>
 
             <hr style="border: 0; border-top: 1px solid var(--border);">
 
-            <!-- Certificado -->
-            <div class="form-group">
-                <label>Senha do Certificado (.pfx)</label>
+            <!-- Senha do Certificado (somente admin) -->
+            <div class="admin-config-section form-group">
+                <label>Senha do Certificado Digital (.pfx)</label>
                 <div style="display: flex; gap: 8px;">
-                    <input type="password" id="cert-password" placeholder="Digite a senha do certificado" style="flex: 1;">
+                    <input type="password" id="cert-password" placeholder="Senha do certificado" style="flex: 1;">
                     <button class="btn-primary" onclick="saveCertPassword()" style="padding: 10px 16px;">
                         <i class="fas fa-save"></i>
                     </button>
                 </div>
-                <small style="color: var(--text-muted); margin-top: 4px;">O certificado deve estar em: <code>/server/certificado/certificado.pfx</code></small>
+                <small style="color: var(--text-muted); margin-top: 4px; font-size:0.75rem;">Certificado em: <code>/server/certificado/certificado.pfx</code></small>
             </div>
         </div>
     </div>
 
-    <div class="panel" id="admin-users-panel">
-        <div class="panel-header">
-            <h4 style="font-weight: 700;">Usuários e Acessos</h4>
-            <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="openUsuarioModal()">
-                <i class="fas fa-user-plus"></i> Novo Usuário
-            </button>
-        </div>
-        <div class="table-container">
-            <table class="table-compact">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Usuário</th>
-                        <th>Nível</th>
-                        <th style="text-align: right;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="list-usuarios">
-                    <!-- JS -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- LOGS DO SISTEMA (ADMIN APENAS) -->
-<div id="admin-logs-panel" class="panel" style="margin-top: 24px;">
-    <div class="panel-header">
-        <h4 style="font-weight: 700;"><i class="fas fa-history"></i> Log de Atividades do Sistema</h4>
-        <button class="btn-icon" onclick="loadLogs()"><i class="fas fa-sync-alt"></i> Atualizar</button>
-    </div>
-    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
-        <table class="table-compact">
-            <thead>
-                <tr>
-                    <th>Data/Hora</th>
-                    <th>Usuário</th>
-                    <th>Ação</th>
-                    <th>Detalhes</th>
-                </tr>
-            </thead>
-            <tbody id="list-logs">
-                <!-- JS -->
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- GESTÃO DE ENTIDADES (ADMIN APENAS) -->
-<div id="admin-entities-panel" style="margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <!-- INFORMAÇÕES DO SISTEMA -->
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;">Gerenciar Clientes</h4>
-            <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="openEditModal('cliente')">
-                <i class="fas fa-plus"></i> Novo Cliente
-            </button>
+            <h4 style="font-weight: 700;"><i class="fas fa-info-circle" style="color: var(--primary);"></i> Informações do Sistema</h4>
         </div>
-        <div class="table-container">
-            <table class="table-compact">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th style="text-align: right;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="config-list-clientes"></tbody>
-            </table>
-        </div>
-    </div>
-    <div class="panel">
-        <div class="panel-header">
-            <h4 style="font-weight: 700;">Gerenciar Fornecedores</h4>
-            <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="openEditModal('fornecedor')">
-                <i class="fas fa-plus"></i> Novo Fornecedor
-            </button>
-        </div>
-        <div class="table-container">
-            <table class="table-compact">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th style="text-align: right;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="config-list-fornecedores"></tbody>
-            </table>
-        </div>
-    </div>
-</div>
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+            
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8fafc;border-radius:10px;">
+                    <span style="font-weight:600;color:var(--text-muted)">Sistema</span>
+                    <span style="font-weight:700;">M&M Cebolas v3.0</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8fafc;border-radius:10px;">
+                    <span style="font-weight:600;color:var(--text-muted)">Movimentações</span>
+                    <span style="font-weight:700;" id="info-movs">-</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8fafc;border-radius:10px;">
+                    <span style="font-weight:600;color:var(--text-muted)">Produtos</span>
+                    <span style="font-weight:700;" id="info-prods">-</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8fafc;border-radius:10px;">
+                    <span style="font-weight:600;color:var(--text-muted)">Clientes</span>
+                    <span style="font-weight:700;" id="info-clis">-</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8fafc;border-radius:10px;">
+                    <span style="font-weight:600;color:var(--text-muted)">Fornecedores</span>
+                    <span style="font-weight:700;" id="info-sups">-</span>
+                </div>
+            </div>
 
-<div id="admin-products-panel" class="panel" style="margin-top: 24px;">
-    <div class="panel-header">
-        <h4 style="font-weight: 700;">Gerenciar Produtos / Variedades</h4>
-        <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="openProdutoModal()">
-            <i class="fas fa-plus"></i> Novo Produto
-        </button>
-    </div>
-    <div class="table-container">
-        <table class="table-compact">
-            <thead>
-                <tr>
-                    <th>Variedade</th>
-                    <th>NCM</th>
-                    <th>Preço Base</th>
-                    <th>Kg/Cx</th>
-                    <th style="text-align: right;">Ações</th>
-                </tr>
-            </thead>
-            <tbody id="config-list-produtos"></tbody>
-        </table>
-    </div>
-</div>
+            <hr style="border:0;border-top:1px solid var(--border);">
 
-<div id="admin-danger-panel" class="panel" style="margin-top: 24px; border: 2px solid #fee2e2;">
-    <div class="panel-header" style="background: #fff1f2; border-bottom: 1px solid #fee2e2;">
-        <h4 style="color: #991b1b; font-weight: 800;"><i class="fas fa-exclamation-triangle"></i> ZONA DE PERIGO (ADMINISTRADOR)</h4>
-    </div>
-    <div style="padding: 24px; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <strong style="display: block; margin-bottom: 4px; color: #991b1b; font-size: 1.1rem;">Resetar Dados do Sistema</strong>
-            <span style="color: var(--text-muted); font-size: 0.9rem;">Esta ação é irreversível. Apagará movimentações, NF-es, clientes, fornecedores e produtos.</span>
+            <!-- Link para painel admin -->
+            <div class="admin-only" style="background:linear-gradient(135deg,#1e40af,#2563eb);border-radius:12px;padding:20px;color:white;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <div style="width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div>
+                        <strong style="display:block;">Painel do Administrador</strong>
+                        <span style="font-size:0.8rem;opacity:0.8;">Gerenciar usuários, logs e dados</span>
+                    </div>
+                </div>
+                <button onclick="showSection('admin')" class="btn-primary" style="width:100%;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);">
+                    <i class="fas fa-arrow-right"></i> Ir para o Painel Admin
+                </button>
+            </div>
         </div>
-        <button class="btn-danger" onclick="resetSystem()" style="background: #dc2626; padding: 14px 28px; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);">
-            <i class="fas fa-trash-alt"></i> APAGAR TUDO E REINICIAR
-        </button>
-    </div>
-</div>
-
-<!-- Modal de Usuário/Funcionário -->
-<div id="modal-usuario" class="modal-overlay">
-    <div class="edit-modal" style="max-width: 500px;">
-        <div class="panel-header" style="background: #2563eb; color: white; padding: 20px;">
-            <h3 id="user-modal-title" style="margin: 0;">Gestão de Acesso</h3>
-            <button onclick="closeUsuarioModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
-        </div>
-        <form onsubmit="saveUsuario(event)" class="form-grid" style="grid-template-columns: 1fr;">
-            <input type="hidden" id="user-id">
-            <div class="form-group">
-                <label>Nome Completo (Exibição)</label>
-                <input type="text" id="user-label" required placeholder="Ex: João da Silva">
-            </div>
-            <div class="form-group">
-                <label>Nome de Usuário (Login)</label>
-                <input type="text" id="user-username" required placeholder="Ex: joao.silva">
-            </div>
-            <div class="form-group">
-                <label>Senha</label>
-                <input type="password" id="user-password" placeholder="Deixe em branco para manter a atual">
-            </div>
-            <div class="form-group">
-                <label>Nível de Acesso</label>
-                <select id="user-role">
-                    <option value="funcionario">Funcionário (Operacional)</option>
-                    <option value="chefe">Chefe (Acesso Total)</option>
-                    <option value="admin">Administrador (Gestão de Sistema)</option>
-                </select>
-            </div>
-            <div style="display: flex; gap: 12px; margin-top: 10px;">
-                <button type="button" class="btn-danger" onclick="closeUsuarioModal()" style="flex: 1;">Cancelar</button>
-                <button type="submit" class="btn-primary" style="flex: 2; background: #2563eb;">Salvar Acesso</button>
-            </div>
-        </form>
     </div>
 </div>
 
 <style>
-    label:has(input:checked) {
-        border-color: var(--primary) !important;
-        background: #f0fdf4 !important;
-    }
+label:has(input[name="nfe_modo"]:checked) {
+    border-color: var(--primary) !important;
+    background: #f0fdf4 !important;
+}
 </style>
+
+<script>
+// Populate info cards
+(function() {
+    if (typeof appData === 'undefined') return;
+    const userData = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const userRole = userData.role || userData.user?.role;
+    const isAdmin = userRole === 'admin';
+    
+    document.getElementById('info-movs').textContent = (appData.transactions || []).length;
+    document.getElementById('info-prods').textContent = (appData.products || []).length;
+    document.getElementById('info-clis').textContent = (appData.clients || []).length;
+    document.getElementById('info-sups').textContent = (appData.suppliers || []).length;
+    
+    // Show/hide admin sections
+    if (!isAdmin) {
+        document.querySelectorAll('.admin-config-section').forEach(el => el.style.display = 'none');
+        const nonAdminNfe = document.querySelector('.non-admin-nfe-info');
+        if (nonAdminNfe) nonAdminNfe.style.display = 'block';
+    }
+    
+    // Load NFe mode
+    const modo = appData.configs?.nfe_modo || 'homologacao';
+    document.querySelectorAll('input[name="nfe_modo"]').forEach(r => r.checked = r.value === modo);
+    
+    // Load peso
+    const pesoCxEl = document.getElementById('config-peso-cx');
+    if (pesoCxEl) pesoCxEl.value = appData.configs?.peso_por_caixa_padrao || 20;
+})();
+</script>

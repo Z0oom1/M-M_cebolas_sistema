@@ -1,50 +1,88 @@
 <header class="top-bar">
     <div>
-        <h2 class="page-title">Contatos</h2>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Visualize seus clientes e fornecedores cadastrados.</p>
+        <h2 class="page-title">Cadastros</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Gerencie clientes, fornecedores e produtos.</p>
     </div>
 </header>
 
-<div class="cadastro-grid">
-    <!-- LISTA DE CLIENTES -->
+<div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+    <button class="tab-btn active" onclick="switchCadTab('clientes', this)">
+        <i class="fas fa-users"></i> Clientes
+    </button>
+    <button class="tab-btn" onclick="switchCadTab('fornecedores', this)">
+        <i class="fas fa-truck-moving"></i> Fornecedores
+    </button>
+    <button class="tab-btn" onclick="switchCadTab('produtos', this)">
+        <i class="fas fa-box-open"></i> Produtos
+    </button>
+</div>
+
+<!-- CLIENTES -->
+<div id="tab-clientes" class="cad-tab">
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;"><i class="fas fa-users" style="color: var(--primary);"></i> Meus Clientes</h4>
-            <button class="btn-primary" onclick="openEditModal('cliente')" style="padding: 8px 16px; font-size: 0.8rem;">
+            <div>
+                <h4 style="font-weight: 700; margin-bottom:4px;"><i class="fas fa-users" style="color: var(--primary);"></i> Meus Clientes</h4>
+                <p style="font-size:0.8rem;color:var(--text-muted)">Gerencie todos os seus clientes</p>
+            </div>
+            <button class="btn-primary" onclick="openEditModal('cliente')" style="padding: 10px 20px;">
                 <i class="fas fa-plus"></i> Novo Cliente
             </button>
         </div>
+
+        <div style="padding: 16px 24px; border-bottom: 1px solid var(--border);">
+            <div class="search-box-pro" style="width:100%;max-width:400px;">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Buscar cliente..." onkeyup="filterCadTable('table-clientes', this.value)" style="width:100%">
+            </div>
+        </div>
+
         <div class="table-container">
-            <table>
+            <table id="table-clientes">
                 <thead>
                     <tr>
-                        <th>Nome</th>
+                        <th>Nome / Razão Social</th>
                         <th>Documento</th>
                         <th>Telefone</th>
-                        <th style="width: 100px;">Ações</th>
+                        <th>E-mail</th>
+                        <th style="width: 100px; text-align:right;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="list-clientes"></tbody>
             </table>
         </div>
     </div>
+</div>
 
-    <!-- LISTA DE FORNECEDORES -->
+<!-- FORNECEDORES -->
+<div id="tab-fornecedores" class="cad-tab" style="display:none;">
     <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;"><i class="fas fa-truck-moving" style="color: var(--accent);"></i> Meus Fornecedores</h4>
-            <button class="btn-primary" onclick="openEditModal('fornecedor')" style="padding: 8px 16px; font-size: 0.8rem;">
+            <div>
+                <h4 style="font-weight: 700; margin-bottom:4px;"><i class="fas fa-truck-moving" style="color: var(--accent);"></i> Meus Fornecedores</h4>
+                <p style="font-size:0.8rem;color:var(--text-muted)">Gerencie todos os seus fornecedores</p>
+            </div>
+            <button class="btn-primary" onclick="openEditModal('fornecedor')" style="padding: 10px 20px;">
                 <i class="fas fa-plus"></i> Novo Fornecedor
             </button>
         </div>
+
+        <div style="padding: 16px 24px; border-bottom: 1px solid var(--border);">
+            <div class="search-box-pro" style="width:100%;max-width:400px;">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Buscar fornecedor..." onkeyup="filterCadTable('table-fornecedores', this.value)" style="width:100%">
+            </div>
+        </div>
+
         <div class="table-container">
-            <table>
+            <table id="table-fornecedores">
                 <thead>
                     <tr>
-                        <th>Nome</th>
+                        <th>Nome / Razão Social</th>
                         <th>Documento</th>
                         <th>Telefone</th>
-                        <th style="width: 100px;">Ações</th>
+                        <th>E-mail</th>
+                        <th style="width: 100px; text-align:right;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="list-fornecedores"></tbody>
@@ -53,23 +91,28 @@
     </div>
 </div>
 
-<div class="cadastro-grid" style="margin-top: 24px;">
-    <!-- LISTA DE PRODUTOS -->
-    <div class="panel" style="grid-column: span 2;">
+<!-- PRODUTOS -->
+<div id="tab-produtos" class="cad-tab" style="display:none;">
+    <div class="panel">
         <div class="panel-header">
-            <h4 style="font-weight: 700;"><i class="fas fa-box-open" style="color: var(--primary);"></i> Produtos / Variedades</h4>
-            <button class="btn-primary" onclick="openProdutoModal()" style="padding: 8px 16px; font-size: 0.8rem;">
+            <div>
+                <h4 style="font-weight: 700; margin-bottom:4px;"><i class="fas fa-box-open" style="color: var(--primary);"></i> Produtos / Variedades</h4>
+                <p style="font-size:0.8rem;color:var(--text-muted)">Gerencie os produtos disponíveis para compra e venda</p>
+            </div>
+            <button class="btn-primary" onclick="openProdutoModal(null)" style="padding: 10px 20px;">
                 <i class="fas fa-plus"></i> Novo Produto
             </button>
         </div>
+
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
-                        <th>Variedade</th>
+                        <th>Produto</th>
                         <th>NCM</th>
                         <th>Preço Base</th>
-                        <th style="width: 100px;">Ações</th>
+                        <th>Kg/Cx</th>
+                        <th style="width: 100px; text-align:right;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="list-produtos"></tbody>
@@ -77,3 +120,68 @@
         </div>
     </div>
 </div>
+
+<style>
+.tab-btn {
+    padding: 10px 20px;
+    border: 2px solid var(--border);
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.tab-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.tab-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(26,86,50,0.2);
+}
+.search-box-pro {
+    position: relative;
+}
+.search-box-pro i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+.search-box-pro input {
+    padding: 10px 15px 10px 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    outline: none;
+    transition: border-color 0.2s;
+}
+.search-box-pro input:focus {
+    border-color: var(--primary);
+}
+</style>
+
+<script>
+function switchCadTab(tab, btn) {
+    document.querySelectorAll('.cad-tab').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).style.display = 'block';
+    btn.classList.add('active');
+}
+
+function filterCadTable(tableId, val) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(val.toLowerCase()) ? '' : 'none';
+    });
+}
+</script>

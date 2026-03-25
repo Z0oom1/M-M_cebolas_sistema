@@ -1,0 +1,310 @@
+<header class="top-bar">
+    <div>
+        <h2 class="page-title" style="color: #1e40af;"><i class="fas fa-shield-alt" style="margin-right:10px;"></i>Painel do Administrador</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Controle total do sistema, usuários e dados.</p>
+    </div>
+</header>
+
+<!-- TABS ADMIN -->
+<div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+    <button class="admin-tab-btn active" onclick="switchAdminTab('usuarios', this)">
+        <i class="fas fa-users-cog"></i> Usuários
+    </button>
+    <button class="admin-tab-btn" onclick="switchAdminTab('cadastros', this)">
+        <i class="fas fa-address-book"></i> Cadastros
+    </button>
+    <button class="admin-tab-btn" onclick="switchAdminTab('logs', this)">
+        <i class="fas fa-history"></i> Logs
+    </button>
+    <button class="admin-tab-btn" onclick="switchAdminTab('nfe-config', this)">
+        <i class="fas fa-file-invoice"></i> Config NF-e
+    </button>
+    <button class="admin-tab-btn danger-tab" onclick="switchAdminTab('danger', this)">
+        <i class="fas fa-exclamation-triangle"></i> Zona de Perigo
+    </button>
+</div>
+
+<!-- USUÁRIOS -->
+<div id="admin-tab-usuarios" class="admin-tab-content">
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <h4 style="font-weight: 700;"><i class="fas fa-users-cog" style="color:#2563eb"></i> Gerenciamento de Usuários</h4>
+                <p style="font-size:0.8rem;color:var(--text-muted)">Crie e gerencie acessos ao sistema</p>
+            </div>
+            <button class="btn-primary" onclick="openUsuarioModal()" style="background:#2563eb;">
+                <i class="fas fa-user-plus"></i> Novo Usuário
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Usuário (Login)</th>
+                        <th>Nível de Acesso</th>
+                        <th style="text-align:right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="list-usuarios"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Legenda de níveis -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:16px;">
+        <div class="panel" style="padding:16px;border-left:4px solid #dc2626;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <span class="badge admin">ADMIN</span>
+                <strong>Administrador</strong>
+            </div>
+            <p style="font-size:0.8rem;color:var(--text-muted)">Acesso total: gerencia usuários, configurações, pode resetar sistema e alterar modo NF-e.</p>
+        </div>
+        <div class="panel" style="padding:16px;border-left:4px solid #059669;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <span class="badge entrada">CHEFE</span>
+                <strong>Chefe</strong>
+            </div>
+            <p style="font-size:0.8rem;color:var(--text-muted)">Acesso completo às operações, relatórios e cadastros. Não gerencia usuários.</p>
+        </div>
+        <div class="panel" style="padding:16px;border-left:4px solid #64748b;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <span class="badge operador">FUNCIONÁRIO</span>
+                <strong>Funcionário</strong>
+            </div>
+            <p style="font-size:0.8rem;color:var(--text-muted)">Acesso básico: registra entradas e saídas. Não vê configurações sensíveis.</p>
+        </div>
+    </div>
+</div>
+
+<!-- CADASTROS -->
+<div id="admin-tab-cadastros" class="admin-tab-content" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+        <!-- Clientes -->
+        <div class="panel">
+            <div class="panel-header">
+                <h4 style="font-weight:700;"><i class="fas fa-users" style="color:var(--primary)"></i> Clientes</h4>
+                <button class="btn-primary" onclick="openEditModal('cliente')" style="padding:8px 16px;font-size:0.8rem;">
+                    <i class="fas fa-plus"></i> Novo
+                </button>
+            </div>
+            <div class="table-container" style="max-height:350px;overflow-y:auto;">
+                <table>
+                    <tbody id="admin-list-clientes"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Fornecedores -->
+        <div class="panel">
+            <div class="panel-header">
+                <h4 style="font-weight:700;"><i class="fas fa-truck-moving" style="color:var(--accent)"></i> Fornecedores</h4>
+                <button class="btn-primary" onclick="openEditModal('fornecedor')" style="padding:8px 16px;font-size:0.8rem;">
+                    <i class="fas fa-plus"></i> Novo
+                </button>
+            </div>
+            <div class="table-container" style="max-height:350px;overflow-y:auto;">
+                <table>
+                    <tbody id="admin-list-fornecedores"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Produtos -->
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight:700;"><i class="fas fa-box-open" style="color:var(--primary)"></i> Produtos / Variedades</h4>
+            <button class="btn-primary" onclick="openProdutoModal(null)" style="padding:8px 16px;font-size:0.8rem;">
+                <i class="fas fa-plus"></i> Novo Produto
+            </button>
+        </div>
+        <div class="table-container">
+            <table>
+                <tbody id="admin-list-produtos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- LOGS -->
+<div id="admin-tab-logs" class="admin-tab-content" style="display:none;">
+    <div class="panel">
+        <div class="panel-header">
+            <h4 style="font-weight:700;"><i class="fas fa-history"></i> Log de Atividades</h4>
+            <button class="btn-icon" onclick="loadLogs()" title="Atualizar">
+                <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+        </div>
+        <div class="table-container" style="max-height:500px;overflow-y:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Usuário</th>
+                        <th>Ação</th>
+                        <th>Detalhes</th>
+                    </tr>
+                </thead>
+                <tbody id="list-logs"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIG NF-E -->
+<div id="admin-tab-nfe-config" class="admin-tab-content" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <!-- Modo NF-e -->
+        <div class="panel">
+            <div class="panel-header">
+                <h4 style="font-weight:700;"><i class="fas fa-toggle-on" style="color:var(--primary)"></i> Ambiente NF-e</h4>
+            </div>
+            <div style="padding:24px;">
+                <div class="nfe-modo-alert" id="nfe-modo-alert" style="display:none;margin-bottom:16px;padding:12px 16px;border-radius:10px;font-weight:600;font-size:0.85rem;"></div>
+                
+                <label class="radio-option" style="display:flex;align-items:flex-start;gap:12px;padding:16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;margin-bottom:12px;transition:all 0.2s;">
+                    <input type="radio" name="nfe_modo" value="homologacao" onchange="updateNFeModo('homologacao')" style="width:auto;margin-top:3px;">
+                    <div>
+                        <strong style="display:block;margin-bottom:4px;">🧪 Homologação (Testes)</strong>
+                        <span style="color:var(--text-muted);font-size:0.8rem;">As notas não possuem valor fiscal. Use para testar o sistema.</span>
+                    </div>
+                </label>
+                
+                <label class="radio-option" style="display:flex;align-items:flex-start;gap:12px;padding:16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;margin-bottom:12px;transition:all 0.2s;">
+                    <input type="radio" name="nfe_modo" value="producao" onchange="updateNFeModo('producao')" style="width:auto;margin-top:3px;">
+                    <div>
+                        <strong style="display:block;margin-bottom:4px;">🏭 Produção (Real)</strong>
+                        <span style="color:var(--text-muted);font-size:0.8rem;">Ambiente real. As notas possuem validade jurídica e fiscal perante a SEFAZ.</span>
+                    </div>
+                </label>
+                
+                <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:12px;margin-top:16px;">
+                    <p style="font-size:0.8rem;font-weight:600;color:#92400e;"><i class="fas fa-exclamation-triangle"></i> Atenção: Somente administradores podem alterar o ambiente. Em produção, todas as NF-es emitidas têm valor fiscal real.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Certificado Digital -->
+        <div class="panel">
+            <div class="panel-header">
+                <h4 style="font-weight:700;"><i class="fas fa-certificate" style="color:#7c3aed"></i> Certificado Digital</h4>
+            </div>
+            <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;">
+                    <p style="font-size:0.85rem;font-weight:600;color:#166534;margin-bottom:4px;"><i class="fas fa-info-circle"></i> Localização do Certificado</p>
+                    <code style="font-size:0.8rem;color:#374151;background:#dcfce7;padding:4px 8px;border-radius:4px;">/server/certificado/certificado.pfx</code>
+                    <p style="font-size:0.75rem;color:#059669;margin-top:8px;">Coloque o arquivo .pfx na pasta acima e configure a senha abaixo.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label>Senha do Certificado (.pfx)</label>
+                    <div style="display:flex;gap:8px;">
+                        <input type="password" id="cert-password" placeholder="Digite a senha do certificado" style="flex:1;">
+                        <button class="btn-primary" onclick="saveCertPassword()" style="padding:10px 16px;">
+                            <i class="fas fa-save"></i> Salvar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Peso Padrão por Caixa (Kg)</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="number" id="config-peso-cx" placeholder="20" step="0.1" min="0.1" style="flex:1;">
+                        <span style="background:#dbeafe;color:#1e40af;padding:10px 14px;border-radius:8px;font-weight:700;white-space:nowrap;">Kg/Cx</span>
+                        <button class="btn-primary" onclick="savePesoPorCaixa()" style="padding:10px 16px;">
+                            <i class="fas fa-save"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ZONA DE PERIGO -->
+<div id="admin-tab-danger" class="admin-tab-content" style="display:none;">
+    <div class="panel" style="border:2px solid #fee2e2;">
+        <div class="panel-header" style="background:#fff1f2;border-bottom:1px solid #fee2e2;">
+            <h4 style="color:#991b1b;font-weight:800;"><i class="fas fa-skull-crossbones"></i> ZONA DE PERIGO — ADMINISTRADOR</h4>
+        </div>
+        <div style="padding:32px;">
+            <div style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;padding:24px;background:#fff5f5;border:1px solid #fecaca;border-radius:12px;">
+                <div>
+                    <h4 style="color:#991b1b;margin-bottom:8px;"><i class="fas fa-trash-alt"></i> Resetar Todos os Dados</h4>
+                    <p style="color:#b91c1c;font-size:0.9rem;">Esta ação é <strong>IRREVERSÍVEL</strong>. Apagará permanentemente todas as movimentações, NF-es, clientes, fornecedores e produtos do banco de dados.</p>
+                    <p style="color:#7f1d1d;font-size:0.8rem;margin-top:8px;"><i class="fas fa-shield-alt"></i> Usuários e configurações do sistema serão mantidos.</p>
+                </div>
+                <button class="btn-danger" onclick="resetSystem()" style="background:#dc2626;color:white;padding:16px 28px;font-weight:800;border-radius:10px;white-space:nowrap;box-shadow:0 4px 12px rgba(220,38,38,0.3);">
+                    <i class="fas fa-trash-alt"></i><br>APAGAR TUDO
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-tab-btn {
+    padding: 10px 20px;
+    border: 2px solid var(--border);
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.admin-tab-btn:hover { border-color: #2563eb; color: #2563eb; }
+.admin-tab-btn.active { background: #2563eb; border-color: #2563eb; color: white; }
+.admin-tab-btn.danger-tab:hover { border-color: #dc2626; color: #dc2626; }
+.admin-tab-btn.danger-tab.active { background: #dc2626; border-color: #dc2626; color: white; }
+
+.radio-option:has(input:checked) {
+    border-color: var(--primary) !important;
+    background: #f0fdf4 !important;
+}
+</style>
+
+<script>
+function switchAdminTab(tab, btn) {
+    document.querySelectorAll('.admin-tab-content').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('admin-tab-' + tab).style.display = 'block';
+    btn.classList.add('active');
+    
+    // Load specific data
+    if (tab === 'logs') loadLogs();
+    if (tab === 'nfe-config') loadNFeAdminConfig();
+}
+
+function loadNFeAdminConfig() {
+    const modo = (typeof appData !== 'undefined' && appData.configs) ? (appData.configs.nfe_modo || 'homologacao') : 'homologacao';
+    document.querySelectorAll('input[name="nfe_modo"]').forEach(r => r.checked = r.value === modo);
+    const pesoCxEl = document.getElementById('config-peso-cx');
+    if (pesoCxEl && typeof appData !== 'undefined') pesoCxEl.value = appData.configs.peso_por_caixa_padrao || 20;
+    
+    // Show mode indicator
+    const alert = document.getElementById('nfe-modo-alert');
+    if (alert) {
+        alert.style.display = 'flex';
+        alert.style.alignItems = 'center';
+        alert.style.gap = '10px';
+        if (modo === 'producao') {
+            alert.style.background = '#fef2f2';
+            alert.style.border = '1px solid #fecaca';
+            alert.style.color = '#991b1b';
+            alert.innerHTML = '<i class="fas fa-exclamation-circle"></i> Modo PRODUÇÃO ativo — NF-es emitidas têm valor fiscal REAL!';
+        } else {
+            alert.style.background = '#f0fdf4';
+            alert.style.border = '1px solid #bbf7d0';
+            alert.style.color = '#166534';
+            alert.innerHTML = '<i class="fas fa-check-circle"></i> Modo HOMOLOGAÇÃO ativo — Apenas para testes, sem valor fiscal.';
+        }
+    }
+}
+</script>

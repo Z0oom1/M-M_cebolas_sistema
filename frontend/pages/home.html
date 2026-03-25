@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -10,38 +9,37 @@
     <link rel="stylesheet" href="../css/estilo_geral.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Efeito de entrada suave para o corpo da página */
-        body {
-            opacity: 0;
-            transition: opacity 1s ease;
+        body { opacity: 0; transition: opacity 1s ease; }
+        body.loaded { opacity: 1; }
+        .nav-item { opacity: 0; transform: translateY(10px); transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16,1,0.3,1); }
+        .nav-item.show { opacity: 1; transform: translateY(0); }
+        .main-content { filter: blur(10px); transition: filter 1.2s ease; }
+        body.loaded .main-content { filter: blur(0); }
+        
+        /* User info in sidebar */
+        .sidebar-user {
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        body.loaded {
-            opacity: 1;
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: white;
+            flex-shrink: 0;
         }
-
-        /* Animação dos itens da sidebar estilo Apple (escalonada) */
-        .nav-item {
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .nav-item.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* Efeito de Blur na transição inicial */
-        .main-content {
-            filter: blur(10px);
-            transition: filter 1.2s ease;
-        }
-        body.loaded .main-content {
-            filter: blur(0);
-        }
+        .user-info { flex: 1; min-width: 0; }
+        .user-info strong { display: block; font-size: 0.85rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
-
 <body>
     <div id="titlebar">
         <div class="window-title">M&M CEBOLAS - SISTEMA DE GESTÃO</div>
@@ -58,11 +56,19 @@
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="logo-container">
-                <img src="../Imgs/logo_M&M.jpg" alt="Logo M&M" class="logo-img">
-            </div>
+            <img src="../Imgs/logo_M&M.jpg" alt="Logo M&M" class="logo-img">
             <h1 class="sidebar-title">M&M CEBOLAS</h1>
         </div>
+        
+        <!-- User info -->
+        <div class="sidebar-user">
+            <div class="user-avatar"><i class="fas fa-user"></i></div>
+            <div class="user-info">
+                <strong id="user-name">Usuário</strong>
+                <span id="user-role-badge" class="badge operador" style="font-size:0.6rem;">OPERADOR</span>
+            </div>
+        </div>
+        
         <nav class="sidebar-nav">
             <div class="nav-group">
                 <span class="nav-label">PRINCIPAL</span>
@@ -83,24 +89,28 @@
                 </button>
             </div>
             <div class="nav-group">
-                <span class="nav-label">CADASTROS</span>
+                <span class="nav-label">GESTÃO</span>
                 <button class="nav-item" onclick="showSection('cadastro')">
-                    <i class="fas fa-address-book"></i> Contatos
+                    <i class="fas fa-address-book"></i> Cadastros
                 </button>
                 <button class="nav-item" onclick="showSection('nfe')">
                     <i class="fas fa-file-invoice"></i> Notas Fiscais
                 </button>
-            </div>
-            <div class="nav-group">
-                <span class="nav-label">SISTEMA</span>
                 <button class="nav-item" onclick="showSection('financeiro')">
                     <i class="fas fa-wallet"></i> Financeiro
                 </button>
+            </div>
+            <div class="nav-group">
+                <span class="nav-label">SISTEMA</span>
                 <button class="nav-item" onclick="showSection('config')">
                     <i class="fas fa-cog"></i> Configurações
                 </button>
+                <button class="nav-item admin-only" onclick="showSection('admin')" style="background:rgba(37,99,235,0.15);color:rgba(147,197,253,0.9);">
+                    <i class="fas fa-shield-alt" style="color:#60a5fa;"></i> Admin
+                </button>
             </div>
         </nav>
+        
         <div class="sidebar-footer">
             <button class="logout-btn" onclick="logout()">
                 <i class="fas fa-power-off"></i> Sair
@@ -114,46 +124,21 @@
         </div>
     </main>
 
-    <script src="../js/script.js"></script>
-    <script>
-        // Lógica de animação de entrada estilo Apple
-        window.addEventListener('DOMContentLoaded', () => {
-            // 1. Mostrar o corpo da página com fade in
-            setTimeout(() => {
-                document.body.classList.add('loaded');
-            }, 100);
+    <!-- ========== MODAIS GLOBAIS ========== -->
 
-            // 2. Animar os ícones da sidebar um por um (escalonado)
-            const navItems = document.querySelectorAll('.nav-item');
-            navItems.forEach((item, index) => {
-                setTimeout(() => {
-                    item.classList.add('show');
-                }, 400 + (index * 80)); // Delay inicial + 80ms entre cada item
-            });
-
-            // 3. Carregar a seção inicial após a animação
-            setTimeout(() => {
-                if (typeof showSection === 'function') {
-                    showSection('dashboard');
-                }
-            }, 1200);
-        });
-    </script>
-</body>
-</html>
-
-    <!-- Modal de Edição de Contatos (Cliente/Fornecedor) -->
+    <!-- Modal de Edição de Contatos -->
     <div id="modal-edit" class="modal-overlay">
         <div class="edit-modal">
-            <div class="panel-header" style="background: var(--primary); color: white;">
-                <h3 id="modal-title" style="margin: 0;">Novo Cadastro</h3>
-                <button onclick="closeEditModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+            <div class="modal-header" style="background: var(--primary); color: white; padding: 20px 24px; border-radius: 20px 20px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="modal-title" style="margin: 0; font-size:1.1rem;">Novo Cadastro</h3>
+                <button onclick="closeEditModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:white;line-height:1;">&times;</button>
             </div>
-            <form onsubmit="saveCadastro(event)" class="form-grid">
+            <form onsubmit="saveCadastro(event)" class="form-grid" style="padding:24px;">
                 <input type="hidden" id="edit-type">
                 <input type="hidden" id="edit-id">
+                
                 <div class="form-group">
-                    <label id="label-doc-type">Tipo de Documento</label>
+                    <label>Tipo de Documento</label>
                     <select id="edit-doc-type" onchange="updateDocMask()">
                         <option value="CNPJ">CNPJ (Empresa)</option>
                         <option value="CPF">CPF (Pessoa Física)</option>
@@ -161,19 +146,21 @@
                 </div>
                 <div class="form-group">
                     <label id="label-doc">CNPJ</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="edit-doc" placeholder="00.000.000/0000-00" required style="flex: 1;">
-                        <button type="button" class="btn-primary" onclick="consultarDocumento()" title="Consultar dados automaticamente">
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="edit-doc" placeholder="00.000.000/0000-00" style="flex:1;">
+                        <button type="button" class="btn-primary" onclick="consultarDocumento()" title="Buscar dados automaticamente" style="padding:12px 14px;flex-shrink:0;">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
+                    <small style="color:var(--text-muted);display:block;margin-top:4px;font-size:0.75rem;"><i class="fas fa-magic"></i> Clique na lupa para preencher automaticamente via CNPJ</small>
                 </div>
+                
                 <div class="form-group span-2">
-                    <label>Nome / Razão Social</label>
+                    <label>Nome / Razão Social *</label>
                     <input type="text" id="edit-nome" required placeholder="Nome completo ou Razão Social">
                 </div>
                 <div class="form-group">
-                    <label>Inscrição Estadual (Opcional)</label>
+                    <label>Inscrição Estadual</label>
                     <input type="text" id="edit-ie" placeholder="Isento ou Número">
                 </div>
                 <div class="form-group">
@@ -188,9 +175,11 @@
                     <label>Endereço Completo</label>
                     <input type="text" id="edit-end" placeholder="Rua, Número, Bairro, Cidade - UF">
                 </div>
-                <div style="display: flex; gap: 12px; margin-top: 10px;" class="span-2">
-                    <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Cadastro</button>
+                <div style="display:flex;gap:12px;margin-top:8px;" class="span-2">
+                    <button type="button" class="btn-danger" onclick="closeEditModal()" style="flex:1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex:2;">
+                        <i class="fas fa-save"></i> Salvar Cadastro
+                    </button>
                 </div>
             </form>
         </div>
@@ -199,17 +188,17 @@
     <!-- Modal de Produto -->
     <div id="modal-produto" class="modal-overlay">
         <div class="edit-modal">
-            <div class="panel-header" style="background: var(--primary); color: white;">
-                <h3 id="produto-modal-title" style="margin: 0;">Novo Produto</h3>
-                <button onclick="closeProdutoModal()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color: white;">&times;</button>
+            <div class="modal-header" style="background: var(--primary); color: white; padding: 20px 24px; border-radius: 20px 20px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="produto-modal-title" style="margin:0;font-size:1.1rem;">Novo Produto</h3>
+                <button onclick="closeProdutoModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:white;line-height:1;">&times;</button>
             </div>
-            <form onsubmit="saveProduto(event)" class="form-grid">
+            <form onsubmit="saveProduto(event)" class="form-grid" style="padding:24px;">
                 <input type="hidden" id="prod-id">
                 <input type="hidden" id="prod-icone" value="fa-box">
                 <input type="hidden" id="prod-cor" value="#1A5632">
                 
                 <div class="form-group span-2">
-                    <label>Nome da Variedade</label>
+                    <label>Nome da Variedade *</label>
                     <input type="text" id="prod-nome" required placeholder="Ex: Cebola Amarela Especial">
                 </div>
                 <div class="form-group">
@@ -217,45 +206,86 @@
                     <input type="text" id="prod-ncm" placeholder="07031011">
                 </div>
                 <div class="form-group">
-                    <label>Preço Base (Venda)</label>
+                    <label>Preço Base de Venda (R$)</label>
                     <input type="number" step="0.01" id="prod-preco" placeholder="0.00">
                 </div>
-                <div class="form-group">
+                <div class="form-group span-2">
                     <label>Peso por Caixa (Kg)</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="number" step="0.1" id="prod-peso-cx" placeholder="20" min="0.1" style="flex: 1;">
-                        <span style="background: #dbeafe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-weight: 700;">Kg/Cx</span>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="number" step="0.1" id="prod-peso-cx" placeholder="20" min="0.1" style="flex:1;">
+                        <span style="background:#dbeafe;color:#1e40af;padding:10px 14px;border-radius:8px;font-weight:700;white-space:nowrap;">Kg/Cx</span>
                     </div>
-                    <small style="color: var(--text-muted); margin-top: 4px; display: block;">Peso médio de cada caixa deste produto</small>
+                    <small style="color:var(--text-muted);margin-top:4px;display:block;">Peso médio de cada caixa deste produto</small>
                 </div>
-                <div class="form-group"></div>
                 
                 <div class="form-group span-2">
                     <label>Escolha um Ícone</label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
-                        <div class="icon-option" onclick="selectIcon(this, 'fa-box')"><i class="fas fa-box"></i></div>
-                        <div class="icon-option" onclick="selectIcon(this, 'fa-seedling')"><i class="fas fa-seedling"></i></div>
-                        <div class="icon-option" onclick="selectIcon(this, 'fa-leaf')"><i class="fas fa-leaf"></i></div>
-                        <div class="icon-option" onclick="selectIcon(this, 'fa-shopping-basket')"><i class="fas fa-shopping-basket"></i></div>
-                        <div class="icon-option" onclick="selectIcon(this, 'fa-circle')"><i class="fas fa-circle"></i></div>
-                        <div class="icon-option" onclick="selectIcon(this, 'fa-lemon')"><i class="fas fa-lemon"></i></div> <!-- Cebola/Redondo -->
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px;">
+                        <div class="icon-option active" onclick="selectIcon(this,'fa-box')"><i class="fas fa-box"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this,'fa-seedling')"><i class="fas fa-seedling"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this,'fa-leaf')"><i class="fas fa-leaf"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this,'fa-shopping-basket')"><i class="fas fa-shopping-basket"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this,'fa-circle')"><i class="fas fa-circle"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this,'fa-lemon')"><i class="fas fa-lemon"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this,'fa-apple-alt')"><i class="fas fa-apple-alt"></i></div>
+                        <div class="icon-option" onclick="selectIcon(this,'fa-carrot')"><i class="fas fa-carrot"></i></div>
                     </div>
                 </div>
-
                 <div class="form-group span-2">
                     <label>Escolha uma Cor</label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
-                        <div class="color-option" onclick="selectColor(this, '#1A5632')" style="background: #1A5632;"></div>
-                        <div class="color-option" onclick="selectColor(this, '#E89C31')" style="background: #E89C31;"></div>
-                        <div class="color-option" onclick="selectColor(this, '#dc2626')" style="background: #dc2626;"></div>
-                        <div class="color-option" onclick="selectColor(this, '#2563eb')" style="background: #2563eb;"></div>
-                        <div class="color-option" onclick="selectColor(this, '#7c3aed')" style="background: #7c3aed;"></div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px;">
+                        <div class="color-option active" onclick="selectColor(this,'#1A5632')" style="background:#1A5632;"></div>
+                        <div class="color-option" onclick="selectColor(this,'#E89C31')" style="background:#E89C31;"></div>
+                        <div class="color-option" onclick="selectColor(this,'#dc2626')" style="background:#dc2626;"></div>
+                        <div class="color-option" onclick="selectColor(this,'#2563eb')" style="background:#2563eb;"></div>
+                        <div class="color-option" onclick="selectColor(this,'#7c3aed')" style="background:#7c3aed;"></div>
+                        <div class="color-option" onclick="selectColor(this,'#0891b2')" style="background:#0891b2;"></div>
+                        <div class="color-option" onclick="selectColor(this,'#d97706')" style="background:#d97706;"></div>
                     </div>
                 </div>
+                
+                <div style="display:flex;gap:12px;margin-top:8px;" class="span-2">
+                    <button type="button" class="btn-danger" onclick="closeProdutoModal()" style="flex:1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex:2;"><i class="fas fa-save"></i> Salvar Produto</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-                <div style="display: flex; gap: 12px; margin-top: 10px;" class="span-2">
-                    <button type="button" class="btn-danger" onclick="closeProdutoModal()" style="flex: 1;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex: 2;">Salvar Produto</button>
+    <!-- Modal de Usuário -->
+    <div id="modal-usuario" class="modal-overlay">
+        <div class="edit-modal" style="max-width:500px;">
+            <div class="modal-header" style="background:#2563eb;color:white;padding:20px 24px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 id="user-modal-title" style="margin:0;font-size:1.1rem;">Gestão de Acesso</h3>
+                <button onclick="closeUsuarioModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:white;line-height:1;">&times;</button>
+            </div>
+            <form onsubmit="saveUsuario(event)" style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+                <input type="hidden" id="user-id">
+                <div class="form-group">
+                    <label>Nome Completo (Exibição)</label>
+                    <input type="text" id="user-label" required placeholder="Ex: João da Silva">
+                </div>
+                <div class="form-group">
+                    <label>Nome de Usuário (Login)</label>
+                    <input type="text" id="user-username" required placeholder="Ex: joao.silva">
+                </div>
+                <div class="form-group">
+                    <label>Senha <span id="pass-hint" style="font-weight:400;color:var(--text-muted)">(obrigatória para novos usuários)</span></label>
+                    <input type="password" id="user-password" placeholder="Digite a senha">
+                </div>
+                <div class="form-group">
+                    <label>Nível de Acesso</label>
+                    <select id="user-role">
+                        <option value="funcionario">👤 Funcionário (Operacional)</option>
+                        <option value="chefe">⭐ Chefe (Acesso Total)</option>
+                        <option value="admin">🛡️ Administrador (Gestão do Sistema)</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:12px;margin-top:8px;">
+                    <button type="button" class="btn-danger" onclick="closeUsuarioModal()" style="flex:1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex:2;background:#2563eb;">
+                        <i class="fas fa-save"></i> Salvar Acesso
+                    </button>
                 </div>
             </form>
         </div>
@@ -263,27 +293,65 @@
 
     <!-- Modal de Busca de Contatos -->
     <div id="modal-search" class="modal-overlay">
-        <div class="edit-modal" style="max-width: 500px;">
-            <div class="panel-header">
-                <h4 style="margin: 0;">Selecionar Contato</h4>
-                <button onclick="closeSearchModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+        <div class="edit-modal" style="max-width:520px;">
+            <div class="modal-header" style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <h4 style="margin:0;font-weight:700;">Selecionar Contato</h4>
+                <button onclick="closeSearchModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);line-height:1;">&times;</button>
             </div>
-            <div style="padding: 15px;">
-                <table style="width: 100%;">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Documento</th>
-                            <th>Telefone</th>
-                        </tr>
-                    </thead>
-                    <tbody id="search-results"></tbody>
-                </table>
+            <div style="padding:16px;">
+                <input type="text" placeholder="Filtrar..." onkeyup="filterSearchModal(this.value)" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;">
+                <div style="max-height:350px;overflow-y:auto;">
+                    <table style="width:100%;">
+                        <tbody id="search-results"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Overlay de Confirmação (NFe/Sucesso) -->
+    <!-- Modal Gerar NF-e -->
+    <div id="modal-gerar-nfe" class="modal-overlay">
+        <div class="edit-modal" style="max-width:520px;">
+            <div class="modal-header" style="background:#059669;color:white;padding:20px 24px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="margin:0;font-size:1.1rem;"><i class="fas fa-file-invoice"></i> Emitir NF-e</h3>
+                <button onclick="closeNFeModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:white;line-height:1;">&times;</button>
+            </div>
+            <form onsubmit="confirmarGerarNFe(event)" style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+                <input type="hidden" id="nfe-venda-id">
+                
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;">
+                    <p style="font-size:0.85rem;color:#166534;font-weight:600;"><i class="fas fa-info-circle"></i> Selecione o destinatário da NF-e ou informe manualmente.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label>Destinatário (Clientes cadastrados)</label>
+                    <select id="nfe-destinatario-id" onchange="preencherDestNFe(this)">
+                        <option value="">Selecione um cliente cadastrado...</option>
+                    </select>
+                </div>
+                
+                <div style="text-align:center;color:var(--text-muted);font-size:0.8rem;">— ou informe manualmente —</div>
+                
+                <div class="form-group">
+                    <label>Nome / Razão Social</label>
+                    <input type="text" id="nfe-dest-nome" placeholder="Nome do destinatário">
+                </div>
+                <div class="form-group">
+                    <label>CNPJ / CPF</label>
+                    <input type="text" id="nfe-dest-doc" placeholder="Documento do destinatário">
+                </div>
+                
+                <div style="display:flex;gap:12px;margin-top:8px;">
+                    <button type="button" class="btn-danger" onclick="closeNFeModal()" style="flex:1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex:2;background:#059669;">
+                        <i class="fas fa-file-invoice"></i> Emitir NF-e
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Overlay de Confirmação (Sucesso Visual) -->
     <div id="confirmation-overlay" class="confirmation-overlay">
         <div class="check-container">
             <svg class="check-svg" viewBox="0 0 52 52">
@@ -293,17 +361,42 @@
         </div>
     </div>
 
-    <!-- Lixeira para Animação de Exclusão -->
-    <div id="trash-container" class="trash-animation-container">
-        <i class="fas fa-trash-alt"></i>
-    </div>
-
     <!-- Áudios do Sistema -->
-    <div id="system-sounds" style="display: none;">
-        <!-- Som de abertura (Startup) -->
-        <audio id="sound-startup" src="../sounds/mac-startup.mp3"></audio>
-        <!-- Som de confirmação (Sucesso) -->
-        <audio id="sound-success" src="../sounds/success-chime.mp3"></audio>
-        <!-- Som de lixeira (Trash) -->
-        <audio id="sound-trash" src="../sounds/trash-empty.mp3"></audio>
-    </div>
+    <audio id="sound-startup" src="../sounds/mac-startup.mp3" style="display:none;"></audio>
+    <audio id="sound-success" src="../sounds/success-chime.mp3" style="display:none;"></audio>
+
+    <script src="../js/script.js"></script>
+    <script>
+    // Animação de entrada
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => document.body.classList.add('loaded'), 100);
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach((item, index) => {
+            setTimeout(() => item.classList.add('show'), 400 + (index * 80));
+        });
+        setTimeout(() => {
+            if (typeof showSection === 'function') showSection('dashboard');
+        }, 1200);
+    });
+
+    // Helper para preencher campos NF-e ao selecionar cliente
+    function preencherDestNFe(select) {
+        const clientId = select.value;
+        if (!clientId || typeof appData === 'undefined') return;
+        const client = appData.clients.find(c => c.id == clientId);
+        if (client) {
+            document.getElementById('nfe-dest-nome').value = client.nome || '';
+            document.getElementById('nfe-dest-doc').value = client.documento || '';
+        }
+    }
+
+    // Helper para filtrar modal de busca
+    function filterSearchModal(val) {
+        const rows = document.querySelectorAll('#search-results tr');
+        rows.forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(val.toLowerCase()) ? '' : 'none';
+        });
+    }
+    </script>
+</body>
+</html>
