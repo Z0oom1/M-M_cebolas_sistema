@@ -47,7 +47,7 @@ Para parar de usar o FileZilla e fazer com que a sua VPS atualize automaticament
    npm install --production
    
    echo "🚀 Reiniciando a aplicação..."
-   pm2 restart server || pm2 start server.js --name "server"
+   pm2 restart mm-cebolas || pm2 start server.js --name "mm-cebolas"
    
    echo "✅ Deploy Concluído com Sucesso!"
    ```
