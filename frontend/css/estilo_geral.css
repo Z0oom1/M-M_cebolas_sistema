@@ -1,23 +1,24 @@
 :root {
-    --primary: #1A5632;
-    --primary-light: #257a44;
-    --primary-dark: #0f3d22;
-    --accent: #F59E0B;
-    --accent-light: #fbbf24;
+    --primary: #10b981;
+    --primary-light: #34d399;
+    --primary-dark: #064e3b;
+    --accent: #f59e0b;
+    --accent-light: #fcd34d;
     --bg-body: #f8fafc;
-    --bg-panel: #ffffff;
+    --bg-panel: rgba(255, 255, 255, 0.75);
     --text-main: #0f172a;
     --text-muted: #64748b;
-    --border: #e2e8f0;
+    --border: rgba(226, 232, 240, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.5);
     --danger: #ef4444;
     --success: #10b981;
     --warning: #f59e0b;
     --info: #3b82f6;
-    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --radius: 12px;
+    --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    --shadow-lg: 0 15px 35px -5px rgba(0, 0, 0, 0.1), 0 10px 15px -5px rgba(0, 0, 0, 0.04);
+    --radius: 16px;
 }
 
 * {
@@ -28,7 +29,8 @@
 }
 
 body {
-    background-color: var(--bg-body);
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    background-attachment: fixed;
     color: var(--text-main);
     overflow: hidden;
     height: 100vh;
@@ -186,15 +188,17 @@ body {
 /* --- PANELS & CARDS --- */
 .panel { 
     background: var(--bg-panel); 
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-radius: var(--radius); 
-    border: 1px solid var(--border); 
-    box-shadow: var(--shadow-sm); 
+    border: 1px solid var(--glass-border); 
+    box-shadow: var(--shadow); 
     margin-bottom: 24px; 
     overflow: hidden; 
     transition: var(--transition);
 }
-.panel:hover { box-shadow: var(--shadow-lg); }
-.panel-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.panel:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.panel-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.4); }
 
 .btn-icon {
     background: none;

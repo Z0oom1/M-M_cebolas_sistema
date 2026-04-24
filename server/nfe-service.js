@@ -196,7 +196,15 @@ class NFeService {
                     }
                 }, (err, client) => {
                     if (err) reject(err);
-                    else resolve(client);
+                    else {
+                        // FIX: Autenticação Mutual TLS (Client Certificate) necessária para a SEFAZ
+                        try {
+                            client.setSecurity(new soap.ClientSSLSecurityPFX(this.pfxPath, this.password));
+                        } catch (secErr) {
+                            console.warn("Aviso ao configurar segurança PFX no SOAP:", secErr.message);
+                        }
+                        resolve(client);
+                    }
                 });
             });
 
