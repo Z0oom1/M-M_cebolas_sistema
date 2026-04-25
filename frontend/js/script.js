@@ -19,7 +19,16 @@ let nfeGroupingMode = 'fornecedor';
 
 const API_URL = (function () {
     const isElectron = window.location.protocol === 'file:' || (typeof process !== 'undefined' && process.versions && process.versions.electron);
-    if (isElectron) return 'https://portalmmcebolas.com/api'; // Or your production IP
+    const host = window.location.hostname;
+    
+    // Se estiver no Electron e não tivermos domínio, podemos usar o IP fixo ou perguntar.
+    // Por enquanto, vamos ser dinâmicos:
+    if (isElectron) return 'http://72.60.8.186/api'; 
+    
+    // Se for localhost, usa a porta 3000
+    if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000/api';
+    
+    // Web normal: usa o próprio origin (seja IP ou Domínio)
     return window.location.origin + '/api';
 })();
 
@@ -911,14 +920,31 @@ async function downloadPDF(id) {
 async function previewPDF(id) {
     const token = localStorage.getItem('token');
     const url = `${API_URL}/nfe/${id}/pdf`;
-    showSuccess('Gerando visualização...');
+    
+    showSuccess('Abrindo prévia...');
+    
     try {
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!res.ok) { showError('Erro ao gerar DANFE'); return; }
+        if (!res.ok) { 
+            const err = await res.json();
+            showError('Erro: ' + (err.error || 'Falha no servidor')); 
+            return; 
+        }
         const blob = await res.blob();
         const objectUrl = URL.createObjectURL(blob);
-        window.open(objectUrl, '_blank');
-    } catch (e) { showError('Erro ao gerar DANFE'); }
+        
+        // Em vez de window.open, vamos tentar criar um link invisível e clicar nele com target _blank
+        // Isso costuma burlar bloqueadores de popup melhor
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => document.body.removeChild(a), 100);
+        
+    } catch (e) { 
+        showError('Erro ao conectar: ' + e.message); 
+    }
 }
 
 async function deleteNFe(id) {
