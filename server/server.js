@@ -903,6 +903,7 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
                 vtotal: row.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})
             }];
 
+            console.log(`Generating DANFE for sale ${row.venda_id}`);
             doc.autoTable({
                 startY: Y_PROD + 5,
                 margin: { left: 10, right: 10 },
@@ -954,8 +955,8 @@ app.get('/api/nfe/:id/pdf', authenticateToken, (req, res) => {
             res.send(Buffer.from(new Uint8Array(pdfOutput)));
 
         } catch (pdfErr) {
-            console.error("Erro ao gerar PDF:", pdfErr);
-            res.status(500).send('Erro ao gerar PDF: ' + pdfErr.message);
+            console.error("CRITICAL ERROR generating DANFE PDF:", pdfErr);
+            res.status(500).json({ error: 'Erro ao gerar PDF: ' + pdfErr.message });
         }
     });
 });

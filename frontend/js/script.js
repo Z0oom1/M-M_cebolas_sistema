@@ -18,12 +18,9 @@ let dashboardChartType = 'bar';
 let nfeGroupingMode = 'fornecedor';
 
 const API_URL = (function () {
-    const host = window.location.hostname;
-    const isElectron = window.location.protocol === 'file:' ||
-        (typeof process !== 'undefined' && process.versions && process.versions.electron);
-    if (isElectron) return 'https://portalmmcebolas.com/api';
-    if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000/api';
-    return 'https://portalmmcebolas.com/api';
+    const isElectron = window.location.protocol === 'file:' || (typeof process !== 'undefined' && process.versions && process.versions.electron);
+    if (isElectron) return 'https://portalmmcebolas.com/api'; // Or your production IP
+    return window.location.origin + '/api';
 })();
 
 window.onload = function () {
@@ -827,7 +824,7 @@ async function loadNFeTable() {
                 </div>
             </div>
             <div id="group-${idx}" class="nfe-items-list">
-                <div style="display:grid;grid-template-columns:110px 1fr 130px 120px 160px;padding:8px 20px;background:#f8fafc;font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">
+                <div style="display:grid;grid-template-columns:100px 1fr 120px 110px 180px;padding:8px 20px;background:#f8fafc;font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;border-bottom:1px solid var(--border);">
                     <span>Data</span><span>Produto / Chave</span><span style="text-align:right">Valor</span><span style="text-align:center">Status</span><span style="text-align:right">Ações</span>
                 </div>
                 ${items.map(n => `
@@ -837,7 +834,7 @@ async function loadNFeTable() {
                             <span style="font-weight:700">${n.produto || '-'}</span>
                             <br><small style="color:var(--text-muted);font-size:0.7rem">${(n.chave_acesso || '').substring(0, 25)}...</small>
                         </div>
-                        <span class="value" style="text-align:right">R$ ${(n.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+                        <span class="value" style="text-align:right; font-size:0.85rem; font-weight:700;">R$ ${(n.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
                         <div class="status">
                             <span class="badge ${n.status === 'autorizada' ? 'entrada' : n.status === 'cancelada' ? 'saida' : 'despesa'}">${(n.status || 'pendente').toUpperCase()}</span>
                         </div>
@@ -1459,12 +1456,28 @@ function renderProductShowcase(section) {
         container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);grid-column:1/-1"><i class="fas fa-box-open fa-2x" style="margin-bottom:10px;opacity:0.3;"></i><p>Nenhum produto cadastrado.<br><a href="#" onclick="showSection(\'cadastro\')" style="color:var(--primary)">Cadastrar produtos</a></p></div>';
         return;
     }
-    container.innerHTML = appData.products.map(p => `
-        <div class="product-card" onclick="selectProductPro('${p.nome}', '${section}', event)">
-            <div class="product-icon-circle" style="background:${p.cor || '#1A5632'}20; color:${p.cor || '#1A5632'}"><i class="fas ${p.icone || 'fa-box'}"></i></div>
-            <div class="product-name">${p.nome}</div>
-            <div class="product-stock">${p.peso_por_caixa || 20} Kg/Cx</div>
-        </div>`).join('');
+
+    container.innerHTML = appData.products.map(p => {
+        const stock = appData.transactions
+            .filter(t => t.produto === p.nome)
+            .reduce((acc, t) => acc + (t.tipo === 'entrada' ? (t.qtd_caixas || 0) : t.tipo === 'saida' ? -(t.qtd_caixas || 0) : 0), 0);
+        
+        const isOutOfStock = section === 'saida' && stock <= 0;
+        
+        return `
+        <div class="product-card ${isOutOfStock ? 'out-of-stock' : ''}" 
+             onclick="${isOutOfStock ? '' : `selectProductPro('${p.nome}', '${section}', event)`}"
+             style="${isOutOfStock ? 'opacity:0.5; cursor:not-allowed; filter:grayscale(1);' : 'cursor:pointer;'}">
+            <div class="product-icon-circle" style="background:${p.cor || '#1A5632'}20; color:${p.cor || '#1A5632'}">
+                <i class="fas ${p.icone || 'fa-box'}"></i>
+            </div>
+            <div class="product-name" style="font-weight:700;">${p.nome}</div>
+            <div style="display:flex; justify-content:space-between; width:100%; font-size:0.7rem; margin-top:4px;">
+                <span style="color:var(--text-muted)">${p.peso_por_caixa || 20} Kg/Cx</span>
+                <span style="font-weight:800; color:${stock > 5 ? 'var(--primary)' : '#dc2626'}">${stock} Cx</span>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function selectProductPro(nome, section, event) {
