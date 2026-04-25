@@ -8,6 +8,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const NFeService = require('./nfe-service');
 const { jsPDF } = require('jspdf');
+require('jspdf-autotable');
 const bwipjs = require('bwip-js');
 
 const app = express();
