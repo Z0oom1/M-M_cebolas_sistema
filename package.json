@@ -4,11 +4,13 @@
   "description": "Sistema de Controle de Estoque M&M Cebolas",
   "main": "frontend/main.js",
   "scripts": {
+    "dev": "node dev.js",
     "start": "electron .",
     "build": "electron-builder build",
     "build:win": "electron-builder build --win",
     "build:mac": "electron-builder build --mac",
-    "publish": "electron-builder build --publish always"
+    "publish": "electron-builder build --publish always",
+    "install:all": "npm install && cd server && npm install"
   },
   "author": "M&M Cebolas",
   "license": "ISC",

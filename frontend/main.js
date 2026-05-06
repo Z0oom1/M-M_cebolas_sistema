@@ -4,9 +4,11 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
+const isDev = process.env.NODE_ENV === 'development';
+
 // Configuração básica do autoUpdater
-autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoDownload = !isDev;
+autoUpdater.autoInstallOnAppQuit = !isDev;
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -83,8 +85,12 @@ function createWindow() {
         console.error('Erro no auto-updater:', err);
     });
 
-    // Verificar atualizações após a janela ser criada
-    autoUpdater.checkForUpdatesAndNotify();
+    // Verificar atualizações após a janela ser criada (apenas em produção)
+    if (!isDev) {
+        autoUpdater.checkForUpdatesAndNotify();
+    } else {
+        console.log('[DEV] Auto-updater desativado em modo desenvolvimento.');
+    }
 }
 
 app.whenReady().then(() => {

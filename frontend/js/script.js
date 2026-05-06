@@ -20,16 +20,22 @@ let nfeGroupingMode = 'fornecedor';
 const API_URL = (function () {
     const isElectron = window.location.protocol === 'file:' || (typeof process !== 'undefined' && process.versions && process.versions.electron);
     const host = window.location.hostname;
-    
-    // Se estiver no Electron (app desktop), aponta para o IP da VPS na porta 3000
-    if (isElectron) return 'http://72.60.8.186:3000/api'; 
-    
-    // Se for localhost (desenvolvimento local)
+
+    // Modo desenvolvimento: NODE_ENV=development (npm run dev) → usar servidor local
+    const isDev = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') ||
+                  (typeof window.__DEV_MODE__ !== 'undefined' && window.__DEV_MODE__);
+
+    if (isDev) return 'http://localhost:3000/api';
+
+    // Electron em produção → aponta para a VPS
+    if (isElectron) return 'https://portalmmcebolas.com/api';
+
+    // Se for localhost (desenvolvimento via navegador)
     if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000/api';
-    
+
     // Se for acesso via IP direto no navegador, precisa da porta 3000
     if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return `http://${host}:3000/api`;
-    
+
     // Se for domínio (ex: portalmmcebolas.com), assume que há um proxy (Nginx) na porta padrão
     return window.location.origin + '/api';
 })();

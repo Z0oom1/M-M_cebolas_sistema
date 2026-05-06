@@ -1,5 +1,14 @@
 const isElectron = window.location.protocol === 'file:';
-const API_URL = 'https://portalmmcebolas.com/api';
+
+// Em modo desenvolvimento (npm run dev), o Electron passa NODE_ENV=development
+// Detectamos isso via process.env ou pela presença de uma flag global injetada pelo main.js
+const isDev = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') ||
+              (typeof window.__DEV_MODE__ !== 'undefined' && window.__DEV_MODE__);
+
+const API_URL = isDev
+    ? 'http://localhost:3000/api'       // Modo desenvolvimento: servidor local
+    : 'https://portalmmcebolas.com/api'; // Modo produção: VPS
+
 
 function getHomeUrl() {
     if (window.location.protocol === 'file:') return 'home.html';

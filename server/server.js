@@ -101,13 +101,16 @@ const CORS_ORIGINS = [
 ];
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
+        if (!origin) return callback(null, true); // Electron (file://) e ferramentas sem origin
         if (CORS_ORIGINS.indexOf(origin) !== -1) {
             return callback(null, true);
-        } else {
-            console.warn('[CORS] Origem não permitida:', origin);
-            return callback(null, false);
         }
+        // Em modo desenvolvimento, liberar qualquer localhost
+        if (process.env.NODE_ENV === 'development' && /^http:\/\/(localhost|127\.0\.0\.1)/.test(origin)) {
+            return callback(null, true);
+        }
+        console.warn('[CORS] Origem n\u00e3o permitida:', origin);
+        return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -134,6 +137,9 @@ function registrarLog(req, acao, detalhes) {
     db.run(`INSERT INTO logs (usuario_id, username, acao, detalhes, data) VALUES (?, ?, ?, ?, ?)`,
         [usuarioId, username, acao, detalhes, data]);
 }
+
+// Endpoint de health check para o modo dev
+app.get('/api/health', (req, res) => res.json({ ok: true, env: process.env.NODE_ENV || 'production' }));
 
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
